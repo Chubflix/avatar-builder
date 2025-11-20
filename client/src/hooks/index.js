@@ -152,6 +152,7 @@ export function useImages() {
 export function useGeneration() {
     const { state, dispatch, actions } = useApp();
     const progressInterval = useRef(null);
+    const isProcessing = useRef(false);
 
     const checkProgress = useCallback(async () => {
         try {
@@ -162,13 +163,9 @@ export function useGeneration() {
         }
     }, [dispatch, actions]);
 
-    const generate = useCallback(async () => {
-        const { config, positivePrompt, selectedModel, negativePrompt, orientation, batchSize, seed, selectedFolder } = state;
-
-        if (!config || !positivePrompt.trim()) {
-            dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: 'Please enter a positive prompt' } });
-            return;
-        }
+    // Process a single generation from the queue
+    const processGeneration = useCallback(async (queueItem) => {
+        const { config, positivePrompt, selectedModel, negativePrompt, orientation, batchSize, seed, selectedFolder, currentFolder, totalImages } = queueItem;
 
         dispatch({ type: actions.SET_GENERATING, payload: true });
         dispatch({ type: actions.SET_STATUS, payload: { type: 'info', message: 'Generating images...' } });
@@ -229,9 +226,9 @@ export function useGeneration() {
             }
 
             // Update gallery if viewing all or same folder
-            if (!state.currentFolder || state.currentFolder === selectedFolder) {
+            if (!currentFolder || currentFolder === selectedFolder) {
                 dispatch({ type: actions.ADD_IMAGES, payload: savedImages });
-                dispatch({ type: actions.SET_TOTAL_IMAGES, payload: state.totalImages + savedImages.length });
+                dispatch({ type: actions.SET_TOTAL_IMAGES, payload: totalImages + savedImages.length });
             }
 
             dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message: `Generated and saved ${savedImages.length} image(s)!` } });
@@ -244,8 +241,55 @@ export function useGeneration() {
                 clearInterval(progressInterval.current);
                 progressInterval.current = null;
             }
+
+            // Remove from queue and mark processing as complete
+            dispatch({ type: actions.REMOVE_FROM_QUEUE });
         }
-    }, [state, checkProgress, dispatch, actions]);
+    }, [checkProgress, dispatch, actions]);
+
+    // Add generation to queue
+    const generate = useCallback(async () => {
+        const { config, positivePrompt, selectedModel, negativePrompt, orientation, batchSize, seed, selectedFolder, currentFolder, totalImages } = state;
+
+        if (!config || !positivePrompt.trim()) {
+            dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: 'Please enter a positive prompt' } });
+            return;
+        }
+
+        // Add to queue with all necessary data captured at this moment
+        const queueItem = {
+            config,
+            positivePrompt,
+            selectedModel,
+            negativePrompt,
+            orientation,
+            batchSize,
+            seed,
+            selectedFolder,
+            currentFolder,
+            totalImages,
+            id: Date.now() + Math.random() // Unique ID for this queue item
+        };
+
+        dispatch({ type: actions.ADD_TO_QUEUE, payload: queueItem });
+        dispatch({ type: actions.SET_STATUS, payload: { type: 'info', message: 'Added to queue' } });
+    }, [state, dispatch, actions]);
+
+    // Process queue
+    useEffect(() => {
+        if (isProcessing.current || state.generationQueue.length === 0 || state.isGenerating) {
+            return;
+        }
+
+        isProcessing.current = true;
+        dispatch({ type: actions.SET_PROCESSING_QUEUE, payload: true });
+
+        const nextItem = state.generationQueue[0];
+        processGeneration(nextItem).finally(() => {
+            isProcessing.current = false;
+            dispatch({ type: actions.SET_PROCESSING_QUEUE, payload: false });
+        });
+    }, [state.generationQueue, state.isGenerating, processGeneration, dispatch, actions]);
 
     useEffect(() => {
         return () => {

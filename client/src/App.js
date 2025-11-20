@@ -19,8 +19,10 @@ function AppContent() {
     const { loadModels } = useModels();
     const isInitialized = useRef(false);
     const currentFolderRef = useRef(null);
+    const skipGalleryToSaveSync = useRef(false);
+    const skipSaveToGallerySync = useRef(false);
 
-    const { config, settingsLoaded, currentFolder, folders } = state;
+    const { config, settingsLoaded, currentFolder, selectedFolder, folders } = state;
 
     // Keep ref in sync with current folder
     useEffect(() => {
@@ -122,18 +124,47 @@ function AppContent() {
         }
     }, [currentFolder, settingsLoaded]);
 
-    // Sync selectedFolder with currentFolder (gallery filter syncs with save folder)
+    // Sync gallery filter → save folder (when user changes gallery filter)
     useEffect(() => {
         if (settingsLoaded && isInitialized.current) {
+            // Skip if this change was triggered by save folder sync
+            if (skipGalleryToSaveSync.current) {
+                skipGalleryToSaveSync.current = false;
+                return;
+            }
+
             // If viewing all images or unfiled, set save folder to unfiled ('')
             if (currentFolder === null || currentFolder === 'unfiled') {
+                skipSaveToGallerySync.current = true;
                 dispatch({ type: actions.SET_SELECTED_FOLDER, payload: '' });
             } else {
                 // Otherwise set save folder to current gallery folder
+                skipSaveToGallerySync.current = true;
                 dispatch({ type: actions.SET_SELECTED_FOLDER, payload: currentFolder });
             }
         }
     }, [currentFolder, settingsLoaded, dispatch, actions]);
+
+    // Sync save folder → gallery filter (when user changes save folder)
+    useEffect(() => {
+        if (settingsLoaded && isInitialized.current) {
+            // Skip if this change was triggered by gallery filter sync
+            if (skipSaveToGallerySync.current) {
+                skipSaveToGallerySync.current = false;
+                return;
+            }
+
+            // If save folder is unfiled (''), show unfiled images
+            if (selectedFolder === '' || selectedFolder === null) {
+                skipGalleryToSaveSync.current = true;
+                dispatch({ type: actions.SET_CURRENT_FOLDER, payload: 'unfiled' });
+            } else {
+                // Otherwise show the selected folder's images
+                skipGalleryToSaveSync.current = true;
+                dispatch({ type: actions.SET_CURRENT_FOLDER, payload: selectedFolder });
+            }
+        }
+    }, [selectedFolder, settingsLoaded, dispatch, actions]);
 
     // Handlers
     const handleResetDefaults = () => {

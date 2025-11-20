@@ -19,7 +19,8 @@ function ControlsPanel({ onGenerate, onResetDefaults, onOpenFolderModal }) {
         models,
         isGenerating,
         progress,
-        status
+        status,
+        generationQueue
     } = state;
 
     if (!config) return null;
@@ -179,7 +180,7 @@ function ControlsPanel({ onGenerate, onResetDefaults, onOpenFolderModal }) {
             <button
                 className={`btn-generate ${isGenerating ? 'loading' : ''}`}
                 onClick={onGenerate}
-                disabled={isGenerating || !selectedModel}
+                disabled={!selectedModel}
             >
                 {isGenerating ? (
                     <>
@@ -203,6 +204,12 @@ function ControlsPanel({ onGenerate, onResetDefaults, onOpenFolderModal }) {
                         ></div>
                     </div>
                     <div className="progress-text">{progress}% complete</div>
+                </div>
+            )}
+
+            {generationQueue.length > 0 && (
+                <div className="queue-status">
+                    {generationQueue.length} {generationQueue.length === 1 ? 'generation' : 'generations'} queued...
                 </div>
             )}
 
