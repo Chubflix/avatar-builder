@@ -23,6 +23,12 @@ const ActionTypes = {
     SET_PROGRESS: 'SET_PROGRESS',
     SET_STATUS: 'SET_STATUS',
 
+    // Queue state
+    ADD_TO_QUEUE: 'ADD_TO_QUEUE',
+    REMOVE_FROM_QUEUE: 'REMOVE_FROM_QUEUE',
+    CLEAR_QUEUE: 'CLEAR_QUEUE',
+    SET_PROCESSING_QUEUE: 'SET_PROCESSING_QUEUE',
+
     // Folders
     SET_FOLDERS: 'SET_FOLDERS',
     SET_CURRENT_FOLDER: 'SET_CURRENT_FOLDER',
@@ -73,6 +79,10 @@ const initialState = {
     progress: 0,
     status: null,
 
+    // Queue state
+    generationQueue: [],
+    isProcessingQueue: false,
+
     // Folders
     folders: [],
     currentFolder: null,
@@ -122,6 +132,14 @@ function appReducer(state, action) {
             return { ...state, progress: action.payload };
         case ActionTypes.SET_STATUS:
             return { ...state, status: action.payload };
+        case ActionTypes.ADD_TO_QUEUE:
+            return { ...state, generationQueue: [...state.generationQueue, action.payload] };
+        case ActionTypes.REMOVE_FROM_QUEUE:
+            return { ...state, generationQueue: state.generationQueue.slice(1) };
+        case ActionTypes.CLEAR_QUEUE:
+            return { ...state, generationQueue: [] };
+        case ActionTypes.SET_PROCESSING_QUEUE:
+            return { ...state, isProcessingQueue: action.payload };
         case ActionTypes.SET_FOLDERS:
             return { ...state, folders: action.payload };
         case ActionTypes.SET_CURRENT_FOLDER:

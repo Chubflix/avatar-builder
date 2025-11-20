@@ -19,7 +19,8 @@ function MobileControls({ onGenerate, onResetDefaults }) {
         isGenerating,
         progress,
         status,
-        showMobileSettings
+        showMobileSettings,
+        generationQueue
     } = state;
 
     if (!config) return null;
@@ -157,7 +158,7 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                 <button
                     className={`mobile-generate-btn ${isGenerating ? 'loading' : ''}`}
                     onClick={onGenerate}
-                    disabled={isGenerating || !selectedModel}
+                    disabled={!selectedModel}
                 >
                     {isGenerating ? (
                         <div className="spinner"></div>
@@ -175,6 +176,12 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                             style={{ width: `${progress}%` }}
                         ></div>
                     </div>
+                </div>
+            )}
+
+            {generationQueue.length > 0 && (
+                <div className="mobile-queue-status">
+                    {generationQueue.length} {generationQueue.length === 1 ? 'generation' : 'generations'} queued...
                 </div>
             )}
 
