@@ -440,6 +440,73 @@
     margin-left: auto;
 }
 
+/* Folder Tree - Expand/Collapse */
+.folder-selector-item-with-edit {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.folder-selector-item-with-edit .folder-selector-item {
+    flex: 1;
+}
+
+.folder-expand-btn {
+    width: 18px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+    transition: color 0.2s ease;
+}
+
+.folder-expand-btn:hover {
+    color: var(--text-primary);
+}
+
+.folder-expand-btn i {
+    font-size: 0.75rem;
+}
+
+.folder-spacer {
+    width: 24px;
+    height: 24px;
+    display: inline-block;
+    margin-right: 0.25rem;
+    flex-shrink: 0;
+}
+
+.folder-edit-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.folder-edit-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--accent);
+}
+
+.folder-edit-btn i {
+    font-size: 0.875rem;
+}
+
 .folder-selector-empty {
     padding: 3rem 2rem;
     text-align: center;

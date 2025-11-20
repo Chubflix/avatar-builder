@@ -93,14 +93,6 @@ function AppContent() {
                     debug.error('App', 'Failed to load folders', err);
                 }
 
-                debug.log('App', 'Loading images...');
-                try {
-                    await loadImages();
-                    debug.log('App', 'Images loaded successfully');
-                } catch (err) {
-                    debug.error('App', 'Failed to load images', err);
-                }
-
                 debug.log('App', 'Initialization complete!');
             } catch (err) {
                 if (!mounted) {
@@ -130,6 +122,19 @@ function AppContent() {
         }
     }, [currentFolder, settingsLoaded]);
 
+    // Sync selectedFolder with currentFolder (gallery filter syncs with save folder)
+    useEffect(() => {
+        if (settingsLoaded && isInitialized.current) {
+            // If viewing all images or unfiled, set save folder to unfiled ('')
+            if (currentFolder === null || currentFolder === 'unfiled') {
+                dispatch({ type: actions.SET_SELECTED_FOLDER, payload: '' });
+            } else {
+                // Otherwise set save folder to current gallery folder
+                dispatch({ type: actions.SET_SELECTED_FOLDER, payload: currentFolder });
+            }
+        }
+    }, [currentFolder, settingsLoaded, dispatch, actions]);
+
     // Handlers
     const handleResetDefaults = () => {
         dispatch({ type: actions.RESET_TO_DEFAULTS });
@@ -139,21 +144,23 @@ function AppContent() {
     const handleOpenFolderModal = (folder) => {
         dispatch({ type: actions.SET_EDITING_FOLDER, payload: folder });
         dispatch({ type: actions.SET_NEW_FOLDER_NAME, payload: folder?.name || '' });
+        dispatch({ type: actions.SET_PARENT_FOLDER_ID, payload: folder?.parent_id || null });
         dispatch({ type: actions.SET_SHOW_FOLDER_MODAL, payload: true });
     };
 
-    const handleSaveFolder = async (folderId, name) => {
+    const handleSaveFolder = async (folderId, name, parentFolderId) => {
         if (!name.trim()) return;
 
         if (folderId) {
-            await updateFolder(folderId, name);
+            await updateFolder(folderId, name, parentFolderId);
         } else {
-            await createFolder(name);
+            await createFolder(name, parentFolderId);
         }
 
         dispatch({ type: actions.SET_SHOW_FOLDER_MODAL, payload: false });
         dispatch({ type: actions.SET_EDITING_FOLDER, payload: null });
         dispatch({ type: actions.SET_NEW_FOLDER_NAME, payload: '' });
+        dispatch({ type: actions.SET_PARENT_FOLDER_ID, payload: null });
 
         await loadFolders();
     };
