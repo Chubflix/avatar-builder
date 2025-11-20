@@ -5,6 +5,8 @@ function FolderNav({ onOpenFolderModal }) {
     const { state, dispatch, actions } = useApp();
     const { folders, currentFolder } = state;
     const [showFolderPicker, setShowFolderPicker] = useState(false);
+    const [isAddingFolder, setIsAddingFolder] = useState(false);
+    const [newFolderName, setNewFolderName] = useState('');
 
     const currentFolderName = currentFolder === null ? 'All Images' :
                                currentFolder === 'unfiled' ? 'Unfiled' :
@@ -13,6 +15,28 @@ function FolderNav({ onOpenFolderModal }) {
     const handleFolderSelect = (folderId) => {
         dispatch({ type: actions.SET_CURRENT_FOLDER, payload: folderId || null });
         setShowFolderPicker(false);
+    };
+
+    const handleAddFolderClick = () => {
+        setIsAddingFolder(true);
+        setNewFolderName('');
+    };
+
+    const handleSaveNewFolder = () => {
+        if (newFolderName.trim()) {
+            // Open the folder modal with the new folder name
+            dispatch({ type: actions.SET_NEW_FOLDER_NAME, payload: newFolderName.trim() });
+            dispatch({ type: actions.SET_EDITING_FOLDER, payload: null });
+            dispatch({ type: actions.SET_SHOW_FOLDER_MODAL, payload: true });
+            setShowFolderPicker(false);
+            setIsAddingFolder(false);
+            setNewFolderName('');
+        }
+    };
+
+    const handleCancelAddFolder = () => {
+        setIsAddingFolder(false);
+        setNewFolderName('');
     };
 
     return (
@@ -47,6 +71,46 @@ function FolderNav({ onOpenFolderModal }) {
                             </button>
                         </div>
                         <div className="folder-selector-list">
+                            {/* Add Folder button/input at the top */}
+                            {!isAddingFolder ? (
+                                <button
+                                    className="folder-selector-item folder-add-btn"
+                                    onClick={handleAddFolderClick}
+                                >
+                                    <i className="fa fa-plus-circle"></i>
+                                    <span>Add Folder</span>
+                                </button>
+                            ) : (
+                                <div className="folder-add-input-row">
+                                    <input
+                                        type="text"
+                                        className="folder-add-input"
+                                        value={newFolderName}
+                                        onChange={(e) => setNewFolderName(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') handleSaveNewFolder();
+                                            if (e.key === 'Escape') handleCancelAddFolder();
+                                        }}
+                                        placeholder="Folder name..."
+                                        autoFocus
+                                    />
+                                    <button
+                                        className="folder-add-save-btn"
+                                        onClick={handleSaveNewFolder}
+                                        disabled={!newFolderName.trim()}
+                                        title="Save folder"
+                                    >
+                                        <i className="fa fa-check"></i>
+                                    </button>
+                                    <button
+                                        className="folder-add-cancel-btn"
+                                        onClick={handleCancelAddFolder}
+                                        title="Cancel"
+                                    >
+                                        <i className="fa fa-times"></i>
+                                    </button>
+                                </div>
+                            )}
                             <button
                                 className={`folder-selector-item ${currentFolder === null ? 'active' : ''}`}
                                 onClick={() => handleFolderSelect(null)}

@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 
 /**
  * Reusable Folder Selector Component with Search
- * 
+ *
  * @param {Object} props
  * @param {boolean} props.show - Whether to show the selector
  * @param {Function} props.onClose - Callback when closing
@@ -12,9 +12,11 @@ import { useApp } from '../context/AppContext';
  * @param {string} props.title - Modal title (default: "Select Folder")
  */
 function FolderSelector({ show, onClose, onSelect, currentFolderId, title = "Select Folder" }) {
-    const { state } = useApp();
+    const { state, dispatch, actions } = useApp();
     const { folders } = state;
     const [searchQuery, setSearchQuery] = useState('');
+    const [isAddingFolder, setIsAddingFolder] = useState(false);
+    const [newFolderName, setNewFolderName] = useState('');
 
     // Filter folders based on search query
     const filteredFolders = useMemo(() => {
@@ -35,7 +37,29 @@ function FolderSelector({ show, onClose, onSelect, currentFolderId, title = "Sel
 
     const handleClose = () => {
         setSearchQuery(''); // Reset search on close
+        setIsAddingFolder(false);
+        setNewFolderName('');
         onClose();
+    };
+
+    const handleAddFolderClick = () => {
+        setIsAddingFolder(true);
+        setNewFolderName('');
+    };
+
+    const handleSaveNewFolder = () => {
+        if (newFolderName.trim()) {
+            // Open the folder modal with the new folder name
+            dispatch({ type: actions.SET_NEW_FOLDER_NAME, payload: newFolderName.trim() });
+            dispatch({ type: actions.SET_EDITING_FOLDER, payload: null });
+            dispatch({ type: actions.SET_SHOW_FOLDER_MODAL, payload: true });
+            handleClose();
+        }
+    };
+
+    const handleCancelAddFolder = () => {
+        setIsAddingFolder(false);
+        setNewFolderName('');
     };
 
     if (!show) return null;
@@ -73,6 +97,46 @@ function FolderSelector({ show, onClose, onSelect, currentFolderId, title = "Sel
 
                 {/* Folder List */}
                 <div className="folder-selector-list">
+                    {/* Add Folder button/input at the top */}
+                    {!isAddingFolder ? (
+                        <button
+                            className="folder-selector-item folder-add-btn"
+                            onClick={handleAddFolderClick}
+                        >
+                            <i className="fa fa-plus-circle"></i>
+                            <span>Add Folder</span>
+                        </button>
+                    ) : (
+                        <div className="folder-add-input-row">
+                            <input
+                                type="text"
+                                className="folder-add-input"
+                                value={newFolderName}
+                                onChange={(e) => setNewFolderName(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleSaveNewFolder();
+                                    if (e.key === 'Escape') handleCancelAddFolder();
+                                }}
+                                placeholder="Folder name..."
+                                autoFocus
+                            />
+                            <button
+                                className="folder-add-save-btn"
+                                onClick={handleSaveNewFolder}
+                                disabled={!newFolderName.trim()}
+                                title="Save folder"
+                            >
+                                <i className="fa fa-check"></i>
+                            </button>
+                            <button
+                                className="folder-add-cancel-btn"
+                                onClick={handleCancelAddFolder}
+                                title="Cancel"
+                            >
+                                <i className="fa fa-times"></i>
+                            </button>
+                        </div>
+                    )}
                     {/* Unfiled Option */}
                     <button
                         className={`folder-selector-item ${!currentFolderId ? 'active' : ''}`}
