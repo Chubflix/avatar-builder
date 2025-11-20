@@ -3,6 +3,8 @@
  * Handles all communication with the Stable Diffusion WebUI API
  */
 
+import debug from '../utils/debug';
+
 class StableDiffusionAPI {
     constructor(baseUrl) {
         this.baseUrl = baseUrl;
@@ -16,21 +18,52 @@ class StableDiffusionAPI {
     }
 
     /**
+     * Fetch with timeout
+     */
+    async fetchWithTimeout(url, options = {}, timeout = 10000) {
+        debug.log('SD-API', 'Starting fetch', { url, timeout });
+        const controller = new AbortController();
+        const id = setTimeout(() => {
+            debug.warn('SD-API', 'Request timeout, aborting', { url });
+            controller.abort();
+        }, timeout);
+
+        try {
+            const response = await fetch(url, {
+                ...options,
+                signal: controller.signal
+            });
+            debug.log('SD-API', 'Fetch completed', { url, status: response.status });
+            clearTimeout(id);
+            return response;
+        } catch (error) {
+            debug.error('SD-API', 'Fetch failed', { url, error: error.message });
+            clearTimeout(id);
+            if (error.name === 'AbortError') {
+                throw new Error('Request timeout');
+            }
+            throw error;
+        }
+    }
+
+    /**
      * Get list of available models
      */
     async getModels() {
-        const response = await fetch(`${this.baseUrl}/sdapi/v1/sd-models`);
+        const response = await this.fetchWithTimeout(`${this.baseUrl}/sdapi/v1/sd-models`);
         if (!response.ok) {
             throw new Error('Failed to fetch models');
         }
-        return await response.json();
+        const data = await response.json();
+        debug.log('SD-API', 'Models parsed', { count: data.length });
+        return data;
     }
 
     /**
      * Set the active model
      */
     async setModel(modelName) {
-        const response = await fetch(`${this.baseUrl}/sdapi/v1/options`, {
+        const response = await this.fetchWithTimeout(`${this.baseUrl}/sdapi/v1/options`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -49,7 +82,7 @@ class StableDiffusionAPI {
      * Get current generation progress
      */
     async getProgress() {
-        const response = await fetch(`${this.baseUrl}/sdapi/v1/progress`);
+        const response = await this.fetchWithTimeout(`${this.baseUrl}/sdapi/v1/progress`, {}, 5000);
         if (!response.ok) {
             throw new Error('Failed to fetch progress');
         }
@@ -101,11 +134,11 @@ class StableDiffusionAPI {
             };
         }
 
-        const response = await fetch(`${this.baseUrl}/sdapi/v1/txt2img`, {
+        const response = await this.fetchWithTimeout(`${this.baseUrl}/sdapi/v1/txt2img`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
-        });
+        }, 300000); // 5 minutes timeout for generation
 
         if (!response.ok) {
             throw new Error('Image generation failed');
