@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import sdAPI from '../api/sd';
 import { folderAPI, imageAPI } from '../api/backend';
+import debug from '../utils/debug';
 
 /**
  * Hook for managing folders
@@ -11,10 +12,13 @@ export function useFolders() {
 
     const loadFolders = useCallback(async () => {
         try {
+            debug.log('Folders', 'Fetching folders...');
             const folders = await folderAPI.getAll();
+            debug.log('Folders', 'Received folders', { count: folders.length });
             dispatch({ type: actions.SET_FOLDERS, payload: folders });
+            debug.log('Folders', 'Complete');
         } catch (err) {
-            console.error('Error loading folders:', err);
+            debug.error('Folders', 'Error loading folders', err);
         }
     }, [dispatch, actions]);
 
@@ -69,11 +73,13 @@ export function useImages() {
 
     const loadImages = useCallback(async (offset = 0, folderId = state.currentFolder) => {
         try {
+            debug.log('Images', 'Fetching images', { offset, folderId });
             const data = await imageAPI.getAll({
                 folderId: folderId,
                 limit: 50,
                 offset
             });
+            debug.log('Images', 'Received data', { count: data.images.length, total: data.total });
 
             if (offset === 0) {
                 dispatch({ type: actions.SET_IMAGES, payload: data.images });
@@ -84,8 +90,9 @@ export function useImages() {
 
             dispatch({ type: actions.SET_HAS_MORE, payload: data.hasMore });
             dispatch({ type: actions.SET_TOTAL_IMAGES, payload: data.total });
+            debug.log('Images', 'Complete');
         } catch (err) {
-            console.error('Error loading images:', err);
+            debug.error('Images', 'Error loading images', err);
         }
     }, [dispatch, actions]);
 
@@ -251,14 +258,21 @@ export function useModels() {
 
     const loadModels = useCallback(async (baseUrl) => {
         try {
+            debug.log('Models', 'Setting base URL', { baseUrl });
             sdAPI.setBaseUrl(baseUrl);
+            debug.log('Models', 'Fetching models...');
             const models = await sdAPI.getModels();
+            debug.log('Models', 'Received models', { count: models.length });
             dispatch({ type: actions.SET_MODELS, payload: models });
             if (models.length > 0) {
+                debug.log('Models', 'Setting default model', { model: models[0].model_name });
                 dispatch({ type: actions.SET_SELECTED_MODEL, payload: models[0].model_name });
             }
+            debug.log('Models', 'Complete');
         } catch (err) {
+            debug.error('Models', 'Error loading models', err);
             dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: 'Failed to load models: ' + err.message } });
+            throw err; // Re-throw so App.js catch block sees it
         }
     }, [dispatch, actions]);
 
