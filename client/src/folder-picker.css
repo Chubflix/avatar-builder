@@ -110,27 +110,67 @@
     flex-wrap: wrap;
 }
 
-.image-folder-badge {
-    display: inline-block;
+/* Split Folder Badge */
+.image-folder-badge-split {
+    display: inline-flex;
+    overflow: hidden;
+    border-radius: 4px;
+    background: var(--accent);
+}
+
+.folder-badge-filter {
     padding: 0.25rem 0.5rem;
     font-size: 0.7rem;
     font-weight: 600;
     background: var(--accent);
     color: var(--text-primary);
     border: none;
-    border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s ease;
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.image-folder-badge:hover {
+.folder-badge-filter:hover {
     background: var(--accent-hover);
-    transform: translateY(-1px);
+}
+
+.folder-badge-move {
+    padding: 0.25rem 0.4rem;
+    font-size: 0.7rem;
+    background: var(--accent);
+    color: var(--text-primary);
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.folder-badge-move:hover {
+    background: var(--accent-hover);
 }
 
 @media (max-width: 768px) {
-    .image-folder-badge {
+    .folder-picker-btn {
+        padding: 0.875rem 1.125rem;
+    }
+
+    .folder-picker-btn i:first-child {
+        font-size: 1.25rem;
+    }
+
+    .folder-picker-btn span {
+        font-size: 0.9375rem;
+    }
+
+    .folder-badge-filter {
         font-size: 0.65rem;
         padding: 0.2rem 0.4rem;
+    }
+
+    .folder-badge-move {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.35rem;
     }
 }

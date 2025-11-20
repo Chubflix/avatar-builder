@@ -8,6 +8,7 @@ function ImageGallery({ onOpenLightbox, onRestoreSettings, onDelete }) {
     const { images, totalImages, hasMore, isLoadingMore } = state;
     const [showFolderSelector, setShowFolderSelector] = useState(false);
     const [selectedImageForMove, setSelectedImageForMove] = useState(null);
+    const [showMoveAction, setShowMoveAction] = useState(false);
 
     const handleDownload = (e, image) => {
         e.stopPropagation();
@@ -113,17 +114,33 @@ function ImageGallery({ onOpenLightbox, onRestoreSettings, onDelete }) {
                         </div>
                         {image.folder_name && (
                             <div className="image-tags">
-                                <button 
-                                    className="image-folder-badge"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedImageForMove(image);
-                                        setShowFolderSelector(true);
-                                    }}
-                                    title="Change folder"
-                                >
-                                    {image.folder_name}
-                                </button>
+                                <div className="image-folder-badge-split">
+                                    <button 
+                                        className="folder-badge-filter"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            // Set filter to this folder
+                                            const folder = state.folders.find(f => f.name === image.folder_name);
+                                            if (folder) {
+                                                dispatch({ type: actions.SET_CURRENT_FOLDER, payload: folder.id });
+                                            }
+                                        }}
+                                        title="Filter by this folder"
+                                    >
+                                        {image.folder_name}
+                                    </button>
+                                    <button
+                                        className="folder-badge-move"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedImageForMove(image);
+                                            setShowFolderSelector(true);
+                                        }}
+                                        title="Move to folder"
+                                    >
+                                        <i className="fa fa-folder-o"></i>
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>

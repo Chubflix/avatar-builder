@@ -210,8 +210,8 @@ body {
     border-radius: 8px;
     color: var(--text-primary);
     resize: none;
-    min-height: 44px;
-    max-height: 100px;
+    min-height: 110px;
+    max-height: 250px;
 }
 
 .mobile-prompt-input:focus {

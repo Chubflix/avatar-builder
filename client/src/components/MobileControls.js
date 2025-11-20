@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import FolderSelector from './FolderSelector';
 
 function MobileControls({ onGenerate, onResetDefaults }) {
     const { state, dispatch, actions } = useApp();
+    const [showFolderSelector, setShowFolderSelector] = useState(false);
     const {
         config,
         positivePrompt,
@@ -29,18 +31,19 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                     <div className="mobile-settings-content">
                         <div className="form-group">
                             <label className="form-label">Save to Folder</label>
-                            <select
-                                className="form-select"
-                                value={selectedFolder}
-                                onChange={(e) => dispatch({ type: actions.SET_SELECTED_FOLDER, payload: e.target.value })}
+                            <button
+                                className="folder-select-display-btn"
+                                onClick={() => setShowFolderSelector(true)}
+                                type="button"
                             >
-                                <option value="">No folder</option>
-                                {folders.map(folder => (
-                                    <option key={folder.id} value={folder.id}>
-                                        {folder.name}
-                                    </option>
-                                ))}
-                            </select>
+                                <i className="fa fa-folder"></i>
+                                <span>
+                                    {selectedFolder ?
+                                        folders.find(f => f.id === selectedFolder)?.name || 'Unfiled'
+                                        : 'Unfiled'}
+                                </span>
+                                <i className="fa fa-chevron-down"></i>
+                            </button>
                         </div>
 
                         <div className="form-group">
@@ -170,6 +173,18 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                     {status.message}
                 </div>
             )}
+
+            {/* Folder Selector Modal */}
+            <FolderSelector
+                show={showFolderSelector}
+                onClose={() => setShowFolderSelector(false)}
+                onSelect={(folderId) => {
+                    dispatch({ type: actions.SET_SELECTED_FOLDER, payload: folderId });
+                    setShowFolderSelector(false);
+                }}
+                currentFolderId={selectedFolder}
+                title="Save to Folder"
+            />
         </div>
     );
 }
