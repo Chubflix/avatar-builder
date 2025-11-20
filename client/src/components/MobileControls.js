@@ -109,13 +109,23 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                                 Seed
                                 <span className="form-label-hint">-1 for random</span>
                             </label>
-                            <input
-                                type="number"
-                                className="form-input"
-                                value={seed}
-                                onChange={(e) => dispatch({ type: actions.SET_SEED, payload: parseInt(e.target.value) || -1 })}
-                                min="-1"
-                            />
+                            <div className="input-with-button">
+                                <input
+                                    type="number"
+                                    className="form-input"
+                                    value={seed}
+                                    onChange={(e) => dispatch({ type: actions.SET_SEED, payload: parseInt(e.target.value) || -1 })}
+                                    min="-1"
+                                />
+                                <button
+                                    className="btn-input-action"
+                                    onClick={() => dispatch({ type: actions.SET_SEED, payload: -1 })}
+                                    title="Random seed"
+                                    type="button"
+                                >
+                                    <i className="fa fa-random"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <button

@@ -23,11 +23,11 @@ export const folderAPI = {
     /**
      * Create a new folder
      */
-    async create({ name, description = null }) {
+    async create({ name, description = null, parent_id = null }) {
         const response = await fetch(`${API_BASE}/api/folders`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, description })
+            body: JSON.stringify({ name, description, parent_id })
         });
 
         if (!response.ok) {
@@ -41,11 +41,11 @@ export const folderAPI = {
     /**
      * Update a folder
      */
-    async update(id, { name, description = null }) {
+    async update(id, { name, description = null, parent_id = null }) {
         const response = await fetch(`${API_BASE}/api/folders/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, description })
+            body: JSON.stringify({ name, description, parent_id })
         });
 
         if (!response.ok) {

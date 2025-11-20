@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { buildFolderTree } from '../utils/folderUtils';
 
 /**
  * Reusable Folder Selector Component with Search
@@ -13,19 +14,23 @@ import { useApp } from '../context/AppContext';
  */
 function FolderSelector({ show, onClose, onSelect, currentFolderId, title = "Select Folder" }) {
     const { state, dispatch, actions } = useApp();
-    const { folders } = state;
+    const { folders, currentFolder } = state;
     const [searchQuery, setSearchQuery] = useState('');
     const [isAddingFolder, setIsAddingFolder] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
+    const [expandedFolders, setExpandedFolders] = useState(new Set());
+
+    // Build folder tree
+    const folderTree = useMemo(() => buildFolderTree(folders), [folders]);
 
     // Filter folders based on search query
     const filteredFolders = useMemo(() => {
         if (!searchQuery.trim()) {
             return folders;
         }
-        
+
         const query = searchQuery.toLowerCase();
-        return folders.filter(folder => 
+        return folders.filter(folder =>
             folder.name.toLowerCase().includes(query)
         );
     }, [folders, searchQuery]);
@@ -50,7 +55,10 @@ function FolderSelector({ show, onClose, onSelect, currentFolderId, title = "Sel
     const handleSaveNewFolder = () => {
         if (newFolderName.trim()) {
             // Open the folder modal with the new folder name
+            // Set parent to current folder if one is selected
+            const parentId = (currentFolder && currentFolder !== 'unfiled' && currentFolder !== null) ? currentFolder : null;
             dispatch({ type: actions.SET_NEW_FOLDER_NAME, payload: newFolderName.trim() });
+            dispatch({ type: actions.SET_PARENT_FOLDER_ID, payload: parentId });
             dispatch({ type: actions.SET_EDITING_FOLDER, payload: null });
             dispatch({ type: actions.SET_SHOW_FOLDER_MODAL, payload: true });
             handleClose();
@@ -60,6 +68,56 @@ function FolderSelector({ show, onClose, onSelect, currentFolderId, title = "Sel
     const handleCancelAddFolder = () => {
         setIsAddingFolder(false);
         setNewFolderName('');
+    };
+
+    const toggleFolder = (folderId) => {
+        const newExpanded = new Set(expandedFolders);
+        if (newExpanded.has(folderId)) {
+            newExpanded.delete(folderId);
+        } else {
+            newExpanded.add(folderId);
+        }
+        setExpandedFolders(newExpanded);
+    };
+
+    // Recursive function to render folder tree
+    const renderFolderTree = (folderList, depth = 0) => {
+        return folderList.map(folder => {
+            const hasChildren = folder.children && folder.children.length > 0;
+            const isExpanded = expandedFolders.has(folder.id);
+            const isActive = currentFolderId === folder.id;
+            // Add extra padding for nested folders without children to align with folders that have expand button
+            const basePadding = depth * 1.5 + 1;
+            const extraPadding = (!hasChildren && depth > 0) ? 1.75 : 0;
+            const paddingLeft = `${basePadding + extraPadding}rem`;
+
+            return (
+                <React.Fragment key={folder.id}>
+                    <button
+                        className={`folder-selector-item ${isActive ? 'active' : ''}`}
+                        onClick={() => handleSelect(folder.id)}
+                        style={{ paddingLeft }}
+                    >
+                        {hasChildren && (
+                            <button
+                                className="folder-expand-btn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleFolder(folder.id);
+                                }}
+                            >
+                                <i className={`fa fa-chevron-${isExpanded ? 'down' : 'right'}`}></i>
+                            </button>
+                        )}
+                        <i className="fa fa-folder"></i>
+                        <span>{folder.name}</span>
+                        <span className="folder-count">{folder.image_count}</span>
+                        {isActive && <i className="fa fa-check"></i>}
+                    </button>
+                    {hasChildren && isExpanded && renderFolderTree(folder.children, depth + 1)}
+                </React.Fragment>
+            );
+        });
     };
 
     if (!show) return null;
@@ -147,25 +205,31 @@ function FolderSelector({ show, onClose, onSelect, currentFolderId, title = "Sel
                         {!currentFolderId && <i className="fa fa-check"></i>}
                     </button>
 
-                    {/* Filtered Folders */}
-                    {filteredFolders.length > 0 ? (
-                        filteredFolders.map(folder => (
-                            <button
-                                key={folder.id}
-                                className={`folder-selector-item ${currentFolderId === folder.id ? 'active' : ''}`}
-                                onClick={() => handleSelect(folder.id)}
-                            >
-                                <i className="fa fa-folder"></i>
-                                <span>{folder.name}</span>
-                                <span className="folder-count">{folder.image_count}</span>
-                                {currentFolderId === folder.id && <i className="fa fa-check"></i>}
-                            </button>
-                        ))
+                    {/* Show hierarchical tree when no search, flat list when searching */}
+                    {!searchQuery.trim() ? (
+                        // Hierarchical tree view
+                        renderFolderTree(folderTree)
                     ) : (
-                        <div className="folder-selector-empty">
-                            <i className="fa fa-search"></i>
-                            <p>No folders found matching "{searchQuery}"</p>
-                        </div>
+                        // Flat filtered list view
+                        filteredFolders.length > 0 ? (
+                            filteredFolders.map(folder => (
+                                <button
+                                    key={folder.id}
+                                    className={`folder-selector-item ${currentFolderId === folder.id ? 'active' : ''}`}
+                                    onClick={() => handleSelect(folder.id)}
+                                >
+                                    <i className="fa fa-folder"></i>
+                                    <span>{folder.name}</span>
+                                    <span className="folder-count">{folder.image_count}</span>
+                                    {currentFolderId === folder.id && <i className="fa fa-check"></i>}
+                                </button>
+                            ))
+                        ) : (
+                            <div className="folder-selector-empty">
+                                <i className="fa fa-search"></i>
+                                <p>No folders found matching "{searchQuery}"</p>
+                            </div>
+                        )
                     )}
                 </div>
             </div>

@@ -15,22 +15,6 @@ function ImageGallery({ onOpenLightbox, onRestoreSettings, onDelete }) {
         imageAPI.download(image);
     };
 
-    const handleCopyToClipboard = async (e, image) => {
-        e.stopPropagation();
-        try {
-            await imageAPI.copyToClipboard(image);
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: { type: 'success', message: 'Image copied to clipboard!' }
-            });
-        } catch (err) {
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: { type: 'error', message: 'Failed to copy image' }
-            });
-        }
-    };
-
     const handleRestoreWithSeed = (e, image) => {
         e.stopPropagation();
         onRestoreSettings(image, true);
@@ -83,13 +67,6 @@ function ImageGallery({ onOpenLightbox, onRestoreSettings, onDelete }) {
                                 </button>
                                 <button
                                     className="image-btn secondary"
-                                    onClick={(e) => handleCopyToClipboard(e, image)}
-                                    title="Copy to clipboard"
-                                >
-                                    <i className="fa fa-copy"></i>
-                                </button>
-                                <button
-                                    className="image-btn secondary"
                                     onClick={(e) => handleRestoreWithSeed(e, image)}
                                     title="Restore with seed"
                                 >
@@ -117,22 +94,73 @@ function ImageGallery({ onOpenLightbox, onRestoreSettings, onDelete }) {
                                 <span> • Seed: {image.seed}</span>
                             )}
                         </div>
-                        {image.folder_name && (
-                            <div className="image-tags">
-                                <div className="image-folder-badge-split">
-                                    <button 
+                        <div className="image-tags">
+                            {image.folder_path ? (
+                                // Split path into individual badges with separators
+                                <>
+                                    {image.folder_path.split(' / ').map((folderName, index, array) => {
+                                        const isLast = index === array.length - 1;
+                                        return (
+                                            <React.Fragment key={index}>
+                                                <div className={`image-folder-badge-split ${!isLast ? 'path-part' : ''}`}>
+                                                    <button
+                                                        className="folder-badge-filter"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            // Find folder by matching the name at this depth
+                                                            const pathUpToHere = array.slice(0, index + 1);
+                                                            const folder = state.folders.find(f => {
+                                                                // Build path for this folder and check if it matches
+                                                                const folderPathParts = [];
+                                                                let currentId = f.id;
+                                                                const folderMap = new Map(state.folders.map(folder => [folder.id, folder]));
+                                                                while (currentId) {
+                                                                    const currentFolder = folderMap.get(currentId);
+                                                                    if (!currentFolder) break;
+                                                                    folderPathParts.unshift(currentFolder.name);
+                                                                    currentId = currentFolder.parent_id;
+                                                                }
+                                                                return folderPathParts.join(' / ') === pathUpToHere.join(' / ');
+                                                            });
+                                                            if (folder) {
+                                                                dispatch({ type: actions.SET_CURRENT_FOLDER, payload: folder.id });
+                                                            }
+                                                        }}
+                                                        title={`Filter by ${folderName}`}
+                                                    >
+                                                        {folderName}
+                                                    </button>
+                                                    {isLast && (
+                                                        <button
+                                                            className="folder-badge-move"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedImageForMove(image);
+                                                                setShowFolderSelector(true);
+                                                            }}
+                                                            title="Move to folder"
+                                                        >
+                                                            <i className="fa fa-folder-o"></i>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                {!isLast && <span className="folder-path-separator">/</span>}
+                                            </React.Fragment>
+                                        );
+                                    })}
+                                </>
+                            ) : (
+                                // Unfiled badge
+                                <div className="image-folder-badge-split unfiled">
+                                    <button
                                         className="folder-badge-filter"
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            // Set filter to this folder
-                                            const folder = state.folders.find(f => f.name === image.folder_name);
-                                            if (folder) {
-                                                dispatch({ type: actions.SET_CURRENT_FOLDER, payload: folder.id });
-                                            }
+                                            dispatch({ type: actions.SET_CURRENT_FOLDER, payload: 'unfiled' });
                                         }}
-                                        title="Filter by this folder"
+                                        title="Filter unfiled images"
                                     >
-                                        {image.folder_name}
+                                        Unfiled
                                     </button>
                                     <button
                                         className="folder-badge-move"
@@ -146,8 +174,8 @@ function ImageGallery({ onOpenLightbox, onRestoreSettings, onDelete }) {
                                         <i className="fa fa-folder-o"></i>
                                     </button>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                         </div>
                     );
                 })}

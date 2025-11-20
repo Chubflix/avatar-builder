@@ -22,9 +22,9 @@ export function useFolders() {
         }
     }, [dispatch, actions]);
 
-    const createFolder = useCallback(async (name) => {
+    const createFolder = useCallback(async (name, parent_id = null) => {
         try {
-            await folderAPI.create({ name });
+            await folderAPI.create({ name, parent_id });
             await loadFolders();
             dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message: 'Folder created' } });
         } catch (err) {
@@ -32,9 +32,9 @@ export function useFolders() {
         }
     }, [loadFolders, dispatch, actions]);
 
-    const updateFolder = useCallback(async (id, name) => {
+    const updateFolder = useCallback(async (id, name, parent_id = null) => {
         try {
-            await folderAPI.update(id, { name });
+            await folderAPI.update(id, { name, parent_id });
             await loadFolders();
             dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message: 'Folder updated' } });
         } catch (err) {
@@ -43,7 +43,15 @@ export function useFolders() {
     }, [loadFolders, dispatch, actions]);
 
     const deleteFolder = useCallback(async (id) => {
-        if (!window.confirm('Delete this folder? Images will be moved to unfiled.')) return;
+        // Get folder info to show appropriate message
+        const folder = state.folders.find(f => f.id === id);
+        const parentFolder = folder?.parent_id ? state.folders.find(f => f.id === folder.parent_id) : null;
+
+        const message = parentFolder
+            ? `Delete this folder? Images will be moved to "${parentFolder.name}". Child folders will also be deleted.`
+            : 'Delete this folder? Images will be moved to unfiled. Child folders will also be deleted.';
+
+        if (!window.confirm(message)) return;
 
         try {
             await folderAPI.delete(id);
@@ -60,7 +68,7 @@ export function useFolders() {
         } catch (err) {
             dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: 'Failed to delete folder' } });
         }
-    }, [loadFolders, state.currentFolder, state.selectedFolder, dispatch, actions]);
+    }, [loadFolders, state.currentFolder, state.selectedFolder, state.folders, dispatch, actions]);
 
     return { loadFolders, createFolder, updateFolder, deleteFolder };
 }

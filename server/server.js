@@ -34,13 +34,9 @@ const db = new Database(DB_PATH);
 // Get the file path for an image
 function getImagePath(folderId, filename) {
     if (folderId) {
-        const folder = db.prepare('SELECT name FROM character_folders WHERE id = ?').get(folderId);
-        if (folder) {
-            // Sanitize folder name for filesystem
-            const sanitizedName = folder.name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
-            const folderPath = path.join(GENERATED_DIR, sanitizedName);
-            return path.join(folderPath, filename);
-        }
+        // Use folder ID for filesystem path
+        const folderPath = path.join(GENERATED_DIR, folderId);
+        return path.join(folderPath, filename);
     }
     // Default to root generated directory
     return path.join(GENERATED_DIR, filename);
@@ -49,27 +45,20 @@ function getImagePath(folderId, filename) {
 // Ensure folder directory exists
 function ensureFolderDirectory(folderId) {
     if (!folderId) return GENERATED_DIR;
-    
-    const folder = db.prepare('SELECT name FROM character_folders WHERE id = ?').get(folderId);
-    if (folder) {
-        const sanitizedName = folder.name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
-        const folderPath = path.join(GENERATED_DIR, sanitizedName);
-        if (!fs.existsSync(folderPath)) {
-            fs.mkdirSync(folderPath, { recursive: true });
-        }
-        return folderPath;
+
+    // Use folder ID for directory name
+    const folderPath = path.join(GENERATED_DIR, folderId);
+    if (!fs.existsSync(folderPath)) {
+        fs.mkdirSync(folderPath, { recursive: true });
     }
-    return GENERATED_DIR;
+    return folderPath;
 }
 
 // Get URL path for an image
 function getImageUrl(folderId, filename) {
     if (folderId) {
-        const folder = db.prepare('SELECT name FROM character_folders WHERE id = ?').get(folderId);
-        if (folder) {
-            const sanitizedName = folder.name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
-            return `/generated/${sanitizedName}/${filename}`;
-        }
+        // Use folder ID in URL
+        return `/generated/${folderId}/${filename}`;
     }
     return `/generated/${filename}`;
 }
@@ -191,7 +180,7 @@ app.use('/generated', express.static(GENERATED_DIR));
 app.get('/api/folders', (req, res) => {
     try {
         const folders = db.prepare(`
-            SELECT 
+            SELECT
                 f.*,
                 COUNT(g.id) as image_count
             FROM character_folders f
@@ -199,8 +188,31 @@ app.get('/api/folders', (req, res) => {
             GROUP BY f.id
             ORDER BY f.name ASC
         `).all();
-        
-        res.json(folders);
+
+        // Update image counts to include descendant folders
+        const foldersWithCounts = folders.map(folder => {
+            const descendantIds = getDescendantFolderIds(db, folder.id);
+            const allFolderIds = [folder.id, ...descendantIds];
+
+            if (allFolderIds.length > 1) {
+                // Recalculate count including descendants
+                const placeholders = allFolderIds.map(() => '?').join(',');
+                const result = db.prepare(`
+                    SELECT COUNT(*) as count
+                    FROM generations
+                    WHERE folder_id IN (${placeholders})
+                `).get(...allFolderIds);
+
+                return {
+                    ...folder,
+                    image_count: result.count
+                };
+            }
+
+            return folder;
+        });
+
+        res.json(foldersWithCounts);
     } catch (err) {
         console.error('Error fetching folders:', err);
         res.status(500).json({ error: err.message });
@@ -210,24 +222,32 @@ app.get('/api/folders', (req, res) => {
 // Create a new folder
 app.post('/api/folders', (req, res) => {
     try {
-        const { name, description } = req.body;
-        
+        const { name, description, parent_id } = req.body;
+
         if (!name || !name.trim()) {
             return res.status(400).json({ error: 'Folder name is required' });
         }
-        
+
+        // Validate parent_id if provided
+        if (parent_id) {
+            const parentFolder = db.prepare('SELECT id FROM character_folders WHERE id = ?').get(parent_id);
+            if (!parentFolder) {
+                return res.status(400).json({ error: 'Parent folder not found' });
+            }
+        }
+
         const id = uuidv4();
-        
+
         db.prepare(`
-            INSERT INTO character_folders (id, name, description)
-            VALUES (?, ?, ?)
-        `).run(id, name.trim(), description || null);
-        
+            INSERT INTO character_folders (id, name, description, parent_id)
+            VALUES (?, ?, ?, ?)
+        `).run(id, name.trim(), description || null, parent_id || null);
+
         // Create the folder directory
         ensureFolderDirectory(id);
-        
+
         const folder = db.prepare('SELECT * FROM character_folders WHERE id = ?').get(id);
-        
+
         res.json(folder);
     } catch (err) {
         if (err.message.includes('UNIQUE constraint failed')) {
@@ -242,40 +262,53 @@ app.post('/api/folders', (req, res) => {
 app.put('/api/folders/:id', (req, res) => {
     try {
         const { id } = req.params;
-        const { name, description } = req.body;
-        
+        const { name, description, parent_id } = req.body;
+
         if (!name || !name.trim()) {
             return res.status(400).json({ error: 'Folder name is required' });
         }
-        
+
         // Get old folder info
         const oldFolder = db.prepare('SELECT name FROM character_folders WHERE id = ?').get(id);
-        
+
         if (!oldFolder) {
             return res.status(404).json({ error: 'Folder not found' });
         }
-        
-        // Update database
-        db.prepare(`
-            UPDATE character_folders 
-            SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        `).run(name.trim(), description || null, id);
-        
-        // If name changed, rename the directory
-        if (oldFolder.name !== name.trim()) {
-            const oldSanitized = oldFolder.name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
-            const newSanitized = name.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
-            const oldPath = path.join(GENERATED_DIR, oldSanitized);
-            const newPath = path.join(GENERATED_DIR, newSanitized);
-            
-            if (fs.existsSync(oldPath) && oldPath !== newPath) {
-                fs.renameSync(oldPath, newPath);
+
+        // Validate parent_id if provided
+        if (parent_id) {
+            // Prevent folder from being its own parent
+            if (parent_id === id) {
+                return res.status(400).json({ error: 'Folder cannot be its own parent' });
+            }
+
+            const parentFolder = db.prepare('SELECT id FROM character_folders WHERE id = ?').get(parent_id);
+            if (!parentFolder) {
+                return res.status(400).json({ error: 'Parent folder not found' });
+            }
+
+            // Check for circular reference (prevent folder A -> B -> A)
+            let currentParent = parent_id;
+            while (currentParent) {
+                if (currentParent === id) {
+                    return res.status(400).json({ error: 'Circular folder reference detected' });
+                }
+                const parent = db.prepare('SELECT parent_id FROM character_folders WHERE id = ?').get(currentParent);
+                currentParent = parent ? parent.parent_id : null;
             }
         }
-        
+
+        // Update database
+        db.prepare(`
+            UPDATE character_folders
+            SET name = ?, description = ?, parent_id = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        `).run(name.trim(), description || null, parent_id || null, id);
+
+        // No need to rename directory since we use folder IDs
+
         const folder = db.prepare('SELECT * FROM character_folders WHERE id = ?').get(id);
-        
+
         res.json(folder);
     } catch (err) {
         if (err.message.includes('UNIQUE constraint failed')) {
@@ -286,30 +319,56 @@ app.put('/api/folders/:id', (req, res) => {
     }
 });
 
-// Delete a folder (images will have folder_id set to NULL)
+// Helper function to get all descendant folder IDs
+function getDescendantFolderIds(db, folderId) {
+    const descendants = [];
+    const children = db.prepare('SELECT id FROM character_folders WHERE parent_id = ?').all(folderId);
+
+    for (const child of children) {
+        descendants.push(child.id);
+        descendants.push(...getDescendantFolderIds(db, child.id));
+    }
+
+    return descendants;
+}
+
+// Delete a folder (images move to parent folder)
 app.delete('/api/folders/:id', (req, res) => {
     try {
         const { id } = req.params;
-        
-        // Get folder info
-        const folder = db.prepare('SELECT name FROM character_folders WHERE id = ?').get(id);
-        
+
+        // Get folder info including parent
+        const folder = db.prepare('SELECT name, parent_id FROM character_folders WHERE id = ?').get(id);
+
         if (!folder) {
             return res.status(404).json({ error: 'Folder not found' });
         }
-        
-        // Get all images in this folder
-        const images = db.prepare('SELECT filename FROM generations WHERE folder_id = ?').all(id);
-        
-        // Move images back to root
-        const sanitizedName = folder.name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
-        const folderPath = path.join(GENERATED_DIR, sanitizedName);
-        
+
+        const parentId = folder.parent_id;
+
+        // Get all descendant folder IDs
+        const descendantIds = getDescendantFolderIds(db, id);
+        const allFolderIds = [id, ...descendantIds];
+
+        // Get all images in this folder and all descendant folders
+        const placeholders = allFolderIds.map(() => '?').join(',');
+        const images = db.prepare(`SELECT id, filename, folder_id FROM generations WHERE folder_id IN (${placeholders})`).all(...allFolderIds);
+
+        // Get parent folder path for file system operations (using ID)
+        const parentFolderPath = parentId ? path.join(GENERATED_DIR, parentId) : GENERATED_DIR;
+        if (parentId && !fs.existsSync(parentFolderPath)) {
+            fs.mkdirSync(parentFolderPath, { recursive: true });
+        }
+
+        // Move images to parent folder (both filesystem and database)
         for (const image of images) {
-            const oldPath = path.join(folderPath, image.filename);
-            const newPath = path.join(GENERATED_DIR, image.filename);
-            
-            if (fs.existsSync(oldPath)) {
+            // Use folder ID for path
+            const currentFolderPath = path.join(GENERATED_DIR, image.folder_id);
+            const oldPath = path.join(currentFolderPath, image.filename);
+            const newPath = path.join(parentFolderPath, image.filename);
+
+            // Move file if it exists and paths are different
+            if (fs.existsSync(oldPath) && oldPath !== newPath) {
                 try {
                     fs.renameSync(oldPath, newPath);
                 } catch (err) {
@@ -317,23 +376,26 @@ app.delete('/api/folders/:id', (req, res) => {
                 }
             }
         }
-        
-        // Update database to remove folder references
-        db.prepare('UPDATE generations SET folder_id = NULL, file_migrated = 0 WHERE folder_id = ?').run(id);
-        
-        // Delete folder from database
+
+        // Update database: move images to parent folder (or null if no parent)
+        db.prepare(`UPDATE generations SET folder_id = ?, file_migrated = 1 WHERE folder_id IN (${placeholders})`).run(parentId, ...allFolderIds);
+
+        // Delete folder from database (CASCADE will delete child folders)
         db.prepare('DELETE FROM character_folders WHERE id = ?').run(id);
-        
-        // Remove directory if empty
-        if (fs.existsSync(folderPath)) {
-            try {
-                fs.rmdirSync(folderPath);
-            } catch (err) {
-                // Directory might not be empty, that's okay
-                console.log(`Folder directory not empty, keeping: ${folderPath}`);
+
+        // Remove directories (using folder IDs)
+        for (const folderId of allFolderIds) {
+            const folderPath = path.join(GENERATED_DIR, folderId);
+            if (fs.existsSync(folderPath)) {
+                try {
+                    fs.rmdirSync(folderPath);
+                } catch (err) {
+                    // Directory might not be empty, that's okay
+                    console.log(`Folder directory not empty, keeping: ${folderPath}`);
+                }
             }
         }
-        
+
         res.json({ success: true });
     } catch (err) {
         console.error('Error deleting folder:', err);
@@ -343,51 +405,75 @@ app.delete('/api/folders/:id', (req, res) => {
 
 // ==================== IMAGE ENDPOINTS ====================
 
+// Helper function to build folder path from folder_id
+function getFolderPath(db, folderId) {
+    if (!folderId) return null;
+
+    const parts = [];
+    let currentId = folderId;
+
+    while (currentId) {
+        const folder = db.prepare('SELECT name, parent_id FROM character_folders WHERE id = ?').get(currentId);
+        if (!folder) break;
+        parts.unshift(folder.name);
+        currentId = folder.parent_id;
+    }
+
+    return parts.join(' / ');
+}
+
 // Get images with pagination and optional folder filter
 app.get('/api/images', (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 50;
         const offset = parseInt(req.query.offset) || 0;
         const folderId = req.query.folder_id || null;
-        
+
         let whereClause = '';
         let params = [limit, offset];
-        
+
         if (folderId === 'null' || folderId === 'unfiled') {
             whereClause = 'WHERE g.folder_id IS NULL';
         } else if (folderId) {
-            whereClause = 'WHERE g.folder_id = ?';
-            params = [folderId, limit, offset];
+            // Include images from this folder AND all descendant folders
+            const descendantIds = getDescendantFolderIds(db, folderId);
+            const allFolderIds = [folderId, ...descendantIds];
+            const placeholders = allFolderIds.map(() => '?').join(',');
+            whereClause = `WHERE g.folder_id IN (${placeholders})`;
+            params = [...allFolderIds, limit, offset];
         }
-        
+
         const images = db.prepare(`
             SELECT g.*, f.name as folder_name
             FROM generations g
             LEFT JOIN character_folders f ON g.folder_id = f.id
             ${whereClause}
-            ORDER BY g.created_at DESC 
+            ORDER BY g.created_at DESC
             LIMIT ? OFFSET ?
         `).all(...params);
-        
-        // Add image URLs
+
+        // Add image URLs and full folder paths
         const imagesWithUrls = images.map(img => ({
             ...img,
-            url: getImageUrl(img.folder_id, img.filename)
+            url: getImageUrl(img.folder_id, img.filename),
+            folder_path: getFolderPath(db, img.folder_id)
         }));
-        
+
         let countParams = [];
         if (folderId === 'null' || folderId === 'unfiled') {
             countParams = [];
         } else if (folderId) {
-            countParams = [folderId];
+            const descendantIds = getDescendantFolderIds(db, folderId);
+            const allFolderIds = [folderId, ...descendantIds];
+            countParams = allFolderIds;
         }
-        
+
         const total = db.prepare(`
-            SELECT COUNT(*) as count 
+            SELECT COUNT(*) as count
             FROM generations g
             ${whereClause}
         `).get(...countParams);
-        
+
         res.json({
             images: imagesWithUrls,
             total: total.count,

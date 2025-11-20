@@ -223,7 +223,7 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
                                 className="folder-select-btn"
                                 onClick={() => setShowFolderSelector(true)}
                             >
-                                {currentImage.folder_name || 'Unfiled'}
+                                {currentImage.folder_path || 'Unfiled'}
                                 <i className="fa fa-chevron-down"></i>
                             </button>
                         </div>

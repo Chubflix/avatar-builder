@@ -44,6 +44,7 @@ const ActionTypes = {
     SET_SHOW_FOLDER_MODAL: 'SET_SHOW_FOLDER_MODAL',
     SET_EDITING_FOLDER: 'SET_EDITING_FOLDER',
     SET_NEW_FOLDER_NAME: 'SET_NEW_FOLDER_NAME',
+    SET_PARENT_FOLDER_ID: 'SET_PARENT_FOLDER_ID',
 
     // Bulk actions
     RESET_TO_DEFAULTS: 'RESET_TO_DEFAULTS'
@@ -88,7 +89,8 @@ const initialState = {
     showMobileSettings: false,
     showFolderModal: false,
     editingFolder: null,
-    newFolderName: ''
+    newFolderName: '',
+    parentFolderId: null
 };
 
 // Reducer
@@ -157,6 +159,8 @@ function appReducer(state, action) {
             return { ...state, editingFolder: action.payload };
         case ActionTypes.SET_NEW_FOLDER_NAME:
             return { ...state, newFolderName: action.payload };
+        case ActionTypes.SET_PARENT_FOLDER_ID:
+            return { ...state, parentFolderId: action.payload };
         case ActionTypes.RESET_TO_DEFAULTS:
             return {
                 ...state,
