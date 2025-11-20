@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: avatar-builder-server
+    restart: unless-stopped
+    ports:
+      - "3001:3001" # development only
+    environment:
+      - PORT=3001
+      - DATA_DIR=/data
+      - GENERATED_DIR=/data/generated
+      - DB_PATH=/data/avatar-builder.db
+    volumes:
+      - ./data:/data
+    networks:
+      - avatar-network
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: avatar-builder-client
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./config.json:/etc/avatar-builder/config.json:ro
+    depends_on:
+      - server
+    networks:
+      - avatar-network
+
+networks:
+  avatar-network:
+    driver: bridge
