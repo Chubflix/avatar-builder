@@ -483,6 +483,8 @@ body {
     overflow: hidden;
     border: 1px solid var(--border);
     transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
 }
 
 .image-card:hover {
@@ -493,14 +495,40 @@ body {
 
 .image-wrapper {
     position: relative;
+    height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
     background: var(--bg-primary);
+    cursor: pointer;
+}
+
+.image-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: var(--bg-image);
+    background-size: cover;
+    background-position: center;
+    filter: blur(20px);
+    transform: scale(1.1);
+    opacity: 0.6;
+    z-index: 0;
 }
 
 .image-wrapper img {
-    width: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
     height: auto;
     display: block;
-    cursor: pointer;
+    position: relative;
+    z-index: 1;
+    object-fit: contain;
 }
 
 .image-overlay {
@@ -519,6 +547,7 @@ body {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease;
+    z-index: 2;
 }
 
 .image-card:hover .image-overlay {
@@ -580,12 +609,20 @@ body {
     padding: 0.75rem;
     font-size: 0.75rem;
     color: var(--text-muted);
+    min-height: 3rem;
+    display: flex;
+    align-items: center;
 }
 
 @media (max-width: 768px) {
+    .image-wrapper {
+        height: 300px;
+    }
+
     .image-info {
         padding: 0.5rem;
         font-size: 0.65rem;
+        min-height: 2.5rem;
     }
 }
 
@@ -791,10 +828,17 @@ body {
     justify-content: center;
 }
 
-.lightbox-close {
+.lightbox-controls {
     position: absolute;
     top: 0;
     right: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    z-index: 10;
+}
+
+.lightbox-close {
     background: rgba(0, 0, 0, 0.5);
     border: none;
     color: var(--text-primary);
@@ -802,8 +846,7 @@ body {
     cursor: pointer;
     padding: 0.75rem 1rem;
     transition: all 0.2s ease;
-    z-index: 10;
-    border-radius: 4px;
+    border-radius: 4px 4px 0 0;
 }
 
 .lightbox-close:hover {
