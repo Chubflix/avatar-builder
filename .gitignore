@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Data (database and generated images)
+data/
+*.db
+
+# Environment
+.env
+.env.local
+
+# Build output
+client/build/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Docker volumes (when running locally)
+avatar-data/

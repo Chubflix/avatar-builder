@@ -1,0 +1,121 @@
+/* Lightbox Main Content - Side by side layout */
+.lightbox-main-content {
+    display: flex;
+    gap: 2rem;
+    flex: 1;
+    max-height: calc(100vh - 200px);
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem 1rem;
+}
+
+.lightbox-image-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    max-height: 100%;
+    min-height: 0;
+}
+
+.lightbox-image-container img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 4px;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+}
+
+/* Info Toggle Button */
+.lightbox-info-toggle {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+    z-index: 5;
+}
+
+.lightbox-info-toggle:hover {
+    background: rgba(229, 9, 20, 0.8);
+    border-color: var(--accent);
+    transform: scale(1.1);
+}
+
+/* Details Sidebar */
+.lightbox-details-sidebar {
+    width: 320px;
+    flex-shrink: 0;
+    max-height: 100%;
+    overflow-y: auto;
+}
+
+.lightbox-details-sidebar .settings-display {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.8;
+}
+
+.lightbox-details-sidebar .settings-display div {
+    margin-bottom: 0.25rem;
+}
+
+.lightbox-details-sidebar .settings-display strong {
+    color: var(--text-secondary);
+}
+
+/* Content Wrapper */
+.lightbox-content-wrapper {
+    width: 100%;
+    max-width: 1400px;
+    margin-top: 1rem;
+}
+
+/* Mobile adjustments */
+@media (max-width: 1024px) {
+    .lightbox-main-content {
+        flex-direction: column;
+        max-height: none;
+        padding: 1rem 0.5rem;
+    }
+    
+    .lightbox-details-sidebar {
+        width: 100%;
+        max-height: 300px;
+    }
+    
+    /* Position info button below close button */
+    .lightbox-info-toggle {
+        top: 60px;
+    }
+    
+    /* Keep nav arrows centered on image only */
+    .lightbox-nav {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+    
+    .lightbox-prev {
+        left: 0;
+    }
+    
+    .lightbox-next {
+        right: 0;
+    }
+}
