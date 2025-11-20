@@ -136,9 +136,19 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
             onTouchEnd={onTouchEnd}
         >
             <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
-                <button className="lightbox-close" onClick={onClose}>
-                    <i className="fa fa-times"></i>
-                </button>
+                <div className="lightbox-controls">
+                    <button className="lightbox-close" onClick={onClose}>
+                        <i className="fa fa-times"></i>
+                    </button>
+
+                    <button
+                        className="lightbox-info-toggle"
+                        onClick={() => setShowGenerationDetails(!showGenerationDetails)}
+                        title="Toggle generation details"
+                    >
+                        <i className="fa fa-info-circle"></i>
+                    </button>
+                </div>
 
                 {lightboxIndex > 0 && (
                     <button
@@ -163,13 +173,6 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
                             src={`${API_BASE}${currentImage.url || `/generated/${currentImage.filename}`}`}
                             alt={`Generated ${currentImage.id}`}
                         />
-                        <button 
-                            className="lightbox-info-toggle"
-                            onClick={() => setShowGenerationDetails(!showGenerationDetails)}
-                            title="Toggle generation details"
-                        >
-                            <i className="fa fa-info-circle"></i>
-                        </button>
                     </div>
 
                     {showGenerationDetails && (

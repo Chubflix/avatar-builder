@@ -59,15 +59,20 @@ function ImageGallery({ onOpenLightbox, onRestoreSettings, onDelete }) {
     return (
         <>
             <div className="image-grid">
-                {images.map((image, index) => (
-                    <div key={image.id} className="image-card">
-                        <div className="image-wrapper">
-                            <img
-                                src={`${API_BASE}${image.url || `/generated/${image.filename}`}`}
-                                alt={`Generated ${image.id}`}
-                                loading="lazy"
+                {images.map((image, index) => {
+                    const imageSrc = `${API_BASE}${image.url || `/generated/${image.filename}`}`;
+                    return (
+                        <div key={image.id} className="image-card">
+                            <div
+                                className="image-wrapper"
+                                style={{ '--bg-image': `url(${imageSrc})` }}
                                 onClick={() => onOpenLightbox(index)}
-                            />
+                            >
+                                <img
+                                    src={imageSrc}
+                                    alt={`Generated ${image.id}`}
+                                    loading="lazy"
+                                />
                             <div className="image-overlay">
                                 <button
                                     className="image-btn"
@@ -143,8 +148,9 @@ function ImageGallery({ onOpenLightbox, onRestoreSettings, onDelete }) {
                                 </div>
                             </div>
                         )}
-                    </div>
-                ))}
+                        </div>
+                    );
+                })}
             </div>
 
             {hasMore && (
