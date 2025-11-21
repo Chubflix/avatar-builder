@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import FolderSelector from './FolderSelector';
+import LoraSettings from './LoraSettings';
 
 function MobileControls({ onGenerate, onResetDefaults }) {
     const { state, dispatch, actions } = useApp();
@@ -150,6 +151,9 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                                 </button>
                             </div>
                         </div>
+
+                        {/* Lora Settings */}
+                        <LoraSettings />
 
                         <button
                             className="btn-reset"

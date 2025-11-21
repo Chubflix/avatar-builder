@@ -31,5 +31,49 @@
       "width": 1024,
       "height": 1024
     }
-  }
+  },
+  "loras": [
+    {
+      "name": "Age",
+      "prompt": "<lora:StS_Age_Slider_Illustrious_v1_Scaled:${value}>",
+      "type": "slider",
+      "minDesc": "Young",
+      "min": -2,
+      "max": 2,
+      "maxDesc": "Old",
+      "step": 0.1,
+      "defaultValue": 0,
+      "url": "https://civitai.com/models/1025710?modelVersionId=1355142"
+    },
+    {
+      "name": "Disney 5.0",
+      "prompt": "<lora:Disney_Il5.0:1>",
+      "type": "style",
+      "url": "https://civitai.com/models/681120?modelVersionId=1923736"
+    },
+    {
+      "name": "Disney 4.0",
+      "prompt": "<lora:Disney4:1>",
+      "type": "style",
+      "url": "https://civitai.com/models/681120?modelVersionId=1683072"
+    },
+    {
+      "name": "White Outline",
+      "prompt": "<lora:outline-test11:-1>, White Outline",
+      "type": "toggle",
+      "url": "https://civitai.com/models/1864054/illustriouswhite-outline-tweaker-lora"
+    },
+    {
+      "name": "Body Type",
+      "prompt": "<lora:Body_Type_Illustrious_v1_Scaled:${value}>",
+      "type": "slider",
+      "minDesc": "Fat",
+      "min": -2,
+      "max": 2,
+      "maxDesc": "Skinny",
+      "step": 0.1,
+      "defaultValue": 0,
+      "url": "https://civitai.com/models/468146/body-type-slider-pony-illustrious"
+    }
+  ]
 }

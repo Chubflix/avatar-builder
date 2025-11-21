@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import FolderSelector from './FolderSelector';
+import LoraSettings from './LoraSettings';
 
 function ControlsPanel({ onGenerate, onResetDefaults, onOpenFolderModal }) {
     const { state, dispatch, actions } = useApp();
     const [showFolderSelector, setShowFolderSelector] = useState(false);
+    const [showLoraSettings, setShowLoraSettings] = useState(false);
     const {
         config,
         positivePrompt,
@@ -92,6 +94,22 @@ function ControlsPanel({ onGenerate, onResetDefaults, onOpenFolderModal }) {
                     </select>
                 </div>
             </div>
+
+            {/* Lora Settings */}
+            {config.loras && config.loras.length > 0 && (
+                <>
+                    <div
+                        className={`collapsible-header ${showLoraSettings ? 'open' : ''}`}
+                        onClick={() => setShowLoraSettings(!showLoraSettings)}
+                    >
+                        <h3>Lora Settings</h3>
+                        <i className="fa fa-chevron-down"></i>
+                    </div>
+                    <div className={`collapsible-content ${showLoraSettings ? 'open' : ''}`}>
+                        <LoraSettings />
+                    </div>
+                </>
+            )}
 
             {/* Advanced Settings */}
             <div

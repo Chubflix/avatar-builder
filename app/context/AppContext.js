@@ -65,7 +65,13 @@ const ActionTypes = {
     SET_NOTIFICATIONS_ENABLED: 'SET_NOTIFICATIONS_ENABLED',
 
     // Bulk actions
-    RESET_TO_DEFAULTS: 'RESET_TO_DEFAULTS'
+    RESET_TO_DEFAULTS: 'RESET_TO_DEFAULTS',
+
+    // Lora settings
+    SET_LORA_SLIDER: 'SET_LORA_SLIDER',
+    TOGGLE_LORA_SLIDER: 'TOGGLE_LORA_SLIDER',
+    SET_LORA_TOGGLE: 'SET_LORA_TOGGLE',
+    SET_LORA_STYLE: 'SET_LORA_STYLE'
 };
 
 // Initial state
@@ -121,7 +127,12 @@ const initialState = {
     showAppSettings: false,
 
     // App settings
-    notificationsEnabled: true
+    notificationsEnabled: true,
+
+    // Lora settings
+    loraSliders: {}, // { 'Age': { enabled: false, value: 0 }, ... }
+    loraToggles: {}, // { 'White Outline': false, ... }
+    loraStyle: '' // Selected style name or empty string for "None"
 };
 
 // Reducer
@@ -232,6 +243,41 @@ function appReducer(state, action) {
                 batchSize: state.config?.defaults.batchSize || 1,
                 seed: -1
             };
+        case ActionTypes.SET_LORA_SLIDER:
+            return {
+                ...state,
+                loraSliders: {
+                    ...state.loraSliders,
+                    [action.payload.name]: {
+                        enabled: state.loraSliders[action.payload.name]?.enabled || false,
+                        value: action.payload.value
+                    }
+                }
+            };
+        case ActionTypes.TOGGLE_LORA_SLIDER:
+            return {
+                ...state,
+                loraSliders: {
+                    ...state.loraSliders,
+                    [action.payload.name]: {
+                        enabled: !state.loraSliders[action.payload.name]?.enabled,
+                        value: state.loraSliders[action.payload.name]?.value ?? action.payload.defaultValue
+                    }
+                }
+            };
+        case ActionTypes.SET_LORA_TOGGLE:
+            return {
+                ...state,
+                loraToggles: {
+                    ...state.loraToggles,
+                    [action.payload.name]: action.payload.enabled
+                }
+            };
+        case ActionTypes.SET_LORA_STYLE:
+            return {
+                ...state,
+                loraStyle: action.payload
+            };
         default:
             return state;
     }
@@ -263,6 +309,26 @@ export function AppProvider({ children }) {
                 dispatch({ type: ActionTypes.SET_SELECTED_FOLDER, payload: settings.selectedFolder || '' });
                 dispatch({ type: ActionTypes.SET_CURRENT_FOLDER, payload: settings.currentFolder || null });
                 dispatch({ type: ActionTypes.SET_NOTIFICATIONS_ENABLED, payload: settings.notificationsEnabled !== undefined ? settings.notificationsEnabled : true });
+
+                // Load lora settings
+                if (settings.loraSliders) {
+                    Object.keys(settings.loraSliders).forEach(name => {
+                        const slider = settings.loraSliders[name];
+                        dispatch({ type: ActionTypes.SET_LORA_SLIDER, payload: { name, value: slider.value } });
+                        if (slider.enabled) {
+                            dispatch({ type: ActionTypes.TOGGLE_LORA_SLIDER, payload: { name, defaultValue: slider.value } });
+                        }
+                    });
+                }
+                if (settings.loraToggles) {
+                    Object.keys(settings.loraToggles).forEach(name => {
+                        dispatch({ type: ActionTypes.SET_LORA_TOGGLE, payload: { name, enabled: settings.loraToggles[name] } });
+                    });
+                }
+                if (settings.loraStyle) {
+                    dispatch({ type: ActionTypes.SET_LORA_STYLE, payload: settings.loraStyle });
+                }
+
                 return true;
             }
         } catch (err) {
@@ -286,7 +352,10 @@ export function AppProvider({ children }) {
             showAdvanced: state.showAdvanced,
             selectedFolder: state.selectedFolder,
             currentFolder: state.currentFolder,
-            notificationsEnabled: state.notificationsEnabled
+            notificationsEnabled: state.notificationsEnabled,
+            loraSliders: state.loraSliders,
+            loraToggles: state.loraToggles,
+            loraStyle: state.loraStyle
         };
 
         try {
@@ -305,6 +374,9 @@ export function AppProvider({ children }) {
         state.selectedFolder,
         state.currentFolder,
         state.notificationsEnabled,
+        state.loraSliders,
+        state.loraToggles,
+        state.loraStyle,
         state.settingsLoaded
     ]);
 

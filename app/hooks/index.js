@@ -4,6 +4,7 @@ import sdAPI from '../utils/sd-api';
 import { folderAPI, imageAPI } from '../utils/backend-api';
 import debug from '../utils/debug';
 import { sendNotification } from '../utils/notifications';
+import { buildLoraPrompt } from '../utils/lora-builder';
 
 /**
  * Hook for managing folders
@@ -167,7 +168,7 @@ export function useGeneration() {
 
     // Process a single generation from the queue
     const processGeneration = useCallback(async (queueItem) => {
-        const { config, positivePrompt, selectedModel, negativePrompt, orientation, batchSize, seed, selectedFolder, currentFolder, totalImages, notificationsEnabled } = queueItem;
+        const { config, positivePrompt, selectedModel, negativePrompt, orientation, batchSize, seed, selectedFolder, currentFolder, totalImages, notificationsEnabled, loraSliders, loraToggles, loraStyle } = queueItem;
 
         dispatch({ type: actions.SET_GENERATING, payload: true });
         dispatch({ type: actions.SET_STATUS, payload: { type: 'info', message: 'Generating images...' } });
@@ -179,10 +180,14 @@ export function useGeneration() {
             // Set model
             await sdAPI.setModel(selectedModel);
 
+            // Build lora prompt additions
+            const loraAdditions = buildLoraPrompt(config, loraSliders, loraToggles, loraStyle);
+            const finalPrompt = positivePrompt + loraAdditions;
+
             // Generate images
             const dims = config.dimensions[orientation];
             const result = await sdAPI.generateImage({
-                prompt: positivePrompt,
+                prompt: finalPrompt,
                 negativePrompt,
                 width: dims.width,
                 height: dims.height,
@@ -251,7 +256,7 @@ export function useGeneration() {
 
     // Add generation to queue
     const generate = useCallback(async () => {
-        const { config, positivePrompt, selectedModel, negativePrompt, orientation, batchSize, seed, selectedFolder, currentFolder, totalImages, notificationsEnabled } = state;
+        const { config, positivePrompt, selectedModel, negativePrompt, orientation, batchSize, seed, selectedFolder, currentFolder, totalImages, notificationsEnabled, loraSliders, loraToggles, loraStyle } = state;
 
         if (!config || !positivePrompt.trim()) {
             dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: 'Please enter a positive prompt' } });
@@ -271,6 +276,9 @@ export function useGeneration() {
             currentFolder,
             totalImages,
             notificationsEnabled,
+            loraSliders,
+            loraToggles,
+            loraStyle,
             id: Date.now() + Math.random() // Unique ID for this queue item
         };
 

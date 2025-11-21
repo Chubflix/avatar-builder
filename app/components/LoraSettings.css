@@ -1,0 +1,240 @@
+.lora-settings {
+    margin-top: 0;
+}
+
+.lora-settings-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 1rem 0;
+}
+
+.lora-group {
+    margin-bottom: 1.25rem;
+}
+
+.lora-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.lora-label span {
+    flex: 1;
+}
+
+.lora-doc-link {
+    color: var(--text-secondary);
+    opacity: 0.6;
+    transition: opacity 0.2s;
+    font-size: 0.875rem;
+    margin-left: 0.25rem;
+}
+
+.lora-doc-link:hover {
+    opacity: 1;
+    color: var(--accent-color, #e50914);
+}
+
+/* iOS-Style Toggle Switch */
+.lora-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 26px;
+}
+
+.lora-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.lora-switch-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #555;
+    transition: 0.3s;
+    border-radius: 26px;
+}
+
+.lora-switch-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+.lora-switch input:checked + .lora-switch-slider {
+    background-color: var(--accent-color, #e50914);
+}
+
+.lora-switch input:checked + .lora-switch-slider:before {
+    transform: translateX(18px);
+}
+
+/* Style Dropdown */
+.lora-select {
+    width: 100%;
+    padding: 0.5rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.lora-select:focus {
+    outline: none;
+    border-color: var(--accent-color, #e50914);
+}
+
+/* Sliders */
+.lora-slider-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.lora-slider-value {
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    min-width: 2.5rem;
+    text-align: right;
+}
+
+.lora-slider {
+    width: 100%;
+    height: 6px;
+    background: #444;
+    border-radius: 3px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.lora-slider::-webkit-slider-track {
+    width: 100%;
+    height: 6px;
+    background: #444;
+    border-radius: 3px;
+}
+
+.lora-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: var(--accent-color, #e50914);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.lora-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+.lora-slider::-moz-range-track {
+    width: 100%;
+    height: 6px;
+    background: #444;
+    border-radius: 3px;
+}
+
+.lora-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: var(--accent-color, #e50914);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.lora-slider::-moz-range-thumb:hover {
+    transform: scale(1.2);
+}
+
+.lora-slider:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.lora-slider:disabled::-webkit-slider-thumb {
+    cursor: not-allowed;
+}
+
+.lora-slider:disabled::-moz-range-thumb {
+    cursor: not-allowed;
+}
+
+.lora-slider-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+.lora-slider-label-min,
+.lora-slider-label-max {
+    font-style: italic;
+}
+
+/* Toggle Label */
+.lora-toggle-label {
+    margin-bottom: 0;
+}
+
+/* Desktop - Inside accordion */
+@media (min-width: 769px) {
+    .lora-settings {
+        padding: 0;
+    }
+
+    .lora-settings-title {
+        display: none; /* Title shown in accordion header instead */
+    }
+}
+
+/* Mobile Styles */
+@media (max-width: 768px) {
+    .lora-settings {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .lora-settings-title {
+        font-size: 0.95rem;
+    }
+
+    .lora-label {
+        font-size: 0.85rem;
+    }
+
+    .lora-slider-value {
+        font-size: 0.8rem;
+    }
+
+    .lora-slider-labels {
+        font-size: 0.7rem;
+    }
+}
