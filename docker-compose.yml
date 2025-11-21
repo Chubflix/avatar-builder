@@ -1,39 +1,40 @@
 version: '3.8'
 
 services:
-  server:
+  avatar-builder:
     build:
-      context: ./server
+      context: .
       dockerfile: Dockerfile
-    container_name: avatar-builder-server
+    container_name: avatar-builder
     restart: unless-stopped
     ports:
-      - "3001:3001" # development only
+      - "3000:3000"
     environment:
-      - PORT=3001
-      - DATA_DIR=/data
-      - GENERATED_DIR=/data/generated
-      - DB_PATH=/data/avatar-builder.db
+      - NODE_ENV=production
+      - PORT=3000
+      - DATA_DIR=/app/data
+      - GENERATED_DIR=/app/data/generated
+      - DB_PATH=/app/data/avatar-builder.db
     volumes:
-      - ./data:/data
+      # Mount data directory for persistent storage
+      - ./data:/app/data
+      # Mount config file
+      - ./config.json:/app/config.json:ro
+      # Mount migrations (if you update them)
+      - ./server/migrations:/app/server/migrations:ro
     networks:
       - avatar-network
-
-  client:
-    build:
-      context: ./client
-      dockerfile: Dockerfile
-    container_name: avatar-builder-client
-    restart: unless-stopped
-    ports:
-      - "8080:80"
-    volumes:
-      - ./config.json:/etc/avatar-builder/config.json:ro
-    depends_on:
-      - server
-    networks:
-      - avatar-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/config', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
 
 networks:
   avatar-network:
     driver: bridge
+
+volumes:
+  # Optional: Use named volume instead of bind mount
+  # avatar-data:

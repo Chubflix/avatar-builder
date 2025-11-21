@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  avatar-builder-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: avatar-builder-dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - DATA_DIR=/app/data
+      - GENERATED_DIR=/app/data/generated
+      - DB_PATH=/app/data/avatar-builder.db
+      - WATCHPACK_POLLING=true  # For hot-reload in Docker
+    volumes:
+      # Mount source code for hot-reload
+      - ./app:/app/app:cached
+      - ./server/migrations:/app/server/migrations:ro
+      - ./config.json:/app/config.json:ro
+      - ./next.config.js:/app/next.config.js:cached
+      # Mount data directory
+      - ./data:/app/data
+      # Exclude node_modules to avoid conflicts
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - avatar-network
+    command: npm run dev
+
+networks:
+  avatar-network:
+    driver: bridge

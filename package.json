@@ -1,0 +1,23 @@
+{
+  "name": "avatar-builder",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^14.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "better-sqlite3": "^11.8.1",
+    "uuid": "^9.0.0",
+    "archiver": "^7.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.0"
+  }
+}
