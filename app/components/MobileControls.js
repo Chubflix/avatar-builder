@@ -6,6 +6,7 @@ function MobileControls({ onGenerate, onResetDefaults }) {
     const { state, dispatch, actions } = useApp();
     const [showFolderSelector, setShowFolderSelector] = useState(false);
     const [isPromptFocused, setIsPromptFocused] = useState(false);
+    const [isClosingSettings, setIsClosingSettings] = useState(false);
     const {
         config,
         positivePrompt,
@@ -34,13 +35,22 @@ function MobileControls({ onGenerate, onResetDefaults }) {
         }
     }, [status, dispatch, actions.SET_STATUS]);
 
+    // Handle settings close with animation
+    const handleCloseSettings = () => {
+        setIsClosingSettings(true);
+        setTimeout(() => {
+            dispatch({ type: actions.SET_SHOW_MOBILE_SETTINGS, payload: false });
+            setIsClosingSettings(false);
+        }, 300); // Match animation duration
+    };
+
     if (!config) return null;
 
     return (
         <>
             {/* Settings Overlay - Sibling to input bar */}
             {showMobileSettings && (
-                <div className="mobile-settings-overlay">
+                <div className={`mobile-settings-overlay ${isClosingSettings ? 'closing' : ''}`}>
                     <div className="mobile-settings-content">
                         <div className="form-group">
                             <label className="form-label">Save to Folder</label>
@@ -153,62 +163,71 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                 </div>
             )}
 
-            {/* Status Overlay - Sibling to input bar */}
-            {(isGenerating || generationQueue.length > 0 || status) && (
-                <div className={`mobile-overlay-container ${isPromptFocused ? 'prompt-focused' : ''}`}>
-                    {isGenerating && (
-                        <div className="mobile-progress">
-                            <div className="progress-bar">
-                                <div
-                                    className="progress-fill"
-                                    style={{ width: `${progress}%` }}
-                                ></div>
-                            </div>
-                        </div>
-                    )}
-
-                    {generationQueue.length > 0 && (
-                        <div className="mobile-queue-status">
-                            {generationQueue.length} {generationQueue.length === 1 ? 'generation' : 'generations'} queued...
-                        </div>
-                    )}
-
-                    {status && (
-                        <div className={`mobile-status ${status.type}`}>
-                            {status.message}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Input Bar - Sibling to overlays */}
+            {/* Input Bar with integrated notifications */}
             <div className="mobile-input-bar mobile-only-flex">
-                <button
-                    className={`mobile-settings-btn ${showMobileSettings ? 'active' : ''}`}
-                    onClick={() => dispatch({ type: actions.SET_SHOW_MOBILE_SETTINGS, payload: !showMobileSettings })}
-                >
-                    <i className={`fa fa-${showMobileSettings ? 'times' : 'sliders'}`}></i>
-                </button>
-                <textarea
-                    className="mobile-prompt-input"
-                    value={positivePrompt}
-                    onChange={(e) => dispatch({ type: actions.SET_POSITIVE_PROMPT, payload: e.target.value })}
-                    onFocus={() => setIsPromptFocused(true)}
-                    onBlur={() => setIsPromptFocused(false)}
-                    placeholder="Enter prompt..."
-                    rows={1}
-                />
-                <button
-                    className={`mobile-generate-btn ${isGenerating ? 'loading' : ''}`}
-                    onClick={onGenerate}
-                    disabled={!selectedModel}
-                >
-                    {isGenerating ? (
-                        <div className="spinner"></div>
-                    ) : (
-                        <i className="fa fa-magic"></i>
-                    )}
-                </button>
+                {/* Status Overlay - Inside input bar */}
+                {(isGenerating || generationQueue.length > 0 || status) && (
+                    <div className="mobile-overlay-container">
+                        {isGenerating && (
+                            <div className="mobile-progress">
+                                <div className="progress-bar">
+                                    <div
+                                        className="progress-fill"
+                                        style={{ width: `${progress}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+                        )}
+
+                        {generationQueue.length > 0 && (
+                            <div className="mobile-queue-status">
+                                {generationQueue.length} {generationQueue.length === 1 ? 'generation' : 'generations'} queued...
+                            </div>
+                        )}
+
+                        {status && (
+                            <div className={`mobile-status ${status.type}`}>
+                                {status.message}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Input controls */}
+                <div>
+                    <button
+                        className={`mobile-settings-btn ${showMobileSettings ? 'active' : ''}`}
+                        onClick={() => {
+                            if (showMobileSettings) {
+                                handleCloseSettings();
+                            } else {
+                                dispatch({ type: actions.SET_SHOW_MOBILE_SETTINGS, payload: true });
+                            }
+                        }}
+                    >
+                        <i className={`fa fa-${showMobileSettings ? 'times' : 'sliders'}`}></i>
+                    </button>
+                    <textarea
+                        className="mobile-prompt-input"
+                        value={positivePrompt}
+                        onChange={(e) => dispatch({ type: actions.SET_POSITIVE_PROMPT, payload: e.target.value })}
+                        onFocus={() => setIsPromptFocused(true)}
+                        onBlur={() => setIsPromptFocused(false)}
+                        placeholder="Enter prompt..."
+                        rows={1}
+                    />
+                    <button
+                        className={`mobile-generate-btn ${isGenerating ? 'loading' : ''}`}
+                        onClick={onGenerate}
+                        disabled={!selectedModel}
+                    >
+                        {isGenerating ? (
+                            <div className="spinner"></div>
+                        ) : (
+                            <i className="fa fa-magic"></i>
+                        )}
+                    </button>
+                </div>
             </div>
 
             {/* Folder Selector Modal */}

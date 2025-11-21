@@ -24,9 +24,6 @@ export async function sendNotification(message, type = 'info', dispatch, actions
 
   if ('Notification' in window && Notification.permission === 'granted') {
     try {
-      // Check if service worker is registered
-      const registration = await navigator.serviceWorker.ready;
-
       // Determine notification icon and badge based on type
       const iconMap = {
         success: '✅',
@@ -36,21 +33,40 @@ export async function sendNotification(message, type = 'info', dispatch, actions
 
       const icon = iconMap[type] || iconMap.info;
 
-      // Show notification
-      await registration.showNotification('Avatar Builder', {
-        body: `${icon} ${message}`,
-        icon: '/icon-192.png',
-        badge: '/icon-192.png',
-        vibrate: type === 'error' ? [200, 100, 200, 100, 200] : [200],
-        tag: `avatar-builder-${type}`,
-        requireInteraction: type === 'error',
-        data: {
-          type,
-          timestamp: Date.now()
-        }
-      });
+      // Try to use service worker notification first, fall back to regular notification
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        const registration = await navigator.serviceWorker.ready;
+        await registration.showNotification('Avatar Builder', {
+          body: `${icon} ${message}`,
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          vibrate: type === 'error' ? [200, 100, 200, 100, 200] : [200],
+          tag: `avatar-builder-${type}`,
+          requireInteraction: type === 'error',
+          data: {
+            type,
+            timestamp: Date.now()
+          }
+        });
+      } else {
+        // Fallback to regular Notification API (works on localhost/development)
+        new Notification('Avatar Builder', {
+          body: `${icon} ${message}`,
+          icon: '/icon-192.png',
+          tag: `avatar-builder-${type}`,
+          requireInteraction: type === 'error',
+        });
+      }
     } catch (error) {
       console.error('Failed to show push notification:', error);
+      // Final fallback: try basic notification
+      try {
+        new Notification('Avatar Builder', {
+          body: message,
+        });
+      } catch (e) {
+        console.error('All notification methods failed:', e);
+      }
     }
   }
 }
