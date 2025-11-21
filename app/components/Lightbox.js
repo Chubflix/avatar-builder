@@ -47,6 +47,9 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
                         dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: lightboxIndex + 1 });
                     }
                     break;
+                case 'ArrowDown':
+                    dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: null });
+                    break;
                 case 'i':
                     setShowGenerationDetails(!showGenerationDetails);
                     break;
