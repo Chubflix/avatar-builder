@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { imageAPI, API_BASE } from '../utils/backend-api';
 import FolderSelector from './FolderSelector';
 
-function ImageGallery({ onOpenLightbox, onRestoreSettings, onDelete }) {
+function ImageGallery({ onOpenLightbox, onRestoreSettings, onDelete, onLoadMore }) {
     const { state, dispatch, actions } = useApp();
     const { images, totalImages, hasMore, isLoadingMore, selectedImages, isSelecting } = state;
     const [showFolderSelector, setShowFolderSelector] = useState(false);
@@ -88,13 +88,25 @@ function ImageGallery({ onOpenLightbox, onRestoreSettings, onDelete }) {
             {/* Selection Toolbar */}
             <div className="selection-toolbar">
                 {!isSelecting ? (
-                    <button
-                        className="btn-select"
-                        onClick={() => dispatch({ type: actions.SET_IS_SELECTING, payload: true })}
-                    >
-                        <i className="fa fa-check-square-o"></i>
-                        Select
-                    </button>
+                    <>
+                        <button
+                            className="btn-select"
+                            onClick={() => dispatch({ type: actions.SET_IS_SELECTING, payload: true })}
+                        >
+                            <i className="fa fa-check-square-o"></i>
+                            Select
+                        </button>
+                        {state.currentFolder && (
+                            <button
+                                className="btn-select"
+                                onClick={() => dispatch({ type: actions.TOGGLE_INCLUDE_SUBFOLDERS })}
+                                title={state.includeSubfolders ? "Hide subfolder images" : "Show subfolder images"}
+                            >
+                                <i className={`fa fa-folder${state.includeSubfolders ? '-open' : ''}-o`}></i>
+                                {state.includeSubfolders ? 'Hide Subfolders' : 'Show Subfolders'}
+                            </button>
+                        )}
+                    </>
                 ) : (
                     <>
                         <div className="selection-info">
@@ -303,7 +315,7 @@ function ImageGallery({ onOpenLightbox, onRestoreSettings, onDelete }) {
                 <div className="load-more-container">
                     <button
                         className="btn-load-more"
-                        onClick={() => {/* will be handled in parent */}}
+                        onClick={onLoadMore}
                         disabled={isLoadingMore}
                     >
                         {isLoadingMore ? (

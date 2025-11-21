@@ -33,6 +33,6 @@ networks:
   avatar-network:
     driver: bridge
 
-volumes:
+volumes: {}
   # Optional: Use named volume instead of bind mount
   # avatar-data:

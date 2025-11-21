@@ -3,7 +3,6 @@ import './globals.css';
 export const metadata = {
   title: 'Avatar Builder - Chubflix',
   description: 'Generate character images using Stable Diffusion',
-  themeColor: '#141414',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -16,6 +15,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  themeColor: '#141414',
 };
 
 export default function RootLayout({ children }) {

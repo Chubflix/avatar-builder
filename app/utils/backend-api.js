@@ -79,11 +79,12 @@ export const imageAPI = {
     /**
      * Get images with optional folder filter
      */
-    async getAll({ folderId = null, limit = 50, offset = 0 } = {}) {
+    async getAll({ folderId = null, limit = 50, offset = 0, includeSubfolders = true } = {}) {
         let url = `${API_BASE}/api/images?limit=${limit}&offset=${offset}`;
         if (folderId) {
             url += `&folder_id=${folderId}`;
         }
+        url += `&include_subfolders=${includeSubfolders}`;
 
         const response = await fetch(url);
         if (!response.ok) {

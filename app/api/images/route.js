@@ -11,6 +11,7 @@ export async function GET(request) {
         const limit = parseInt(searchParams.get('limit')) || 50;
         const offset = parseInt(searchParams.get('offset')) || 0;
         const folderId = searchParams.get('folder_id');
+        const includeSubfolders = searchParams.get('include_subfolders') !== 'false';
 
         const db = getDb();
 
@@ -28,15 +29,23 @@ export async function GET(request) {
             query += ' WHERE g.folder_id IS NULL';
             countQuery += ' WHERE folder_id IS NULL';
         } else if (folderId) {
-            // Show images in this folder and all descendant folders
-            const descendantIds = getDescendantFolderIds(db, folderId);
-            const allFolderIds = [folderId, ...descendantIds];
-            const placeholders = allFolderIds.map(() => '?').join(',');
+            if (includeSubfolders) {
+                // Show images in this folder and all descendant folders
+                const descendantIds = getDescendantFolderIds(db, folderId);
+                const allFolderIds = [folderId, ...descendantIds];
+                const placeholders = allFolderIds.map(() => '?').join(',');
 
-            query += ` WHERE g.folder_id IN (${placeholders})`;
-            countQuery += ` WHERE folder_id IN (${placeholders})`;
-            params = allFolderIds;
-            countParams = allFolderIds;
+                query += ` WHERE g.folder_id IN (${placeholders})`;
+                countQuery += ` WHERE folder_id IN (${placeholders})`;
+                params = [...allFolderIds]; // Create a copy
+                countParams = [...allFolderIds]; // Create a separate copy
+            } else {
+                // Show images only in this specific folder
+                query += ' WHERE g.folder_id = ?';
+                countQuery += ' WHERE folder_id = ?';
+                params = [folderId];
+                countParams = [folderId];
+            }
         }
 
         query += ' ORDER BY g.created_at DESC LIMIT ? OFFSET ?';
@@ -50,14 +59,6 @@ export async function GET(request) {
             url: getImageUrl(img.folder_id, img.filename),
             folder_path: getFolderPath(db, img.folder_id)
         }));
-
-        if (folderId === 'null' || folderId === 'unfiled') {
-            countParams = [];
-        } else if (folderId) {
-            const descendantIds = getDescendantFolderIds(db, folderId);
-            const allFolderIds = [folderId, ...descendantIds];
-            countParams = allFolderIds;
-        }
 
         const total = db.prepare(countQuery).get(...countParams).total;
         const hasMore = offset + images.length < total;

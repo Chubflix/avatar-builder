@@ -30,7 +30,7 @@ function AppContent() {
     const skipGalleryToSaveSync = useRef(false);
     const skipSaveToGallerySync = useRef(false);
 
-    const { config, settingsLoaded, currentFolder, selectedFolder, folders } = state;
+    const { config, settingsLoaded, currentFolder, selectedFolder, folders, includeSubfolders } = state;
     const [isLoadingConfig, setIsLoadingConfig] = useState(true);
 
     // Keep ref in sync with current folder
@@ -128,12 +128,12 @@ function AppContent() {
         };
     }, [dispatch, actions, loadSettings, loadModels, loadFolders, loadImages]);
 
-    // Reload images when folder changes
+    // Reload images when folder changes or includeSubfolders toggle changes
     useEffect(() => {
         if (settingsLoaded && isInitialized.current) {
             loadImages(0, currentFolderRef.current);
         }
-    }, [currentFolder, settingsLoaded]);
+    }, [currentFolder, includeSubfolders, settingsLoaded, loadImages]);
 
     // Sync gallery filter → save folder (when user changes gallery filter)
     useEffect(() => {

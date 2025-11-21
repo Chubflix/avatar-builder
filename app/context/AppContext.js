@@ -33,6 +33,7 @@ const ActionTypes = {
     SET_FOLDERS: 'SET_FOLDERS',
     SET_CURRENT_FOLDER: 'SET_CURRENT_FOLDER',
     SET_SELECTED_FOLDER: 'SET_SELECTED_FOLDER',
+    TOGGLE_INCLUDE_SUBFOLDERS: 'TOGGLE_INCLUDE_SUBFOLDERS',
 
     // Images
     SET_IMAGES: 'SET_IMAGES',
@@ -94,6 +95,7 @@ const initialState = {
     folders: [],
     currentFolder: null,
     selectedFolder: '',
+    includeSubfolders: true,
 
     // Images
     images: [],
@@ -157,6 +159,8 @@ function appReducer(state, action) {
             return { ...state, currentFolder: action.payload };
         case ActionTypes.SET_SELECTED_FOLDER:
             return { ...state, selectedFolder: action.payload };
+        case ActionTypes.TOGGLE_INCLUDE_SUBFOLDERS:
+            return { ...state, includeSubfolders: !state.includeSubfolders };
         case ActionTypes.SET_IMAGES:
             return { ...state, images: action.payload };
         case ActionTypes.ADD_IMAGES:
