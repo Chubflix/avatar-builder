@@ -226,7 +226,12 @@ export function useGeneration() {
                     adetailerEnabled: config.adetailer.enabled,
                     adetailerModel: config.adetailer.model,
                     info,
-                    folderId: selectedFolder || null
+                    folderId: selectedFolder || null,
+                    loras: {
+                        sliders: loraSliders,
+                        toggles: loraToggles,
+                        style: loraStyle
+                    }
                 });
 
                 savedImages.push(saved);

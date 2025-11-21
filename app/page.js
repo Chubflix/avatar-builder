@@ -224,6 +224,81 @@ function AppContent() {
         dispatch({ type: actions.SET_BATCH_SIZE, payload: image.batch_size || 1 });
         dispatch({ type: actions.SET_SEED, payload: withSeed ? (image.seed || -1) : -1 });
 
+        // Restore lora settings if present
+        if (image.loras) {
+            const loras = typeof image.loras === 'string' ? JSON.parse(image.loras) : image.loras;
+
+            // Reset all lora settings first
+            if (config?.loras) {
+                // Reset sliders
+                config.loras.filter(l => l.type === 'slider').forEach(lora => {
+                    const savedSlider = loras.sliders?.[lora.name];
+                    if (savedSlider) {
+                        dispatch({
+                            type: actions.SET_LORA_SLIDER,
+                            payload: { name: lora.name, value: savedSlider.value }
+                        });
+                        // Set enabled state
+                        const currentEnabled = state.loraSliders[lora.name]?.enabled || false;
+                        if (savedSlider.enabled !== currentEnabled) {
+                            dispatch({
+                                type: actions.TOGGLE_LORA_SLIDER,
+                                payload: { name: lora.name, defaultValue: savedSlider.value }
+                            });
+                        }
+                    } else {
+                        // Reset to default if not in saved data
+                        dispatch({
+                            type: actions.SET_LORA_SLIDER,
+                            payload: { name: lora.name, value: lora.defaultValue }
+                        });
+                        // Disable if currently enabled
+                        if (state.loraSliders[lora.name]?.enabled) {
+                            dispatch({
+                                type: actions.TOGGLE_LORA_SLIDER,
+                                payload: { name: lora.name, defaultValue: lora.defaultValue }
+                            });
+                        }
+                    }
+                });
+
+                // Reset toggles
+                config.loras.filter(l => l.type === 'toggle').forEach(lora => {
+                    const savedEnabled = loras.toggles?.[lora.name] || false;
+                    dispatch({
+                        type: actions.SET_LORA_TOGGLE,
+                        payload: { name: lora.name, enabled: savedEnabled }
+                    });
+                });
+            }
+
+            // Restore style
+            dispatch({ type: actions.SET_LORA_STYLE, payload: loras.style || '' });
+        } else {
+            // Reset all loras if no lora data in image
+            if (config?.loras) {
+                config.loras.filter(l => l.type === 'slider').forEach(lora => {
+                    dispatch({
+                        type: actions.SET_LORA_SLIDER,
+                        payload: { name: lora.name, value: lora.defaultValue }
+                    });
+                    if (state.loraSliders[lora.name]?.enabled) {
+                        dispatch({
+                            type: actions.TOGGLE_LORA_SLIDER,
+                            payload: { name: lora.name, defaultValue: lora.defaultValue }
+                        });
+                    }
+                });
+                config.loras.filter(l => l.type === 'toggle').forEach(lora => {
+                    dispatch({
+                        type: actions.SET_LORA_TOGGLE,
+                        payload: { name: lora.name, enabled: false }
+                    });
+                });
+                dispatch({ type: actions.SET_LORA_STYLE, payload: '' });
+            }
+        }
+
         const message = withSeed ? 'Settings restored from image (with seed)' : 'Settings restored from image (random seed)';
         dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message } });
     };

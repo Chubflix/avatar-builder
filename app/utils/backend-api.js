@@ -114,7 +114,8 @@ export const imageAPI = {
                    adetailerEnabled,
                    adetailerModel,
                    info,
-                   folderId = null
+                   folderId = null,
+                   loras = null
                }) {
         const response = await fetch(`${API_BASE}/api/images`, {
             method: 'POST',
@@ -136,7 +137,8 @@ export const imageAPI = {
                 adetailerEnabled,
                 adetailerModel,
                 info,
-                folderId
+                folderId,
+                loras
             })
         });
 

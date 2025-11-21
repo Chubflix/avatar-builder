@@ -94,7 +94,8 @@ export async function POST(request) {
             adetailerEnabled,
             adetailerModel,
             info,
-            folderId
+            folderId,
+            loras
         } = await request.json();
 
         const db = getDb();
@@ -115,8 +116,8 @@ export async function POST(request) {
                 id, filename, positive_prompt, negative_prompt, model,
                 orientation, width, height, batch_size, sampler_name,
                 scheduler, steps, cfg_scale, seed, adetailer_enabled,
-                adetailer_model, info_json, folder_id, file_migrated
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                adetailer_model, info_json, folder_id, file_migrated, loras
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         stmt.run(
@@ -138,7 +139,8 @@ export async function POST(request) {
             adetailerModel,
             JSON.stringify(info || {}),
             folderId || null,
-            1 // Already in correct location
+            1, // Already in correct location
+            loras ? JSON.stringify(loras) : null
         );
 
         const saved = db.prepare(`

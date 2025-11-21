@@ -207,6 +207,58 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
                                     <div><strong>ADetailer:</strong> {currentImage.adetailer_model || 'Enabled'}</div>
                                 )}
                             </div>
+                            {currentImage.loras && (() => {
+                                const loras = typeof currentImage.loras === 'string'
+                                    ? JSON.parse(currentImage.loras)
+                                    : currentImage.loras;
+
+                                const hasActiveSliders = loras.sliders && Object.values(loras.sliders).some(s => s.enabled);
+                                const hasActiveToggles = loras.toggles && Object.values(loras.toggles).some(t => t);
+                                const hasStyle = loras.style && loras.style !== '';
+
+                                if (!hasActiveSliders && !hasActiveToggles && !hasStyle) {
+                                    return null;
+                                }
+
+                                return (
+                                    <div className="settings-display" style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+                                        <div style={{ marginBottom: '0.75rem' }}><strong>Loras:</strong></div>
+
+                                        {hasStyle && (
+                                            <div style={{ marginBottom: '0.5rem' }}>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Style:</div>
+                                                <div style={{ fontSize: '0.85rem', marginTop: '0.125rem' }}>{loras.style}</div>
+                                            </div>
+                                        )}
+
+                                        {hasActiveSliders && (
+                                            <div style={{ marginBottom: '0.5rem' }}>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Sliders:</div>
+                                                {Object.entries(loras.sliders)
+                                                    .filter(([_, slider]) => slider.enabled)
+                                                    .map(([name, slider]) => (
+                                                        <div key={name} style={{ fontSize: '0.85rem', marginTop: '0.125rem' }}>
+                                                            {name}: {slider.value?.toFixed(1)}
+                                                        </div>
+                                                    ))}
+                                            </div>
+                                        )}
+
+                                        {hasActiveToggles && (
+                                            <div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Toggles:</div>
+                                                {Object.entries(loras.toggles)
+                                                    .filter(([_, enabled]) => enabled)
+                                                    .map(([name]) => (
+                                                        <div key={name} style={{ fontSize: '0.85rem', marginTop: '0.125rem' }}>
+                                                            {name}
+                                                        </div>
+                                                    ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                         </div>
                     )}
                 </div>
