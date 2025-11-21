@@ -35,6 +35,7 @@ data/
 # Git
 .git
 .gitignore
+.github
 
 # Documentation
 *.md
@@ -43,8 +44,16 @@ data/
 # Editor directories
 .vscode
 .idea
+*.swp
+*.swo
 
 # Docker
 Dockerfile*
 docker-compose*.yml
 .dockerignore
+
+# CI/CD
+.github/workflows
+
+# TypeScript
+*.tsbuildinfo

@@ -27,11 +27,11 @@ export function useFolders() {
         try {
             await folderAPI.create({ name, parent_id });
             await loadFolders();
-            sendNotification('Folder created', 'success', dispatch, actions);
+            sendNotification('Folder created', 'success', dispatch, actions, state.notificationsEnabled);
         } catch (err) {
-            sendNotification(err.message, 'error', dispatch, actions);
+            sendNotification(err.message, 'error', dispatch, actions, state.notificationsEnabled);
         }
-    }, [loadFolders, dispatch, actions]);
+    }, [loadFolders, dispatch, actions, state.notificationsEnabled]);
 
     const updateFolder = useCallback(async (id, name, parent_id = null) => {
         try {
@@ -129,21 +129,21 @@ export function useImages() {
 
             dispatch({ type: actions.REMOVE_IMAGE, payload: id });
             dispatch({ type: actions.SET_TOTAL_IMAGES, payload: state.totalImages - 1 });
-            sendNotification('Image deleted', 'success', dispatch, actions);
+            sendNotification('Image deleted', 'success', dispatch, actions, state.notificationsEnabled);
         } catch (err) {
-            sendNotification('Failed to delete image', 'error', dispatch, actions);
+            sendNotification('Failed to delete image', 'error', dispatch, actions, state.notificationsEnabled);
         }
-    }, [state.lightboxIndex, state.images, state.totalImages, dispatch, actions]);
+    }, [state.lightboxIndex, state.images, state.totalImages, state.notificationsEnabled, dispatch, actions]);
 
     const moveImageToFolder = useCallback(async (imageId, folderId) => {
         try {
             await imageAPI.update(imageId, { folderId: folderId || null });
             await loadImages(0);
-            sendNotification('Image moved', 'success', dispatch, actions);
+            sendNotification('Image moved', 'success', dispatch, actions, state.notificationsEnabled);
         } catch (err) {
-            sendNotification('Failed to move image', 'error', dispatch, actions);
+            sendNotification('Failed to move image', 'error', dispatch, actions, state.notificationsEnabled);
         }
-    }, [loadImages, dispatch, actions]);
+    }, [loadImages, dispatch, actions, state.notificationsEnabled]);
 
     return { loadImages, loadMoreImages, deleteImage, moveImageToFolder };
 }
@@ -167,7 +167,7 @@ export function useGeneration() {
 
     // Process a single generation from the queue
     const processGeneration = useCallback(async (queueItem) => {
-        const { config, positivePrompt, selectedModel, negativePrompt, orientation, batchSize, seed, selectedFolder, currentFolder, totalImages } = queueItem;
+        const { config, positivePrompt, selectedModel, negativePrompt, orientation, batchSize, seed, selectedFolder, currentFolder, totalImages, notificationsEnabled } = queueItem;
 
         dispatch({ type: actions.SET_GENERATING, payload: true });
         dispatch({ type: actions.SET_STATUS, payload: { type: 'info', message: 'Generating images...' } });
@@ -233,9 +233,9 @@ export function useGeneration() {
                 dispatch({ type: actions.SET_TOTAL_IMAGES, payload: totalImages + savedImages.length });
             }
 
-            sendNotification(`Generated and saved ${savedImages.length} image(s)!`, 'success', dispatch, actions);
+            sendNotification(`Generated and saved ${savedImages.length} image(s)!`, 'success', dispatch, actions, notificationsEnabled);
         } catch (err) {
-            sendNotification('Generation failed: ' + err.message, 'error', dispatch, actions);
+            sendNotification('Generation failed: ' + err.message, 'error', dispatch, actions, notificationsEnabled);
         } finally {
             dispatch({ type: actions.SET_GENERATING, payload: false });
             dispatch({ type: actions.SET_PROGRESS, payload: 0 });
@@ -251,7 +251,7 @@ export function useGeneration() {
 
     // Add generation to queue
     const generate = useCallback(async () => {
-        const { config, positivePrompt, selectedModel, negativePrompt, orientation, batchSize, seed, selectedFolder, currentFolder, totalImages } = state;
+        const { config, positivePrompt, selectedModel, negativePrompt, orientation, batchSize, seed, selectedFolder, currentFolder, totalImages, notificationsEnabled } = state;
 
         if (!config || !positivePrompt.trim()) {
             dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: 'Please enter a positive prompt' } });
@@ -270,6 +270,7 @@ export function useGeneration() {
             selectedFolder,
             currentFolder,
             totalImages,
+            notificationsEnabled,
             id: Date.now() + Math.random() // Unique ID for this queue item
         };
 

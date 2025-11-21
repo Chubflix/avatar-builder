@@ -59,6 +59,10 @@ const ActionTypes = {
     SET_EDITING_FOLDER: 'SET_EDITING_FOLDER',
     SET_NEW_FOLDER_NAME: 'SET_NEW_FOLDER_NAME',
     SET_PARENT_FOLDER_ID: 'SET_PARENT_FOLDER_ID',
+    SET_SHOW_APP_SETTINGS: 'SET_SHOW_APP_SETTINGS',
+
+    // App settings
+    SET_NOTIFICATIONS_ENABLED: 'SET_NOTIFICATIONS_ENABLED',
 
     // Bulk actions
     RESET_TO_DEFAULTS: 'RESET_TO_DEFAULTS'
@@ -113,7 +117,11 @@ const initialState = {
     showFolderModal: false,
     editingFolder: null,
     newFolderName: '',
-    parentFolderId: null
+    parentFolderId: null,
+    showAppSettings: false,
+
+    // App settings
+    notificationsEnabled: true
 };
 
 // Reducer
@@ -211,6 +219,10 @@ function appReducer(state, action) {
             return { ...state, newFolderName: action.payload };
         case ActionTypes.SET_PARENT_FOLDER_ID:
             return { ...state, parentFolderId: action.payload };
+        case ActionTypes.SET_SHOW_APP_SETTINGS:
+            return { ...state, showAppSettings: action.payload };
+        case ActionTypes.SET_NOTIFICATIONS_ENABLED:
+            return { ...state, notificationsEnabled: action.payload };
         case ActionTypes.RESET_TO_DEFAULTS:
             return {
                 ...state,
@@ -250,6 +262,7 @@ export function AppProvider({ children }) {
                 dispatch({ type: ActionTypes.SET_SHOW_ADVANCED, payload: settings.showAdvanced || false });
                 dispatch({ type: ActionTypes.SET_SELECTED_FOLDER, payload: settings.selectedFolder || '' });
                 dispatch({ type: ActionTypes.SET_CURRENT_FOLDER, payload: settings.currentFolder || null });
+                dispatch({ type: ActionTypes.SET_NOTIFICATIONS_ENABLED, payload: settings.notificationsEnabled !== undefined ? settings.notificationsEnabled : true });
                 return true;
             }
         } catch (err) {
@@ -272,7 +285,8 @@ export function AppProvider({ children }) {
             seed: state.seed,
             showAdvanced: state.showAdvanced,
             selectedFolder: state.selectedFolder,
-            currentFolder: state.currentFolder
+            currentFolder: state.currentFolder,
+            notificationsEnabled: state.notificationsEnabled
         };
 
         try {
@@ -290,6 +304,7 @@ export function AppProvider({ children }) {
         state.showAdvanced,
         state.selectedFolder,
         state.currentFolder,
+        state.notificationsEnabled,
         state.settingsLoaded
     ]);
 

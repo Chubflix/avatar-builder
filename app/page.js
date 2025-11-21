@@ -13,6 +13,7 @@ import FolderModal from './components/FolderModal';
 import Lightbox from './components/Lightbox';
 import MobileControls from './components/MobileControls';
 import PWAManager from './components/PWAManager';
+import AppSettings from './components/AppSettings';
 
 // Import CSS
 import './folder-picker.css';
@@ -265,7 +266,16 @@ function AppContent() {
             <nav className="nav">
                 <div className="nav-content">
                     <a href="../" className="nav-brand">Chubflix</a>
-                    <span className="nav-title">Avatar Builder</span>
+                    <div className="nav-right">
+                        <span className="nav-title">Avatar Builder</span>
+                        <button
+                            className="btn-settings"
+                            onClick={() => dispatch({ type: actions.SET_SHOW_APP_SETTINGS, payload: true })}
+                            title="Settings"
+                        >
+                            <i className="fa fa-cog"></i>
+                        </button>
+                    </div>
                 </div>
             </nav>
 
@@ -320,6 +330,9 @@ function AppContent() {
                 onRestoreSettings={handleRestoreSettings}
                 onDelete={handleDeleteImage}
             />
+
+            {/* App Settings */}
+            <AppSettings />
         </>
     );
 }

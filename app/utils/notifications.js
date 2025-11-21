@@ -9,8 +9,9 @@
  * @param {string} type - Type of notification: 'success', 'error', 'info'
  * @param {Function} dispatch - Redux-like dispatch function
  * @param {Object} actions - Action types object
+ * @param {boolean} notificationsEnabled - Whether push notifications are enabled (default: true)
  */
-export async function sendNotification(message, type = 'info', dispatch, actions) {
+export async function sendNotification(message, type = 'info', dispatch, actions, notificationsEnabled = true) {
   // Send in-app notification
   if (dispatch && actions) {
     dispatch({
@@ -19,8 +20,8 @@ export async function sendNotification(message, type = 'info', dispatch, actions
     });
   }
 
-  // Send push notification if supported and permission granted
-  if (typeof window === 'undefined') return;
+  // Send push notification if enabled, supported and permission granted
+  if (typeof window === 'undefined' || !notificationsEnabled) return;
 
   if ('Notification' in window && Notification.permission === 'granted') {
     try {
