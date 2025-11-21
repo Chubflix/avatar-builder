@@ -8,23 +8,49 @@ export default function PWAManager() {
       return;
     }
 
-    // Register service worker
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then((registration) => {
-        console.log('Service Worker registered:', registration);
-
-        // Check for updates periodically
-        setInterval(() => {
-          registration.update();
-        }, 60000); // Check every minute
-      })
-      .catch((error) => {
-        console.error('Service Worker registration failed:', error);
+    // Force unregister old service workers and register new one
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach((registration) => {
+        registration.unregister().then(() => {
+          console.log('Old service worker unregistered');
+        });
       });
+
+      // Register new service worker
+      setTimeout(() => {
+        navigator.serviceWorker
+          .register('/sw.js')
+          .then((registration) => {
+            console.log('Service Worker registered:', registration);
+
+            // Force immediate update check
+            registration.update();
+
+            // Check for updates frequently
+            setInterval(() => {
+              registration.update();
+            }, 10000); // Check every 10 seconds
+
+            // Listen for new service worker
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'activated') {
+                  console.log('New service worker activated, reloading...');
+                  window.location.reload();
+                }
+              });
+            });
+          })
+          .catch((error) => {
+            console.error('Service Worker registration failed:', error);
+          });
+      }, 500);
+    });
 
     // Handle service worker updates
     navigator.serviceWorker.addEventListener('controllerchange', () => {
+      console.log('Controller changed, reloading...');
       window.location.reload();
     });
 

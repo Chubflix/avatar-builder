@@ -3,7 +3,7 @@ export default function manifest() {
     name: 'Avatar Builder - Chubflix',
     short_name: 'Avatar Builder',
     description: 'Generate character images using Stable Diffusion',
-    start_url: '/',
+    start_url: '/?v=' + Date.now(), // Cache busting
     display: 'standalone',
     background_color: '#141414',
     theme_color: '#141414',

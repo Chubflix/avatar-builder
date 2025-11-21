@@ -1,5 +1,5 @@
 // Service Worker for Avatar Builder PWA
-const CACHE_NAME = 'avatar-builder-v1';
+const CACHE_NAME = 'avatar-builder-v2'; // Increment this to force cache refresh
 const urlsToCache = [
   '/',
   '/globals.css',
