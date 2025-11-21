@@ -1,7 +1,7 @@
 # TODOs
 
 - [ ] Persistent queue (in session)
-- [ ] docker build in github actions
+- [x] docker build in github actions
 - [ ] better selector icons
 - [ ] Add special person settings (make them persistent and configurable)
   - [ ] Add age slider (\<lora:StS_Age_Slider_Illustrious_v1_Scaled:4>)

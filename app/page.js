@@ -12,6 +12,7 @@ import FolderNav from './components/FolderNav';
 import FolderModal from './components/FolderModal';
 import Lightbox from './components/Lightbox';
 import MobileControls from './components/MobileControls';
+import PWAManager from './components/PWAManager';
 
 // Import CSS
 import './folder-picker.css';
@@ -257,6 +258,9 @@ function AppContent() {
 
     return (
         <>
+            {/* PWA Manager */}
+            <PWAManager />
+
             {/* Navigation */}
             <nav className="nav">
                 <div className="nav-content">

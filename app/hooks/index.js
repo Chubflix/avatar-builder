@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import sdAPI from '../utils/sd-api';
 import { folderAPI, imageAPI } from '../utils/backend-api';
 import debug from '../utils/debug';
+import { sendNotification } from '../utils/notifications';
 
 /**
  * Hook for managing folders
@@ -26,9 +27,9 @@ export function useFolders() {
         try {
             await folderAPI.create({ name, parent_id });
             await loadFolders();
-            dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message: 'Folder created' } });
+            sendNotification('Folder created', 'success', dispatch, actions);
         } catch (err) {
-            dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: err.message } });
+            sendNotification(err.message, 'error', dispatch, actions);
         }
     }, [loadFolders, dispatch, actions]);
 
@@ -127,9 +128,9 @@ export function useImages() {
 
             dispatch({ type: actions.REMOVE_IMAGE, payload: id });
             dispatch({ type: actions.SET_TOTAL_IMAGES, payload: state.totalImages - 1 });
-            dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message: 'Image deleted' } });
+            sendNotification('Image deleted', 'success', dispatch, actions);
         } catch (err) {
-            dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: 'Failed to delete image' } });
+            sendNotification('Failed to delete image', 'error', dispatch, actions);
         }
     }, [state.lightboxIndex, state.images, state.totalImages, dispatch, actions]);
 
@@ -137,9 +138,9 @@ export function useImages() {
         try {
             await imageAPI.update(imageId, { folderId: folderId || null });
             await loadImages(0);
-            dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message: 'Image moved' } });
+            sendNotification('Image moved', 'success', dispatch, actions);
         } catch (err) {
-            dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: 'Failed to move image' } });
+            sendNotification('Failed to move image', 'error', dispatch, actions);
         }
     }, [loadImages, dispatch, actions]);
 
@@ -231,9 +232,9 @@ export function useGeneration() {
                 dispatch({ type: actions.SET_TOTAL_IMAGES, payload: totalImages + savedImages.length });
             }
 
-            dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message: `Generated and saved ${savedImages.length} image(s)!` } });
+            sendNotification(`Generated and saved ${savedImages.length} image(s)!`, 'success', dispatch, actions);
         } catch (err) {
-            dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: 'Generation failed: ' + err.message } });
+            sendNotification('Generation failed: ' + err.message, 'error', dispatch, actions);
         } finally {
             dispatch({ type: actions.SET_GENERATING, payload: false });
             dispatch({ type: actions.SET_PROGRESS, payload: 0 });

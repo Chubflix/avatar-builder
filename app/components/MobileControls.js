@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import FolderSelector from './FolderSelector';
 
 function MobileControls({ onGenerate, onResetDefaults }) {
     const { state, dispatch, actions } = useApp();
     const [showFolderSelector, setShowFolderSelector] = useState(false);
+    const [isPromptFocused, setIsPromptFocused] = useState(false);
     const {
         config,
         positivePrompt,
@@ -23,10 +24,21 @@ function MobileControls({ onGenerate, onResetDefaults }) {
         generationQueue
     } = state;
 
+    // Auto-dismiss status messages after 3 seconds
+    useEffect(() => {
+        if (status) {
+            const timer = setTimeout(() => {
+                dispatch({ type: actions.SET_STATUS, payload: null });
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [status, dispatch, actions.SET_STATUS]);
+
     if (!config) return null;
 
     return (
-        <div className="mobile-controls mobile-only">
+        <>
+            {/* Settings Overlay - Sibling to input bar */}
             {showMobileSettings && (
                 <div className="mobile-settings-overlay">
                     <div className="mobile-settings-content">
@@ -141,8 +153,9 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                 </div>
             )}
 
+            {/* Status Overlay - Sibling to input bar */}
             {(isGenerating || generationQueue.length > 0 || status) && (
-                <div className="mobile-overlay-container">
+                <div className={`mobile-overlay-container ${isPromptFocused ? 'prompt-focused' : ''}`}>
                     {isGenerating && (
                         <div className="mobile-progress">
                             <div className="progress-bar">
@@ -168,7 +181,8 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                 </div>
             )}
 
-            <div className="mobile-input-bar">
+            {/* Input Bar - Sibling to overlays */}
+            <div className="mobile-input-bar mobile-only-flex">
                 <button
                     className={`mobile-settings-btn ${showMobileSettings ? 'active' : ''}`}
                     onClick={() => dispatch({ type: actions.SET_SHOW_MOBILE_SETTINGS, payload: !showMobileSettings })}
@@ -179,6 +193,8 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                     className="mobile-prompt-input"
                     value={positivePrompt}
                     onChange={(e) => dispatch({ type: actions.SET_POSITIVE_PROMPT, payload: e.target.value })}
+                    onFocus={() => setIsPromptFocused(true)}
+                    onBlur={() => setIsPromptFocused(false)}
                     placeholder="Enter prompt..."
                     rows={1}
                 />
@@ -206,7 +222,7 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                 currentFolderId={selectedFolder}
                 title="Save to Folder"
             />
-        </div>
+        </>
     );
 }
 
