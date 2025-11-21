@@ -60,6 +60,7 @@ const ActionTypes = {
     SET_NEW_FOLDER_NAME: 'SET_NEW_FOLDER_NAME',
     SET_PARENT_FOLDER_ID: 'SET_PARENT_FOLDER_ID',
     SET_SHOW_APP_SETTINGS: 'SET_SHOW_APP_SETTINGS',
+    SET_SHOW_PROMPT_MODAL: 'SET_SHOW_PROMPT_MODAL',
 
     // App settings
     SET_NOTIFICATIONS_ENABLED: 'SET_NOTIFICATIONS_ENABLED',
@@ -71,7 +72,11 @@ const ActionTypes = {
     SET_LORA_SLIDER: 'SET_LORA_SLIDER',
     TOGGLE_LORA_SLIDER: 'TOGGLE_LORA_SLIDER',
     SET_LORA_TOGGLE: 'SET_LORA_TOGGLE',
-    SET_LORA_STYLE: 'SET_LORA_STYLE'
+    SET_LORA_STYLE: 'SET_LORA_STYLE',
+
+    // Locks
+    TOGGLE_LOCK: 'TOGGLE_LOCK',
+    SET_LOCKS: 'SET_LOCKS'
 };
 
 // Initial state
@@ -125,6 +130,7 @@ const initialState = {
     newFolderName: '',
     parentFolderId: null,
     showAppSettings: false,
+    showPromptModal: false,
 
     // App settings
     notificationsEnabled: true,
@@ -132,7 +138,11 @@ const initialState = {
     // Lora settings
     loraSliders: {}, // { 'Age': { enabled: false, value: 0 }, ... }
     loraToggles: {}, // { 'White Outline': false, ... }
-    loraStyle: '' // Selected style name or empty string for "None"
+    loraStyle: '', // Selected style name or empty string for "None"
+
+    // Locks
+    locks: {
+    }
 };
 
 // Reducer
@@ -232,6 +242,8 @@ function appReducer(state, action) {
             return { ...state, parentFolderId: action.payload };
         case ActionTypes.SET_SHOW_APP_SETTINGS:
             return { ...state, showAppSettings: action.payload };
+        case ActionTypes.SET_SHOW_PROMPT_MODAL:
+            return { ...state, showPromptModal: action.payload };
         case ActionTypes.SET_NOTIFICATIONS_ENABLED:
             return { ...state, notificationsEnabled: action.payload };
         case ActionTypes.RESET_TO_DEFAULTS:
@@ -278,6 +290,18 @@ function appReducer(state, action) {
                 ...state,
                 loraStyle: action.payload
             };
+        case ActionTypes.TOGGLE_LOCK: {
+            return {
+                ...state,
+                locks: {
+                    ...state.locks,
+                    [action.payload]: !state.locks[action.payload]
+                }
+            };
+        }
+        case ActionTypes.SET_LOCKS: {
+            return {...state, locks: action.payload};
+        }
         default:
             return state;
     }
@@ -309,6 +333,7 @@ export function AppProvider({ children }) {
                 dispatch({ type: ActionTypes.SET_SELECTED_FOLDER, payload: settings.selectedFolder || '' });
                 dispatch({ type: ActionTypes.SET_CURRENT_FOLDER, payload: settings.currentFolder || null });
                 dispatch({ type: ActionTypes.SET_NOTIFICATIONS_ENABLED, payload: settings.notificationsEnabled !== undefined ? settings.notificationsEnabled : true });
+                dispatch({ type: ActionTypes.SET_LOCKS, payload: settings.locks !== undefined ? settings.locks : {} });
 
                 // Load lora settings
                 if (settings.loraSliders) {
@@ -355,7 +380,8 @@ export function AppProvider({ children }) {
             notificationsEnabled: state.notificationsEnabled,
             loraSliders: state.loraSliders,
             loraToggles: state.loraToggles,
-            loraStyle: state.loraStyle
+            loraStyle: state.loraStyle,
+            locks: state.locks
         };
 
         try {
@@ -377,7 +403,8 @@ export function AppProvider({ children }) {
         state.loraSliders,
         state.loraToggles,
         state.loraStyle,
-        state.settingsLoaded
+        state.settingsLoaded,
+        state.locks,
     ]);
 
     const value = {

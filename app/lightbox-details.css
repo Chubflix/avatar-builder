@@ -69,6 +69,11 @@
     color: var(--text-secondary);
 }
 
+.lightbox-details-sidebar .selectable-setting {
+    text-decoration: dotted underline;
+    cursor: pointer;
+}
+
 /* Content Wrapper */
 .lightbox-content-wrapper {
     width: 100%;

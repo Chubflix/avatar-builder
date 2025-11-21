@@ -2,11 +2,14 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import FolderSelector from './FolderSelector';
 import LoraSettings from './LoraSettings';
+import GenerateButton from "./GenerateButton";
+import FormLabelInfo from "./FormLabelInfo";
 
-function ControlsPanel({ onGenerate, onResetDefaults, onOpenFolderModal }) {
+function ControlsPanel({ onGenerate, onResetDefaults }) {
     const { state, dispatch, actions } = useApp();
     const [showFolderSelector, setShowFolderSelector] = useState(false);
     const [showLoraSettings, setShowLoraSettings] = useState(false);
+
     const {
         config,
         positivePrompt,
@@ -22,7 +25,8 @@ function ControlsPanel({ onGenerate, onResetDefaults, onOpenFolderModal }) {
         isGenerating,
         progress,
         status,
-        generationQueue
+        generationQueue,
+        locks
     } = state;
 
     if (!config) return null;
@@ -35,7 +39,11 @@ function ControlsPanel({ onGenerate, onResetDefaults, onOpenFolderModal }) {
 
             {/* Positive Prompt */}
             <div className="form-group">
-                <label className="form-label">Positive Prompt</label>
+                <FormLabelInfo
+                    label="Positive Prompt"
+                    alt="Test"
+                    onClick={() => dispatch({ type: actions.SET_SHOW_PROMPT_MODAL, payload: true })}
+                />
                 <textarea
                     className="form-textarea"
                     value={positivePrompt}
@@ -132,17 +140,27 @@ function ControlsPanel({ onGenerate, onResetDefaults, onOpenFolderModal }) {
 
                 <div className="form-group">
                     <label className="form-label">Model</label>
-                    <select
-                        className="form-select"
-                        value={selectedModel}
-                        onChange={(e) => dispatch({ type: actions.SET_SELECTED_MODEL, payload: e.target.value })}
-                    >
-                        {models.map(model => (
-                            <option key={model.model_name} value={model.model_name}>
-                                {model.model_name}
-                            </option>
-                        ))}
-                    </select>
+                    <div className="input-with-button">
+                        <select
+                            className="form-select"
+                            value={selectedModel}
+                            onChange={(e) => dispatch({ type: actions.SET_SELECTED_MODEL, payload: e.target.value })}
+                        >
+                            {models.map(model => (
+                                <option key={model.model_name} value={model.model_name}>
+                                    {model.model_name}
+                                </option>
+                            ))}
+                        </select>
+                        <button
+                            className={`btn-input-action ${locks.model ? 'active' : ''}`.trim()}
+                            onClick={() => dispatch({ type: actions.TOGGLE_LOCK, payload: 'model' })}
+                            title="Lock selected model from changing"
+                            type="button"
+                        >
+                            <i className="fa fa-lock"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div className="form-group">
@@ -195,23 +213,7 @@ function ControlsPanel({ onGenerate, onResetDefaults, onOpenFolderModal }) {
             </div>
 
             {/* Generate Button */}
-            <button
-                className={`btn-generate ${isGenerating ? 'loading' : ''}`}
-                onClick={onGenerate}
-                disabled={!selectedModel}
-            >
-                {isGenerating ? (
-                    <>
-                        <div className="spinner"></div>
-                        Generating...
-                    </>
-                ) : (
-                    <>
-                        <i className="fa fa-magic"></i>
-                        Generate Images
-                    </>
-                )}
-            </button>
+            <GenerateButton onGenerate={onGenerate} />
 
             {isGenerating && (
                 <div className="progress-container">

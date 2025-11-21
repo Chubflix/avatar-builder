@@ -14,6 +14,7 @@ import Lightbox from './components/Lightbox';
 import MobileControls from './components/MobileControls';
 import PWAManager from './components/PWAManager';
 import AppSettings from './components/AppSettings';
+import PromptModal from './components/PromptModal';
 
 // Import CSS
 import './folder-picker.css';
@@ -217,9 +218,11 @@ function AppContent() {
     };
 
     const handleRestoreSettings = (image, withSeed) => {
-        dispatch({ type: actions.SET_POSITIVE_PROMPT, payload: image.positive_prompt || '' });
-        dispatch({ type: actions.SET_NEGATIVE_PROMPT, payload: image.negative_prompt || '' });
-        dispatch({ type: actions.SET_SELECTED_MODEL, payload: image.model || '' });
+        dispatch({type: actions.SET_POSITIVE_PROMPT, payload: image.positive_prompt || ''});
+        dispatch({type: actions.SET_NEGATIVE_PROMPT, payload: image.negative_prompt || ''});
+        if (!state.locks.model) {
+            dispatch({type: actions.SET_SELECTED_MODEL, payload: image.model || ''});
+        }
         dispatch({ type: actions.SET_ORIENTATION, payload: image.orientation || 'portrait' });
         dispatch({ type: actions.SET_BATCH_SIZE, payload: image.batch_size || 1 });
         dispatch({ type: actions.SET_SEED, payload: withSeed ? (image.seed || -1) : -1 });
@@ -397,6 +400,10 @@ function AppContent() {
             <FolderModal
                 onSave={handleSaveFolder}
                 onDelete={deleteFolder}
+            />
+
+            <PromptModal
+                onGenerate={generate}
             />
 
             <Lightbox

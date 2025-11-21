@@ -3,22 +3,25 @@
 - [ ] Persistent queue (in session)
 - [x] docker build in github actions
 - [ ] better selector icons
-- [ ] Add special person settings (make them persistent and configurable)
-  - [ ] Add age slider (\<lora:StS_Age_Slider_Illustrious_v1_Scaled:4>)
+- [x] Add special person settings (make them persistent and configurable)
+  - [x] Add age slider (\<lora:StS_Age_Slider_Illustrious_v1_Scaled:4>)
   - [ ] Add gender selector
-  - [ ] Add body type slider
-  - [ ] Add Styles dropdown (Disney, Western Mix)
-  - [ ] Add outline switch
+  - [x] Add body type slider
+  - [x] Add Styles dropdown (Disney, Western Mix)
+  - [x] Add outline switch
 - [ ] fix infinite scrolling (my-on-folder has more than 50 images)
 - [ ] add toggle to generate with transparent background.
 - [ ] add shortcuts to up or down a word in priority ( (text):2 )
-- [ ] Fix number of Images on page (count). Might be incorrect
+- [x] Fix number of Images on page (count). Might be incorrect
 - [ ] Write mock adapter for stable diffusion for testing
 - [ ] Add integration tests
 - [ ] Add a loading image indicator (incomplete image can be viewed, if wanted)
 - [ ] Keep subfolders intact when downloading from parent folder
-- [ ] toggle visibility of subfolders
+- [x] toggle visibility of subfolders
 - [ ] Use S3 Storage instead
+- [ ] Favorites
+- [ ] websockets for notifications and queue updates
+- [ ] NSFW filter and flagging
 
 - add keyboard shortcuts
   - ?: Help Menu

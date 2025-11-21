@@ -194,7 +194,9 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
                                 )}
                             </div>
                             <div className="settings-display">
-                                <div><strong>Model:</strong> {currentImage.model || 'N/A'}</div>
+                                <div><strong>Model:</strong> <span className="selectable-setting" onClick={() => dispatch({ type: actions.SET_SELECTED_MODEL, payload: currentImage.model })} title="Set as current model">
+                                    {currentImage.model || 'N/A'}
+                                </span></div>
                                 <div><strong>Dimensions:</strong> {currentImage.width}×{currentImage.height}</div>
                                 <div><strong>Sampler:</strong> {currentImage.sampler_name || 'N/A'}</div>
                                 <div><strong>Scheduler:</strong> {currentImage.scheduler || 'N/A'}</div>
