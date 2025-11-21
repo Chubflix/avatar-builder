@@ -18,8 +18,8 @@ services:
     volumes:
       # Mount data directory for persistent storage
       - ./data:/app/data
-      # Mount config file
-      - ./config.json:/app/config.json:ro
+      # Mount config file (optional, will read from config.default.json if not present)
+      # - ./config.json:/app/config.json:ro
     networks:
       - avatar-network
     healthcheck:

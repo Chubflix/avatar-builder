@@ -33,6 +33,7 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder /app/next.config.js ./
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/config.json ./config.default.json
 
 # Copy built application
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
