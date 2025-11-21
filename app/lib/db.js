@@ -6,7 +6,7 @@ import path from 'path';
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 const GENERATED_DIR = process.env.GENERATED_DIR || path.join(DATA_DIR, 'generated');
 const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'avatar-builder.db');
-const MIGRATIONS_DIR = path.join(process.cwd(), 'server', 'migrations');
+const MIGRATIONS_DIR = path.join(process.cwd(), 'migrations');
 
 // Ensure directories exist
 if (!fs.existsSync(DATA_DIR)) {

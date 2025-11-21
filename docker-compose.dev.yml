@@ -19,7 +19,7 @@ services:
     volumes:
       # Mount source code for hot-reload
       - ./app:/app/app:cached
-      - ./server/migrations:/app/server/migrations:ro
+      - ./migrations:/app/migrations:ro
       - ./config.json:/app/config.json:ro
       - ./next.config.js:/app/next.config.js:cached
       # Mount data directory

@@ -30,7 +30,7 @@ avatar-builder/
 │   ├── globals.css          # Global styles
 │   ├── layout.js            # Root layout
 │   └── page.js              # Main page ('use client')
-├── server/migrations/       # Database migrations (still used)
+├── migrations/              # Database migrations
 ├── data/                    # Data directory (generated images, DB)
 ├── config.json              # Configuration file
 ├── package.json             # Dependencies
@@ -177,7 +177,7 @@ Run: `npm install better-sqlite3`
 
 ### "Cannot find module './migrations'"
 
-Ensure `server/migrations/` directory exists with `.sql` files.
+Ensure `migrations/` directory exists with `.sql` files.
 
 ### Images not loading
 

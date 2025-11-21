@@ -21,7 +21,7 @@ services:
       # Mount config file
       - ./config.json:/app/config.json:ro
       # Mount migrations (if you update them)
-      - ./server/migrations:/app/server/migrations:ro
+      - ./migrations:/app/migrations:ro
     networks:
       - avatar-network
     healthcheck:

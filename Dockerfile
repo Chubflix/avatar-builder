@@ -19,9 +19,6 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Copy migrations
-COPY server/migrations ./server/migrations
-
 # Build Next.js application
 # Disable telemetry during build
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -51,7 +48,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Copy migrations
-COPY --from=builder /app/server/migrations ./server/migrations
+COPY --from=builder /app/migrations ./migrations
 
 # Create data directory with proper permissions
 RUN mkdir -p /app/data/generated && chown -R nextjs:nodejs /app/data
