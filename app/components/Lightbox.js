@@ -47,6 +47,12 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
                         dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: lightboxIndex + 1 });
                     }
                     break;
+                case 'i':
+                    setShowGenerationDetails(!showGenerationDetails);
+                    break;
+                case 'd':
+                    onDelete(currentImage.id);
+                    break;
                 default:
                     break;
             }
@@ -54,7 +60,7 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [lightboxIndex, images.length, dispatch, actions, onClose]);
+    }, [lightboxIndex, showGenerationDetails, images.length, dispatch, actions, onClose]);
 
     // Prevent body scroll
     useEffect(() => {

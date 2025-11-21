@@ -124,7 +124,15 @@ export function useImages() {
             if (state.lightboxIndex !== null) {
                 const currentImage = state.images[state.lightboxIndex];
                 if (currentImage && currentImage.id === id) {
-                    dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: null });
+                    if (state.images.at(state.lightboxIndex + 1)) {
+                        // take the next image
+                    } else if (state.images.at(state.lightboxIndex - 1)) {
+                        // go back to the previous image
+                        dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: state.lightboxIndex - 1 });
+                    } else {
+                        // no more images, reset lightbox
+                        dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: null });
+                    }
                 }
             }
 
