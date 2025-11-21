@@ -1,0 +1,31 @@
+# TODOs
+
+- [ ] Persistent queue (in session)
+- [ ] docker build in github actions
+- [ ] better selector icons
+- [ ] Add special person settings (make them persistent and configurable)
+  - [ ] Add age slider (\<lora:StS_Age_Slider_Illustrious_v1_Scaled:4>)
+  - [ ] Add gender selector
+  - [ ] Add body type slider
+  - [ ] Add Styles dropdown (Disney, Western Mix)
+  - [ ] Add outline switch
+- [ ] fix infinite scrolling (my-on-folder has more than 50 images)
+- [ ] add toggle to generate with transparent background.
+- [ ] add shortcuts to up or down a word in priority ( (text):2 )
+- [ ] Fix number of Images on page (count). Might be incorrect
+- [ ] Write mock adapter for stable diffusion for testing
+- [ ] Add integration tests
+- [ ] Add a loading image indicator (incomplete image can be viewed, if wanted)
+- [ ] Keep subfolders intact when downloading from parent folder
+- [ ] toggle visibility of subfolders
+
+- add keyboard shortcuts
+  - ?: Help Menu
+  - /: search
+  - n: next image
+  - p: previous image
+  - v: toggle visibility
+  - s: save
+  - d: delete
+  - q: quit
+  - esc: quit
