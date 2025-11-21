@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { useFolders, useImages, useGeneration, useModels } from './hooks';
 import debug from './utils/debug';
-import { APP_VERSION } from './version';
 
 // Components
 import ControlsPanel from './components/ControlsPanel';
@@ -267,7 +266,6 @@ function AppContent() {
                 <div className="nav-content">
                     <a href="../" className="nav-brand">Chubflix</a>
                     <span className="nav-title">Avatar Builder</span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>v{APP_VERSION}</span>
                 </div>
             </nav>
 

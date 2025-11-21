@@ -1,22 +1,10 @@
 // Service Worker for Avatar Builder PWA
-const CACHE_NAME = 'avatar-builder-v2'; // Increment this to force cache refresh
-const urlsToCache = [
-  '/',
-  '/globals.css',
-];
+const CACHE_NAME = 'avatar-builder-v4'; // Increment this to force cache refresh
 
-// Install event - cache essential resources
+// Install event - skip precaching to avoid errors
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
-      .catch((error) => {
-        console.error('Cache addAll failed:', error);
-      })
-  );
+  console.log('Service Worker installing...');
+  // Skip waiting to activate immediately
   self.skipWaiting();
 });
 
@@ -61,24 +49,26 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For other requests - cache first, then network
+  // For other requests - network first, then cache (ensures fresh content)
   event.respondWith(
-    caches.match(request)
+    fetch(request)
       .then((response) => {
-        if (response) {
+        // Don't cache if not a valid response
+        if (!response || response.status !== 200) {
           return response;
         }
-        return fetch(request).then((response) => {
-          // Don't cache if not a valid response
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
+        // Only cache static assets (images, fonts, etc)
+        if (request.url.match(/\.(jpg|jpeg|png|gif|webp|svg|woff|woff2|ttf|eot)$/)) {
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(request, responseToCache);
           });
-          return response;
-        });
+        }
+        return response;
+      })
+      .catch(() => {
+        // If network fails, try cache
+        return caches.match(request);
       })
   );
 });
@@ -87,8 +77,6 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   const options = {
     body: event.data ? event.data.text() : 'New notification from Avatar Builder',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
     vibrate: [200, 100, 200],
     tag: 'avatar-builder-notification',
     requireInteraction: false,

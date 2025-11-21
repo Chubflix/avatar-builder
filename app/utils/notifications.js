@@ -38,8 +38,6 @@ export async function sendNotification(message, type = 'info', dispatch, actions
         const registration = await navigator.serviceWorker.ready;
         await registration.showNotification('Avatar Builder', {
           body: `${icon} ${message}`,
-          icon: '/icon-192.png',
-          badge: '/icon-192.png',
           vibrate: type === 'error' ? [200, 100, 200, 100, 200] : [200],
           tag: `avatar-builder-${type}`,
           requireInteraction: type === 'error',
@@ -52,7 +50,6 @@ export async function sendNotification(message, type = 'info', dispatch, actions
         // Fallback to regular Notification API (works on localhost/development)
         new Notification('Avatar Builder', {
           body: `${icon} ${message}`,
-          icon: '/icon-192.png',
           tag: `avatar-builder-${type}`,
           requireInteraction: type === 'error',
         });

@@ -3,11 +3,6 @@ import './globals.css';
 export const metadata = {
   title: 'Avatar Builder - Chubflix',
   description: 'Generate character images using Stable Diffusion',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-    title: 'Avatar Builder',
-  },
 };
 
 export const viewport = {
@@ -26,6 +21,10 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
         />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Avatar Builder" />
       </head>
       <body>{children}</body>
     </html>
