@@ -141,6 +141,33 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                 </div>
             )}
 
+            {(isGenerating || generationQueue.length > 0 || status) && (
+                <div className="mobile-overlay-container">
+                    {isGenerating && (
+                        <div className="mobile-progress">
+                            <div className="progress-bar">
+                                <div
+                                    className="progress-fill"
+                                    style={{ width: `${progress}%` }}
+                                ></div>
+                            </div>
+                        </div>
+                    )}
+
+                    {generationQueue.length > 0 && (
+                        <div className="mobile-queue-status">
+                            {generationQueue.length} {generationQueue.length === 1 ? 'generation' : 'generations'} queued...
+                        </div>
+                    )}
+
+                    {status && (
+                        <div className={`mobile-status ${status.type}`}>
+                            {status.message}
+                        </div>
+                    )}
+                </div>
+            )}
+
             <div className="mobile-input-bar">
                 <button
                     className={`mobile-settings-btn ${showMobileSettings ? 'active' : ''}`}
@@ -167,29 +194,6 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                     )}
                 </button>
             </div>
-
-            {isGenerating && (
-                <div className="mobile-progress">
-                    <div className="progress-bar">
-                        <div
-                            className="progress-fill"
-                            style={{ width: `${progress}%` }}
-                        ></div>
-                    </div>
-                </div>
-            )}
-
-            {generationQueue.length > 0 && (
-                <div className="mobile-queue-status">
-                    {generationQueue.length} {generationQueue.length === 1 ? 'generation' : 'generations'} queued...
-                </div>
-            )}
-
-            {status && (
-                <div className={`mobile-status ${status.type}`}>
-                    {status.message}
-                </div>
-            )}
 
             {/* Folder Selector Modal */}
             <FolderSelector

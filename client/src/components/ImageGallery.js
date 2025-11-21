@@ -5,10 +5,10 @@ import FolderSelector from './FolderSelector';
 
 function ImageGallery({ onOpenLightbox, onRestoreSettings, onDelete }) {
     const { state, dispatch, actions } = useApp();
-    const { images, totalImages, hasMore, isLoadingMore } = state;
+    const { images, totalImages, hasMore, isLoadingMore, selectedImages, isSelecting } = state;
     const [showFolderSelector, setShowFolderSelector] = useState(false);
     const [selectedImageForMove, setSelectedImageForMove] = useState(null);
-    const [showMoveAction, setShowMoveAction] = useState(false);
+    const [bulkMoveMode, setBulkMoveMode] = useState(false);
 
     const handleDownload = (e, image) => {
         e.stopPropagation();
@@ -30,6 +30,49 @@ function ImageGallery({ onOpenLightbox, onRestoreSettings, onDelete }) {
         onDelete(imageId);
     };
 
+    const handleToggleSelection = (e, imageId) => {
+        e.stopPropagation();
+        dispatch({ type: actions.TOGGLE_IMAGE_SELECTION, payload: imageId });
+    };
+
+    const handleSelectAll = () => {
+        dispatch({ type: actions.SELECT_ALL_IMAGES });
+    };
+
+    const handleClearSelection = () => {
+        dispatch({ type: actions.CLEAR_SELECTION });
+    };
+
+    const handleBulkDownload = async () => {
+        try {
+            await imageAPI.downloadZip(selectedImages);
+            dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message: `Downloaded ${selectedImages.length} images` } });
+        } catch (err) {
+            dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: 'Failed to download images' } });
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (!window.confirm(`Delete ${selectedImages.length} selected images?`)) return;
+
+        try {
+            await imageAPI.bulkDelete(selectedImages);
+            selectedImages.forEach(id => {
+                dispatch({ type: actions.REMOVE_IMAGE, payload: id });
+            });
+            dispatch({ type: actions.SET_TOTAL_IMAGES, payload: totalImages - selectedImages.length });
+            dispatch({ type: actions.CLEAR_SELECTION });
+            dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message: `Deleted ${selectedImages.length} images` } });
+        } catch (err) {
+            dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: 'Failed to delete images' } });
+        }
+    };
+
+    const handleBulkMove = () => {
+        setBulkMoveMode(true);
+        setShowFolderSelector(true);
+    };
+
     if (images.length === 0) {
         return (
             <div className="empty-state">
@@ -42,22 +85,97 @@ function ImageGallery({ onOpenLightbox, onRestoreSettings, onDelete }) {
 
     return (
         <>
+            {/* Selection Toolbar */}
+            <div className="selection-toolbar">
+                {!isSelecting ? (
+                    <button
+                        className="btn-select"
+                        onClick={() => dispatch({ type: actions.SET_IS_SELECTING, payload: true })}
+                    >
+                        <i className="fa fa-check-square-o"></i>
+                        Select
+                    </button>
+                ) : (
+                    <>
+                        <div className="selection-info">
+                            <span className="selection-count">
+                                {selectedImages.length} selected
+                            </span>
+                        </div>
+                        <div className="selection-actions">
+                            <button
+                                className="btn-selection-action"
+                                onClick={handleSelectAll}
+                                disabled={selectedImages.length === images.length}
+                            >
+                                <i className="fa fa-check-square"></i>
+                                Select All
+                            </button>
+                            {selectedImages.length > 0 && (
+                                <>
+                                    <button
+                                        className="btn-selection-action"
+                                        onClick={handleBulkDownload}
+                                    >
+                                        <i className="fa fa-download"></i>
+                                        Download
+                                    </button>
+                                    <button
+                                        className="btn-selection-action"
+                                        onClick={handleBulkMove}
+                                    >
+                                        <i className="fa fa-folder-o"></i>
+                                        Move
+                                    </button>
+                                    <button
+                                        className="btn-selection-action danger"
+                                        onClick={handleBulkDelete}
+                                    >
+                                        <i className="fa fa-trash"></i>
+                                        Delete
+                                    </button>
+                                </>
+                            )}
+                            <button
+                                className="btn-selection-action"
+                                onClick={handleClearSelection}
+                            >
+                                <i className="fa fa-times"></i>
+                                Cancel
+                            </button>
+                        </div>
+                    </>
+                )}
+            </div>
+
             <div className="image-grid">
                 {images.map((image, index) => {
                     const imageSrc = `${API_BASE}${image.url || `/generated/${image.filename}`}`;
+                    const isSelected = selectedImages.includes(image.id);
                     return (
-                        <div key={image.id} className="image-card">
+                        <div key={image.id} className={`image-card ${isSelected ? 'selected' : ''}`}>
                             <div
                                 className="image-wrapper"
                                 style={{ '--bg-image': `url(${imageSrc})` }}
-                                onClick={() => onOpenLightbox(index)}
+                                onClick={() => isSelecting ? handleToggleSelection({ stopPropagation: () => {} }, image.id) : onOpenLightbox(index)}
                             >
+                                {isSelecting && (
+                                    <div className="image-checkbox">
+                                        <i className={ `fa ${isSelected ? 'fa-dot-circle-o' : 'fa-circle-o'}` } />
+                                        <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            onChange={(e) => handleToggleSelection(e, image.id)}
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    </div>
+                                )}
                                 <img
                                     src={imageSrc}
                                     alt={`Generated ${image.id}`}
                                     loading="lazy"
                                 />
-                            <div className="image-overlay">
+                            {!isSelecting && <div className="image-overlay">
                                 <button
                                     className="image-btn"
                                     onClick={(e) => handleDownload(e, image)}
@@ -86,7 +204,7 @@ function ImageGallery({ onOpenLightbox, onRestoreSettings, onDelete }) {
                                 >
                                     <i className="fa fa-trash"></i>
                                 </button>
-                            </div>
+                            </div>}
                         </div>
                         <div className="image-info">
                             {new Date(image.created_at).toLocaleString()}
@@ -205,17 +323,28 @@ function ImageGallery({ onOpenLightbox, onRestoreSettings, onDelete }) {
                 onClose={() => {
                     setShowFolderSelector(false);
                     setSelectedImageForMove(null);
+                    setBulkMoveMode(false);
                 }}
                 onSelect={async (folderId) => {
-                    if (selectedImageForMove) {
-                        await imageAPI.update(selectedImageForMove.id, { folderId: folderId || null });
-                        window.location.reload();
+                    try {
+                        if (bulkMoveMode) {
+                            await imageAPI.bulkMove(selectedImages, folderId || null);
+                            dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message: `Moved ${selectedImages.length} images` } });
+                            dispatch({ type: actions.CLEAR_SELECTION });
+                            window.location.reload();
+                        } else if (selectedImageForMove) {
+                            await imageAPI.update(selectedImageForMove.id, { folderId: folderId || null });
+                            window.location.reload();
+                        }
+                    } catch (err) {
+                        dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: 'Failed to move images' } });
                     }
                     setShowFolderSelector(false);
                     setSelectedImageForMove(null);
+                    setBulkMoveMode(false);
                 }}
-                currentFolderId={selectedImageForMove?.folder_id}
-                title="Move to Folder"
+                currentFolderId={bulkMoveMode ? null : selectedImageForMove?.folder_id}
+                title={bulkMoveMode ? `Move ${selectedImages.length} Images` : "Move to Folder"}
             />
         </>
     );

@@ -196,6 +196,46 @@ export const imageAPI = {
     },
 
     /**
+     * Bulk delete images
+     */
+    async bulkDelete(imageIds) {
+        const response = await fetch(`${API_BASE}/api/images/bulk-delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageIds })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to delete images');
+        }
+
+        return await response.json();
+    },
+
+    /**
+     * Download multiple images as zip
+     */
+    async downloadZip(imageIds) {
+        const response = await fetch(`${API_BASE}/api/images/download-zip`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageIds })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to create zip');
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `images-${Date.now()}.zip`;
+        link.click();
+        window.URL.revokeObjectURL(url);
+    },
+
+    /**
      * Get image URL
      */
     getUrl(image) {
