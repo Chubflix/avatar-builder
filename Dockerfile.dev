@@ -14,9 +14,6 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Copy migrations
-COPY server/migrations ./server/migrations
-
 # Create data directory
 RUN mkdir -p /app/data/generated
 

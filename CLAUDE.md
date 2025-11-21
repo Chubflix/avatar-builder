@@ -8,7 +8,7 @@ Avatar Builder is a Next.js 14 application for generating character images using
 
 **Stack**: Next.js 14 (App Router), React 18, better-sqlite3, Docker Compose for deployment
 
-**Important**: The application was recently migrated from a separate React/Express architecture to a unified Next.js application. The legacy `client/` and `server/` directories still exist but are not used in production. See `NEXTJS_MIGRATION.md` for migration details.
+**Important**: The application was recently migrated from a separate React/Express architecture to a unified Next.js application. See `NEXTJS_MIGRATION.md` for migration details.
 
 ## Development Commands
 
@@ -114,10 +114,11 @@ app/
 
 ### Database & Migrations
 ```
-server/migrations/            # SQL schema migrations (still used)
+migrations/                   # SQL schema migrations
 ├── 001_initial_schema.sql
 ├── 002_add_character_folders.sql
-└── 003_organize_files_by_folder.sql
+├── 003_organize_files_by_folder.sql
+└── 004_add_nested_folders.sql
 
 data/                         # Persistent data directory
 ├── avatar-builder.db         # SQLite database
@@ -273,7 +274,7 @@ export async function GET(request) {
 ```
 
 ### Adding a New Database Field
-1. Create migration file: `server/migrations/00X_description.sql`
+1. Create migration file: `migrations/00X_description.sql`
 2. Write SQL: `ALTER TABLE generations ADD COLUMN new_field TEXT;`
 3. Insert migration record: `INSERT INTO migrations (name) VALUES ('00X_description');`
 4. Restart application (migration runs automatically on `getDb()` call)
@@ -334,7 +335,7 @@ Ensure SD WebUI is started with: `./webui.sh --api --cors-allow-origins=*`
 - Check browser console for image URL errors
 
 ### Migration errors on startup
-- Check `server/migrations/` for syntax errors
+- Check `migrations/` for syntax errors
 - Inspect `data/avatar-builder.db` with sqlite3 CLI
 - Verify `migrations` table exists: `SELECT * FROM migrations;`
 - Check Next.js console output for database initialization errors

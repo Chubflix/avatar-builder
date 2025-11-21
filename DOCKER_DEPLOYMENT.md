@@ -68,7 +68,7 @@ The following directories are mounted:
 
 - `./data:/app/data` - Persistent storage for database and images
 - `./config.json:/app/config.json:ro` - Application configuration (read-only)
-- `./server/migrations:/app/server/migrations:ro` - Database migrations (read-only)
+- `./migrations:/app/migrations:ro` - Database migrations (read-only)
 
 ### Ports
 
