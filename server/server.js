@@ -557,10 +557,11 @@ app.post('/api/images', (req, res) => {
             LEFT JOIN character_folders f ON g.folder_id = f.id
             WHERE g.id = ?
         `).get(id);
-        
+
         res.json({
             ...saved,
-            url: getImageUrl(saved.folder_id, saved.filename)
+            url: getImageUrl(saved.folder_id, saved.filename),
+            folder_path: getFolderPath(db, saved.folder_id)
         });
     } catch (err) {
         console.error('Error saving image:', err);
@@ -683,6 +684,77 @@ app.post('/api/images/bulk-move', (req, res) => {
         res.json({ success: true, count: imageIds.length });
     } catch (err) {
         console.error('Error bulk moving images:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Bulk delete images
+app.post('/api/images/bulk-delete', (req, res) => {
+    try {
+        const { imageIds } = req.body;
+
+        if (!imageIds || !Array.isArray(imageIds)) {
+            return res.status(400).json({ error: 'imageIds array is required' });
+        }
+
+        const stmt = db.prepare('SELECT filename, folder_id FROM generations WHERE id = ?');
+        const deleteStmt = db.prepare('DELETE FROM generations WHERE id = ?');
+
+        const transaction = db.transaction(() => {
+            for (const id of imageIds) {
+                const image = stmt.get(id);
+                if (image) {
+                    // Delete file
+                    const filepath = getImagePath(image.folder_id, image.filename);
+                    if (fs.existsSync(filepath)) {
+                        fs.unlinkSync(filepath);
+                    }
+
+                    // Delete from database
+                    deleteStmt.run(id);
+                }
+            }
+        });
+
+        transaction();
+
+        res.json({ success: true, count: imageIds.length });
+    } catch (err) {
+        console.error('Error bulk deleting images:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Download multiple images as zip
+app.post('/api/images/download-zip', (req, res) => {
+    try {
+        const { imageIds } = req.body;
+
+        if (!imageIds || !Array.isArray(imageIds)) {
+            return res.status(400).json({ error: 'imageIds array is required' });
+        }
+
+        const archiver = require('archiver');
+        const archive = archiver('zip', { zlib: { level: 9 } });
+
+        res.attachment(`images-${Date.now()}.zip`);
+        archive.pipe(res);
+
+        const stmt = db.prepare('SELECT filename, folder_id FROM generations WHERE id = ?');
+
+        for (const id of imageIds) {
+            const image = stmt.get(id);
+            if (image) {
+                const filepath = getImagePath(image.folder_id, image.filename);
+                if (fs.existsSync(filepath)) {
+                    archive.file(filepath, { name: image.filename });
+                }
+            }
+        }
+
+        archive.finalize();
+    } catch (err) {
+        console.error('Error creating zip:', err);
         res.status(500).json({ error: err.message });
     }
 });

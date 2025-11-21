@@ -44,6 +44,13 @@ const ActionTypes = {
     SET_TOTAL_IMAGES: 'SET_TOTAL_IMAGES',
     SET_LOADING_MORE: 'SET_LOADING_MORE',
 
+    // Selection
+    SET_SELECTED_IMAGES: 'SET_SELECTED_IMAGES',
+    TOGGLE_IMAGE_SELECTION: 'TOGGLE_IMAGE_SELECTION',
+    SELECT_ALL_IMAGES: 'SELECT_ALL_IMAGES',
+    CLEAR_SELECTION: 'CLEAR_SELECTION',
+    SET_IS_SELECTING: 'SET_IS_SELECTING',
+
     // UI state
     SET_LIGHTBOX_INDEX: 'SET_LIGHTBOX_INDEX',
     SET_SHOW_MOBILE_SETTINGS: 'SET_SHOW_MOBILE_SETTINGS',
@@ -93,6 +100,10 @@ const initialState = {
     hasMore: false,
     totalImages: 0,
     isLoadingMore: false,
+
+    // Selection
+    selectedImages: [],
+    isSelecting: false,
 
     // UI state
     lightboxIndex: null,
@@ -167,6 +178,23 @@ function appReducer(state, action) {
             return { ...state, totalImages: action.payload };
         case ActionTypes.SET_LOADING_MORE:
             return { ...state, isLoadingMore: action.payload };
+        case ActionTypes.SET_SELECTED_IMAGES:
+            return { ...state, selectedImages: action.payload };
+        case ActionTypes.TOGGLE_IMAGE_SELECTION:
+            const imageId = action.payload;
+            const isSelected = state.selectedImages.includes(imageId);
+            return {
+                ...state,
+                selectedImages: isSelected
+                    ? state.selectedImages.filter(id => id !== imageId)
+                    : [...state.selectedImages, imageId]
+            };
+        case ActionTypes.SELECT_ALL_IMAGES:
+            return { ...state, selectedImages: state.images.map(img => img.id) };
+        case ActionTypes.CLEAR_SELECTION:
+            return { ...state, selectedImages: [], isSelecting: false };
+        case ActionTypes.SET_IS_SELECTING:
+            return { ...state, isSelecting: action.payload };
         case ActionTypes.SET_LIGHTBOX_INDEX:
             return { ...state, lightboxIndex: action.payload };
         case ActionTypes.SET_SHOW_MOBILE_SETTINGS:
