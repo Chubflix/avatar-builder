@@ -18,6 +18,7 @@
 - [ ] Add a loading image indicator (incomplete image can be viewed, if wanted)
 - [ ] Keep subfolders intact when downloading from parent folder
 - [ ] toggle visibility of subfolders
+- [ ] Use S3 Storage instead
 
 - add keyboard shortcuts
   - ?: Help Menu
