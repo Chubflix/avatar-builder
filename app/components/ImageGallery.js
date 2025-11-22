@@ -78,14 +78,14 @@ function ImageGallery({onOpenLightbox, onRestoreSettings, onDelete, onLoadMore})
                             <i className="fa fa-check-square-o"></i>
                             Select
                         </button>
-                        {state.currentFolder && (
+                        {state.selectedCharacter && !state.currentFolder && (
                             <button
                                 className="btn-select"
                                 onClick={() => dispatch({type: actions.TOGGLE_INCLUDE_SUBFOLDERS})}
-                                title={state.includeSubfolders ? "Hide subfolder images" : "Show subfolder images"}
+                                title={state.includeSubfolders ? "Hide folder images" : "Show all folder images"}
                             >
                                 <i className={`fa fa-folder${state.includeSubfolders ? '-open' : ''}-o`}></i>
-                                {state.includeSubfolders ? 'Hide Subfolders' : 'Show Subfolders'}
+                                {state.includeSubfolders ? 'All Folders' : 'Character Only'}
                             </button>
                         )}
                     </>

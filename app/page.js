@@ -8,15 +8,14 @@ import debug from './utils/debug';
 // Components
 import ControlsPanel from './components/ControlsPanel';
 import ImageGallery from './components/ImageGallery';
-import FolderNav from './components/FolderNav';
 import FolderModal from './components/FolderModal';
 import Lightbox from './components/Lightbox';
 import MobileControls from './components/MobileControls';
 import PWAManager from './components/PWAManager';
 import AppSettings from './components/AppSettings';
 import PromptModal from './components/PromptModal';
-import CharacterSelector from './components/CharacterSelector';
 import CharacterModal from './components/CharacterModal';
+import CharacterFolderSelector from './components/CharacterFolderSelector';
 
 // Import CSS
 import './folder-picker.css';
@@ -34,7 +33,7 @@ function AppContent() {
     const skipGalleryToSaveSync = useRef(false);
     const skipSaveToGallerySync = useRef(false);
 
-    const { config, settingsLoaded, currentFolder, selectedFolder, folders, includeSubfolders } = state;
+    const { config, settingsLoaded, currentFolder, selectedFolder, folders, includeSubfolders, selectedCharacter } = state;
     const [isLoadingConfig, setIsLoadingConfig] = useState(true);
 
     // Keep ref in sync with current folder
@@ -347,7 +346,6 @@ function AppContent() {
                 <div className="nav-content">
                     <a href="../" className="nav-brand">Chubflix</a>
                     <div className="nav-right">
-                        <CharacterSelector />
                         <span className="nav-title">Avatar Builder</span>
                         <button
                             className="btn-settings"
@@ -372,13 +370,14 @@ function AppContent() {
 
                     {/* Results Panel */}
                     <div className="results-panel">
-                        <FolderNav onOpenFolderModal={handleOpenFolderModal} />
+                        <CharacterFolderSelector />
 
                         <div className="results-header">
                             <h2>
-                                {currentFolder === null ? 'All Images' :
+                                {!selectedCharacter && !currentFolder ? 'All Images' :
                                  currentFolder === 'unfiled' ? 'Unfiled Images' :
-                                 folders.find(f => f.id === currentFolder)?.name || 'Images'}
+                                 currentFolder ? folders.find(f => f.id === currentFolder)?.name || 'Images' :
+                                 selectedCharacter ? selectedCharacter.name : 'Images'}
                             </h2>
                             <span className="results-count">{state.totalImages} image(s)</span>
                         </div>

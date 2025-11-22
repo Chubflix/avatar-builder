@@ -148,8 +148,33 @@ function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageM
                             );
                         })}
                     </>
+                ) : image.character_id ? (
+                    // Character badge (unfiled character image)
+                    <div className="image-folder-badge-split unfiled">
+                        <button
+                            className="folder-badge-filter"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const character = state.characters.find(c => c.id === image.character_id);
+                                if (character) {
+                                    dispatch({type: actions.SET_SELECTED_CHARACTER, payload: character});
+                                    dispatch({type: actions.SET_CURRENT_FOLDER, payload: null});
+                                }
+                            }}
+                            title="Filter by character"
+                        >
+                            {state.characters.find(c => c.id === image.character_id)?.name || 'Character'}
+                        </button>
+                        <button
+                            className="folder-badge-move"
+                            onClick={(e) => onImageMove(e, image)}
+                            title="Move to folder"
+                        >
+                            <i className="fa fa-folder-o"></i>
+                        </button>
+                    </div>
                 ) : (
-                    // Unfiled badge
+                    // Truly unfiled badge (no character, no folder)
                     <div className="image-folder-badge-split unfiled">
                         <button
                             className="folder-badge-filter"

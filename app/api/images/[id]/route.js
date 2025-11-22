@@ -52,7 +52,11 @@ export async function PUT(request, { params }) {
             return NextResponse.json({ error: 'Image not found' }, { status: 404 });
         }
 
-        return NextResponse.json(image);
+        return NextResponse.json({
+            ...image,
+            folder_id: image.folder_id || null,
+            character_id: image.folder?.character?.id || null
+        });
     } catch (error) {
         console.error('Error updating image:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });

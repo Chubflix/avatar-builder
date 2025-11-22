@@ -12,7 +12,8 @@
     "supabase:status": "supabase status",
     "supabase:reset": "supabase db reset",
     "migrate:cli": "supabase db push",
-    "migrate:new": "supabase migration new"
+    "migrate:new": "supabase migration new",
+    "import": "node scripts/import-data.js"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",

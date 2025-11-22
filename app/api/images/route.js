@@ -22,6 +22,7 @@ export async function GET(request) {
         const limit = parseInt(searchParams.get('limit')) || 50;
         const offset = parseInt(searchParams.get('offset')) || 0;
         const folderId = searchParams.get('folder_id');
+        const characterId = searchParams.get('character_id');
 
         // Build query
         let query = supabase
@@ -39,6 +40,24 @@ export async function GET(request) {
             query = query.eq('folder_id', folderId);
         }
 
+        // Filter by character (get images from all folders under this character)
+        if (characterId && !folderId) {
+            // Get all folders for this character
+            const { data: characterFolders } = await supabase
+                .from('folders')
+                .select('id')
+                .eq('character_id', characterId)
+                .eq('user_id', user.id);
+
+            if (characterFolders && characterFolders.length > 0) {
+                const folderIds = characterFolders.map(f => f.id);
+                query = query.in('folder_id', folderIds);
+            } else {
+                // No folders for this character, return empty
+                query = query.eq('folder_id', 'no-match');
+            }
+        }
+
         // Pagination
         query = query
             .order('created_at', { ascending: false })
@@ -48,10 +67,12 @@ export async function GET(request) {
 
         if (error) throw error;
 
-        // Add image URLs
+        // Add image URLs and ensure character_id and folder_id are present
         const imagesWithUrls = images.map(img => ({
             ...img,
             url: getImageUrl(img.storage_path),
+            folder_id: img.folder_id || null,
+            character_id: img.folder?.character?.id || null,
             folder_name: img.folder?.name || null,
             folder_path: img.folder ? `${img.folder.character?.name || 'Unknown'}/${img.folder.name}` : null
         }));
@@ -161,6 +182,8 @@ export async function POST(request) {
         return NextResponse.json({
             ...image,
             url: getImageUrl(image.storage_path),
+            folder_id: image.folder_id || null,
+            character_id: image.folder?.character?.id || null,
             folder_name: image.folder?.name || null,
             folder_path: image.folder ? `${image.folder.character?.name || 'Unknown'}/${image.folder.name}` : null
         });
