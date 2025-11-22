@@ -29,6 +29,12 @@ const ActionTypes = {
     CLEAR_QUEUE: 'CLEAR_QUEUE',
     SET_PROCESSING_QUEUE: 'SET_PROCESSING_QUEUE',
 
+    // Characters
+    SET_CHARACTERS: 'SET_CHARACTERS',
+    SET_SELECTED_CHARACTER: 'SET_SELECTED_CHARACTER',
+    SET_SHOW_CHARACTER_MODAL: 'SET_SHOW_CHARACTER_MODAL',
+    SET_EDITING_CHARACTER: 'SET_EDITING_CHARACTER',
+
     // Folders
     SET_FOLDERS: 'SET_FOLDERS',
     SET_CURRENT_FOLDER: 'SET_CURRENT_FOLDER',
@@ -106,11 +112,17 @@ const initialState = {
     generationQueue: [],
     isProcessingQueue: false,
 
+    // Characters
+    characters: [],
+    selectedCharacter: null,
+    showCharacterModal: false,
+    editingCharacter: null,
+
     // Folders
     folders: [],
     currentFolder: null,
     selectedFolder: '',
-    includeSubfolders: true,
+    includeSubfolders: false, // Changed to false - no subfolders anymore
 
     // Images
     images: [],
@@ -182,6 +194,14 @@ function appReducer(state, action) {
             return { ...state, generationQueue: [] };
         case ActionTypes.SET_PROCESSING_QUEUE:
             return { ...state, isProcessingQueue: action.payload };
+        case ActionTypes.SET_CHARACTERS:
+            return { ...state, characters: action.payload };
+        case ActionTypes.SET_SELECTED_CHARACTER:
+            return { ...state, selectedCharacter: action.payload };
+        case ActionTypes.SET_SHOW_CHARACTER_MODAL:
+            return { ...state, showCharacterModal: action.payload };
+        case ActionTypes.SET_EDITING_CHARACTER:
+            return { ...state, editingCharacter: action.payload };
         case ActionTypes.SET_FOLDERS:
             return { ...state, folders: action.payload };
         case ActionTypes.SET_CURRENT_FOLDER:

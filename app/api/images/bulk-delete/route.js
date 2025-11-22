@@ -1,37 +1,57 @@
+/**
+ * Bulk Delete Images API
+ * Deletes multiple images from storage and database
+ */
+
 import { NextResponse } from 'next/server';
-import { getDb, getImagePath } from '../../../lib/db';
-import fs from 'fs';
+import { createAuthClient } from '@/app/lib/supabase-server';
 
 export async function POST(request) {
     try {
+        const supabase = createAuthClient();
+
+        // Get authenticated user
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { imageIds } = await request.json();
 
         if (!imageIds || !Array.isArray(imageIds)) {
             return NextResponse.json({ error: 'imageIds array is required' }, { status: 400 });
         }
 
-        const db = getDb();
+        // Get storage paths for all images
+        const { data: images, error: fetchError } = await supabase
+            .from('images')
+            .select('storage_path')
+            .in('id', imageIds)
+            .eq('user_id', user.id);
 
-        const stmt = db.prepare('SELECT filename, folder_id FROM generations WHERE id = ?');
-        const deleteStmt = db.prepare('DELETE FROM generations WHERE id = ?');
+        if (fetchError) throw fetchError;
 
-        const transaction = db.transaction(() => {
-            for (const id of imageIds) {
-                const image = stmt.get(id);
-                if (image) {
-                    // Delete file
-                    const filepath = getImagePath(image.folder_id, image.filename);
-                    if (fs.existsSync(filepath)) {
-                        fs.unlinkSync(filepath);
-                    }
+        // Delete from storage
+        if (images && images.length > 0) {
+            const storagePaths = images.map(img => img.storage_path);
+            const { error: storageError } = await supabase.storage
+                .from('generated-images')
+                .remove(storagePaths);
 
-                    // Delete from database
-                    deleteStmt.run(id);
-                }
+            if (storageError) {
+                console.error('Error deleting from storage:', storageError);
+                // Continue anyway - database deletion is more important
             }
-        });
+        }
 
-        transaction();
+        // Delete from database
+        const { error } = await supabase
+            .from('images')
+            .delete()
+            .in('id', imageIds)
+            .eq('user_id', user.id);
+
+        if (error) throw error;
 
         return NextResponse.json({ success: true, count: imageIds.length });
     } catch (error) {

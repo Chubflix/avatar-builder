@@ -1,41 +1,27 @@
+'use client';
+
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { flattenFoldersWithDepth } from '../utils/folderUtils';
 
 function FolderModal({ onSave, onDelete }) {
     const { state, dispatch, actions } = useApp();
-    const { showFolderModal, editingFolder, newFolderName, parentFolderId, folders } = state;
+    const { showFolderModal, editingFolder, newFolderName, selectedCharacter } = state;
 
     if (!showFolderModal) return null;
-
-    // Get flattened folders with depth for display
-    const flatFolders = flattenFoldersWithDepth(folders);
-
-    // Filter out the current folder and its descendants when editing
-    const availableParents = editingFolder
-        ? flatFolders.filter(f => {
-              // Can't be parent of itself
-              if (f.id === editingFolder.id) return false;
-              // Can't be parent if it's a descendant
-              let current = f;
-              while (current.parent_id) {
-                  if (current.parent_id === editingFolder.id) return false;
-                  current = folders.find(folder => folder.id === current.parent_id);
-                  if (!current) break;
-              }
-              return true;
-          })
-        : flatFolders;
 
     const handleClose = () => {
         dispatch({ type: actions.SET_SHOW_FOLDER_MODAL, payload: false });
         dispatch({ type: actions.SET_EDITING_FOLDER, payload: null });
         dispatch({ type: actions.SET_NEW_FOLDER_NAME, payload: '' });
-        dispatch({ type: actions.SET_PARENT_FOLDER_ID, payload: null });
     };
 
     const handleSave = () => {
-        onSave(editingFolder?.id, newFolderName, parentFolderId);
+        // Ensure character is selected when creating new folder
+        if (!editingFolder && !selectedCharacter) {
+            alert('Please select a character first');
+            return;
+        }
+        onSave(editingFolder?.id, newFolderName, selectedCharacter?.id);
     };
 
     const handleDelete = () => {
@@ -49,6 +35,35 @@ function FolderModal({ onSave, onDelete }) {
         <div className="modal-overlay" onClick={handleClose}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <h3>{editingFolder ? 'Edit Folder' : 'Create Folder'}</h3>
+
+                {!editingFolder && !selectedCharacter && (
+                    <div className="warning-message" style={{
+                        padding: '0.75rem',
+                        background: 'rgba(255, 193, 7, 0.1)',
+                        border: '1px solid rgba(255, 193, 7, 0.3)',
+                        borderRadius: '6px',
+                        color: '#ffc107',
+                        fontSize: '0.9rem',
+                        marginBottom: '1rem'
+                    }}>
+                        ⚠️ Please select a character first
+                    </div>
+                )}
+
+                {!editingFolder && selectedCharacter && (
+                    <div className="info-message" style={{
+                        padding: '0.75rem',
+                        background: 'rgba(0, 122, 255, 0.1)',
+                        border: '1px solid rgba(0, 122, 255, 0.3)',
+                        borderRadius: '6px',
+                        color: '#007aff',
+                        fontSize: '0.9rem',
+                        marginBottom: '1rem'
+                    }}>
+                        Creating folder for: <strong>{selectedCharacter.name}</strong>
+                    </div>
+                )}
+
                 <div className="form-group">
                     <label className="form-label">Folder Name</label>
                     <input
@@ -56,25 +71,11 @@ function FolderModal({ onSave, onDelete }) {
                         className="form-input"
                         value={newFolderName}
                         onChange={(e) => dispatch({ type: actions.SET_NEW_FOLDER_NAME, payload: e.target.value })}
-                        placeholder="e.g., Character Name"
+                        placeholder="e.g., Portraits, Action Poses"
                         autoFocus
                     />
                 </div>
-                <div className="form-group">
-                    <label className="form-label">Parent Folder (optional)</label>
-                    <select
-                        className="form-select"
-                        value={parentFolderId || ''}
-                        onChange={(e) => dispatch({ type: actions.SET_PARENT_FOLDER_ID, payload: e.target.value || null })}
-                    >
-                        <option value="">None (Root Level)</option>
-                        {availableParents.map(folder => (
-                            <option key={folder.id} value={folder.id}>
-                                {'  '.repeat(folder.depth || 0)}{folder.name}
-                            </option>
-                        ))}
-                    </select>
-                </div>
+
                 <div className="modal-actions">
                     {editingFolder && (
                         <button
@@ -88,7 +89,7 @@ function FolderModal({ onSave, onDelete }) {
                     <button
                         className="btn-generate"
                         onClick={handleSave}
-                        disabled={!newFolderName.trim()}
+                        disabled={!newFolderName.trim() || (!editingFolder && !selectedCharacter)}
                     >
                         {editingFolder ? 'Update' : 'Create'}
                     </button>

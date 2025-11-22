@@ -1,42 +1,49 @@
+/**
+ * Bulk Move Images API
+ * Moves multiple images to a different folder
+ */
+
 import { NextResponse } from 'next/server';
-import { getDb, getImagePath, ensureFolderDirectory } from '../../../lib/db';
-import fs from 'fs';
+import { createAuthClient } from '@/app/lib/supabase-server';
 
 export async function POST(request) {
     try {
+        const supabase = createAuthClient();
+
+        // Get authenticated user
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { imageIds, folderId } = await request.json();
 
         if (!imageIds || !Array.isArray(imageIds)) {
             return NextResponse.json({ error: 'imageIds array is required' }, { status: 400 });
         }
 
-        const db = getDb();
+        // Verify folder belongs to user if specified
+        if (folderId) {
+            const { data: folder, error: folderError } = await supabase
+                .from('folders')
+                .select('id')
+                .eq('id', folderId)
+                .eq('user_id', user.id)
+                .single();
 
-        // Ensure target folder directory exists
-        ensureFolderDirectory(folderId || null);
-
-        const stmt = db.prepare('SELECT filename, folder_id FROM generations WHERE id = ?');
-        const updateStmt = db.prepare('UPDATE generations SET folder_id = ?, file_migrated = 1 WHERE id = ?');
-
-        const transaction = db.transaction(() => {
-            for (const id of imageIds) {
-                const image = stmt.get(id);
-                if (image) {
-                    // Move file
-                    const oldPath = getImagePath(image.folder_id, image.filename);
-                    const newPath = getImagePath(folderId || null, image.filename);
-
-                    if (oldPath !== newPath && fs.existsSync(oldPath)) {
-                        fs.renameSync(oldPath, newPath);
-                    }
-
-                    // Update database
-                    updateStmt.run(folderId || null, id);
-                }
+            if (folderError || !folder) {
+                return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
             }
-        });
+        }
 
-        transaction();
+        // Update images (RLS ensures user can only update their own)
+        const { error } = await supabase
+            .from('images')
+            .update({ folder_id: folderId || null })
+            .in('id', imageIds)
+            .eq('user_id', user.id);
+
+        if (error) throw error;
 
         return NextResponse.json({ success: true, count: imageIds.length });
     } catch (error) {

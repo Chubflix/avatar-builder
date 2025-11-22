@@ -1,18 +1,42 @@
+/**
+ * Download ZIP API
+ * Creates a ZIP archive of selected images from Supabase Storage
+ */
+
 import { NextResponse } from 'next/server';
-import { getDb, getImagePath } from '../../../lib/db';
+import { createAuthClient } from '@/app/lib/supabase-server';
 import archiver from 'archiver';
-import fs from 'fs';
-import { Readable } from 'stream';
 
 export async function POST(request) {
     try {
+        const supabase = createAuthClient();
+
+        // Get authenticated user
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { imageIds } = await request.json();
 
         if (!imageIds || !Array.isArray(imageIds)) {
             return NextResponse.json({ error: 'imageIds array is required' }, { status: 400 });
         }
 
-        const db = getDb();
+        // Get image metadata
+        const { data: images, error: fetchError } = await supabase
+            .from('images')
+            .select('filename, storage_path')
+            .in('id', imageIds)
+            .eq('user_id', user.id);
+
+        if (fetchError) throw fetchError;
+
+        if (!images || images.length === 0) {
+            return NextResponse.json({ error: 'No images found' }, { status: 404 });
+        }
+
+        // Create archive
         const archive = archiver('zip', { zlib: { level: 9 } });
 
         // Create a readable stream for Next.js response
@@ -33,18 +57,31 @@ export async function POST(request) {
             writer.abort(err);
         });
 
-        // Add images to archive
-        const stmt = db.prepare('SELECT filename, folder_id FROM generations WHERE id = ?');
+        // Download and add each image to archive
+        const downloadPromises = images.map(async (image) => {
+            try {
+                // Download from Supabase Storage
+                const { data: blob, error } = await supabase.storage
+                    .from('generated-images')
+                    .download(image.storage_path);
 
-        for (const id of imageIds) {
-            const image = stmt.get(id);
-            if (image) {
-                const filepath = getImagePath(image.folder_id, image.filename);
-                if (fs.existsSync(filepath)) {
-                    archive.file(filepath, { name: image.filename });
+                if (error) {
+                    console.error(`Error downloading ${image.filename}:`, error);
+                    return;
                 }
+
+                // Convert blob to buffer
+                const buffer = Buffer.from(await blob.arrayBuffer());
+
+                // Add to archive
+                archive.append(buffer, { name: image.filename });
+            } catch (err) {
+                console.error(`Error processing ${image.filename}:`, err);
             }
-        }
+        });
+
+        // Wait for all downloads to complete
+        await Promise.all(downloadPromises);
 
         // Finalize the archive
         archive.finalize();

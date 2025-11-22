@@ -1,0 +1,116 @@
+.character-modal {
+    max-width: 500px;
+}
+
+.character-modal .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.character-modal label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-light);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.character-modal input[type="text"],
+.character-modal textarea {
+    width: 100%;
+    padding: 0.75rem;
+    background: var(--bg-dark);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 1rem;
+}
+
+.character-modal input[type="text"]:focus,
+.character-modal textarea:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.character-modal input[type="text"]:disabled,
+.character-modal textarea:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.character-modal textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.error-message {
+    padding: 0.75rem;
+    background: rgba(255, 59, 48, 0.1);
+    border: 1px solid rgba(255, 59, 48, 0.3);
+    border-radius: 6px;
+    color: #ff3b30;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.modal-actions-right {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-delete {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: var(--accent-color);
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: var(--accent-hover);
+}
+
+.btn-secondary {
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: var(--bg-hover);
+}
+
+.btn-delete {
+    background: transparent;
+    color: #ff3b30;
+    border: 1px solid rgba(255, 59, 48, 0.3);
+}
+
+.btn-delete:hover:not(:disabled) {
+    background: rgba(255, 59, 48, 0.1);
+    border-color: #ff3b30;
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-delete:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}

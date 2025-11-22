@@ -15,6 +15,8 @@ import MobileControls from './components/MobileControls';
 import PWAManager from './components/PWAManager';
 import AppSettings from './components/AppSettings';
 import PromptModal from './components/PromptModal';
+import CharacterSelector from './components/CharacterSelector';
+import CharacterModal from './components/CharacterModal';
 
 // Import CSS
 import './folder-picker.css';
@@ -345,6 +347,7 @@ function AppContent() {
                 <div className="nav-content">
                     <a href="../" className="nav-brand">Chubflix</a>
                     <div className="nav-right">
+                        <CharacterSelector />
                         <span className="nav-title">Avatar Builder</span>
                         <button
                             className="btn-settings"
@@ -397,6 +400,8 @@ function AppContent() {
             />
 
             {/* Modals */}
+            <CharacterModal />
+
             <FolderModal
                 onSave={handleSaveFolder}
                 onDelete={deleteFolder}

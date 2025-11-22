@@ -24,9 +24,9 @@ export function useFolders() {
         }
     }, [dispatch, actions]);
 
-    const createFolder = useCallback(async (name, parent_id = null) => {
+    const createFolder = useCallback(async (name, character_id) => {
         try {
-            await folderAPI.create({ name, parent_id });
+            await folderAPI.create({ name, character_id });
             await loadFolders();
             sendNotification('Folder created', 'success', dispatch, actions, state.notificationsEnabled);
         } catch (err) {
@@ -34,9 +34,9 @@ export function useFolders() {
         }
     }, [loadFolders, dispatch, actions, state.notificationsEnabled]);
 
-    const updateFolder = useCallback(async (id, name, parent_id = null) => {
+    const updateFolder = useCallback(async (id, name) => {
         try {
-            await folderAPI.update(id, { name, parent_id });
+            await folderAPI.update(id, { name });
             await loadFolders();
             dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message: 'Folder updated' } });
         } catch (err) {
@@ -45,13 +45,7 @@ export function useFolders() {
     }, [loadFolders, dispatch, actions]);
 
     const deleteFolder = useCallback(async (id) => {
-        // Get folder info to show appropriate message
-        const folder = state.folders.find(f => f.id === id);
-        const parentFolder = folder?.parent_id ? state.folders.find(f => f.id === folder.parent_id) : null;
-
-        const message = parentFolder
-            ? `Delete this folder? Images will be moved to "${parentFolder.name}". Child folders will also be deleted.`
-            : 'Delete this folder? Images will be moved to unfiled. Child folders will also be deleted.';
+        const message = 'Delete this folder? Images will be moved to unfiled.';
 
         if (!window.confirm(message)) return;
 
@@ -83,12 +77,11 @@ export function useImages() {
 
     const loadImages = useCallback(async (offset = 0, folderId = state.currentFolder) => {
         try {
-            debug.log('Images', 'Fetching images', { offset, folderId, includeSubfolders: state.includeSubfolders });
+            debug.log('Images', 'Fetching images', { offset, folderId });
             const data = await imageAPI.getAll({
                 folderId: folderId,
                 limit: 50,
-                offset,
-                includeSubfolders: state.includeSubfolders
+                offset
             });
             debug.log('Images', 'Received data', { count: data.images.length, total: data.total });
 

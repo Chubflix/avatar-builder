@@ -1,12 +1,12 @@
 /**
- * Folder Detail API
- * Manages individual folder operations
+ * Character Detail API
+ * Manages individual character operations
  */
 
 import { NextResponse } from 'next/server';
 import { createAuthClient } from '@/app/lib/supabase-server';
 
-// PUT update folder
+// PUT update character
 export async function PUT(request, { params }) {
     try {
         const supabase = createAuthClient();
@@ -21,38 +21,35 @@ export async function PUT(request, { params }) {
         const { name, description } = await request.json();
 
         if (!name?.trim()) {
-            return NextResponse.json({ error: 'Folder name is required' }, { status: 400 });
+            return NextResponse.json({ error: 'Name is required' }, { status: 400 });
         }
 
-        // Update folder (RLS ensures user can only update their own)
-        const { data: folder, error } = await supabase
-            .from('folders')
+        // Update character (RLS ensures user can only update their own)
+        const { data: character, error } = await supabase
+            .from('characters')
             .update({
                 name: name.trim(),
                 description: description?.trim() || null,
             })
             .eq('id', id)
             .eq('user_id', user.id) // Extra safety check
-            .select(`
-                *,
-                character:characters(id, name)
-            `)
+            .select()
             .single();
 
         if (error) throw error;
 
-        if (!folder) {
-            return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
+        if (!character) {
+            return NextResponse.json({ error: 'Character not found' }, { status: 404 });
         }
 
-        return NextResponse.json(folder);
+        return NextResponse.json(character);
     } catch (error) {
-        console.error('Error updating folder:', error);
+        console.error('Error updating character:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
 
-// DELETE folder
+// DELETE character
 export async function DELETE(request, { params }) {
     try {
         const supabase = createAuthClient();
@@ -65,31 +62,9 @@ export async function DELETE(request, { params }) {
 
         const { id } = params;
 
-        // Get images in this folder to delete from storage
-        const { data: images, error: imagesError } = await supabase
-            .from('images')
-            .select('storage_path')
-            .eq('folder_id', id)
-            .eq('user_id', user.id);
-
-        if (imagesError) throw imagesError;
-
-        // Delete images from storage
-        if (images && images.length > 0) {
-            const storagePaths = images.map(img => img.storage_path);
-            const { error: storageError } = await supabase.storage
-                .from('generated-images')
-                .remove(storagePaths);
-
-            if (storageError) {
-                console.error('Error deleting images from storage:', storageError);
-                // Continue anyway - database deletion is more important
-            }
-        }
-
-        // Delete folder (will set folder_id to NULL on images due to ON DELETE SET NULL)
+        // Delete character (cascade will delete folders and images)
         const { error } = await supabase
-            .from('folders')
+            .from('characters')
             .delete()
             .eq('id', id)
             .eq('user_id', user.id); // Extra safety check
@@ -98,7 +73,7 @@ export async function DELETE(request, { params }) {
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('Error deleting folder:', error);
+        console.error('Error deleting character:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

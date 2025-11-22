@@ -16,6 +16,8 @@ client/build/
 .idea/
 .vscode/
 
+.next/
+
 # OS
 .DS_Store
 Thumbs.db

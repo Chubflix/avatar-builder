@@ -1,71 +1,67 @@
+/**
+ * Images API
+ * Manages image CRUD operations with Supabase Storage
+ */
+
 import { NextResponse } from 'next/server';
-import { getDb, getImagePath, getImageUrl, ensureFolderDirectory, getDescendantFolderIds, getFolderPath } from '../../lib/db';
+import { createAuthClient } from '@/app/lib/supabase-server';
+import { uploadImage, getImageUrl } from '@/app/lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
-import fs from 'fs';
-import path from 'path';
 
 // GET images with pagination and optional folder filter
 export async function GET(request) {
     try {
+        const supabase = createAuthClient();
+
+        // Get authenticated user
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { searchParams } = new URL(request.url);
         const limit = parseInt(searchParams.get('limit')) || 50;
         const offset = parseInt(searchParams.get('offset')) || 0;
         const folderId = searchParams.get('folder_id');
-        const includeSubfolders = searchParams.get('include_subfolders') !== 'false';
 
-        const db = getDb();
+        // Build query
+        let query = supabase
+            .from('images')
+            .select(`
+                *,
+                folder:folders(id, name, character:characters(id, name))
+            `, { count: 'exact' })
+            .eq('user_id', user.id);
 
-        let query = `
-            SELECT g.*, f.name as folder_name
-            FROM generations g
-            LEFT JOIN character_folders f ON g.folder_id = f.id
-        `;
-        let countQuery = 'SELECT COUNT(*) as total FROM generations';
-        let params = [];
-        let countParams = [];
-
+        // Filter by folder
         if (folderId === 'null' || folderId === 'unfiled') {
-            // Show only unfiled images
-            query += ' WHERE g.folder_id IS NULL';
-            countQuery += ' WHERE folder_id IS NULL';
+            query = query.is('folder_id', null);
         } else if (folderId) {
-            if (includeSubfolders) {
-                // Show images in this folder and all descendant folders
-                const descendantIds = getDescendantFolderIds(db, folderId);
-                const allFolderIds = [folderId, ...descendantIds];
-                const placeholders = allFolderIds.map(() => '?').join(',');
-
-                query += ` WHERE g.folder_id IN (${placeholders})`;
-                countQuery += ` WHERE folder_id IN (${placeholders})`;
-                params = [...allFolderIds]; // Create a copy
-                countParams = [...allFolderIds]; // Create a separate copy
-            } else {
-                // Show images only in this specific folder
-                query += ' WHERE g.folder_id = ?';
-                countQuery += ' WHERE folder_id = ?';
-                params = [folderId];
-                countParams = [folderId];
-            }
+            query = query.eq('folder_id', folderId);
         }
 
-        query += ' ORDER BY g.created_at DESC LIMIT ? OFFSET ?';
-        params.push(limit, offset);
+        // Pagination
+        query = query
+            .order('created_at', { ascending: false })
+            .range(offset, offset + limit - 1);
 
-        const images = db.prepare(query).all(...params);
+        const { data: images, error, count } = await query;
 
-        // Add image URLs and full folder paths
+        if (error) throw error;
+
+        // Add image URLs
         const imagesWithUrls = images.map(img => ({
             ...img,
-            url: getImageUrl(img.folder_id, img.filename),
-            folder_path: getFolderPath(db, img.folder_id)
+            url: getImageUrl(img.storage_path),
+            folder_name: img.folder?.name || null,
+            folder_path: img.folder ? `${img.folder.character?.name || 'Unknown'}/${img.folder.name}` : null
         }));
 
-        const total = db.prepare(countQuery).get(...countParams).total;
-        const hasMore = offset + images.length < total;
+        const hasMore = offset + images.length < count;
 
         return NextResponse.json({
             images: imagesWithUrls,
-            total,
+            total: count,
             hasMore
         });
     } catch (error) {
@@ -77,6 +73,14 @@ export async function GET(request) {
 // POST save new image
 export async function POST(request) {
     try {
+        const supabase = createAuthClient();
+
+        // Get authenticated user
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const {
             imageData,
             positivePrompt,
@@ -98,62 +102,68 @@ export async function POST(request) {
             loras
         } = await request.json();
 
-        const db = getDb();
         const id = uuidv4();
         const filename = `${id}.png`;
 
-        // Ensure folder directory exists
-        const targetDir = ensureFolderDirectory(folderId || null);
-        const filepath = path.join(targetDir, filename);
-
-        // Save image to file
+        // Convert base64 to blob
         const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
-        fs.writeFileSync(filepath, base64Data, 'base64');
+        const buffer = Buffer.from(base64Data, 'base64');
+        const blob = new Blob([buffer], { type: 'image/png' });
 
-        // Save to database
-        const stmt = db.prepare(`
-            INSERT INTO generations (
-                id, filename, positive_prompt, negative_prompt, model,
-                orientation, width, height, batch_size, sampler_name,
-                scheduler, steps, cfg_scale, seed, adetailer_enabled,
-                adetailer_model, info_json, folder_id, file_migrated, loras
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
+        // Upload to Supabase Storage
+        const storagePath = `${user.id}/${filename}`;
+        const { error: uploadError } = await supabase.storage
+            .from('generated-images')
+            .upload(storagePath, blob, {
+                contentType: 'image/png',
+                cacheControl: '3600'
+            });
 
-        stmt.run(
-            id,
-            filename,
-            positivePrompt,
-            negativePrompt,
-            model,
-            orientation,
-            width,
-            height,
-            batchSize,
-            samplerName,
-            scheduler,
-            steps,
-            cfgScale,
-            seed,
-            adetailerEnabled ? 1 : 0,
-            adetailerModel,
-            JSON.stringify(info || {}),
-            folderId || null,
-            1, // Already in correct location
-            loras ? JSON.stringify(loras) : null
-        );
+        if (uploadError) throw uploadError;
 
-        const saved = db.prepare(`
-            SELECT g.*, f.name as folder_name
-            FROM generations g
-            LEFT JOIN character_folders f ON g.folder_id = f.id
-            WHERE g.id = ?
-        `).get(id);
+        // Save metadata to database
+        const { data: image, error } = await supabase
+            .from('images')
+            .insert({
+                id,
+                filename,
+                storage_path: storagePath,
+                positive_prompt: positivePrompt,
+                negative_prompt: negativePrompt,
+                model,
+                orientation,
+                width,
+                height,
+                batch_size: batchSize,
+                sampler_name: samplerName,
+                scheduler,
+                steps,
+                cfg_scale: cfgScale,
+                seed,
+                adetailer_enabled: adetailerEnabled,
+                adetailer_model: adetailerModel,
+                info_json: info || {},
+                folder_id: folderId || null,
+                loras: loras || null,
+                user_id: user.id
+            })
+            .select(`
+                *,
+                folder:folders(id, name, character:characters(id, name))
+            `)
+            .single();
+
+        if (error) {
+            // Cleanup: delete uploaded file if database insert fails
+            await supabase.storage.from('generated-images').remove([storagePath]);
+            throw error;
+        }
 
         return NextResponse.json({
-            ...saved,
-            url: getImageUrl(saved.folder_id, saved.filename),
-            folder_path: getFolderPath(db, saved.folder_id)
+            ...image,
+            url: getImageUrl(image.storage_path),
+            folder_name: image.folder?.name || null,
+            folder_path: image.folder ? `${image.folder.character?.name || 'Unknown'}/${image.folder.name}` : null
         });
     } catch (error) {
         console.error('Error saving image:', error);

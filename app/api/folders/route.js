@@ -1,23 +1,53 @@
+/**
+ * Folders API
+ * Manages folder CRUD operations (folders belong to characters)
+ */
+
 import { NextResponse } from 'next/server';
-import { getDb } from '../../lib/db';
-import { v4 as uuidv4 } from 'uuid';
+import { createAuthClient } from '@/app/lib/supabase-server';
 
-// GET all folders with image counts
-export async function GET() {
+// GET all folders for authenticated user (optionally filtered by character)
+export async function GET(request) {
     try {
-        const db = getDb();
+        const supabase = createAuthClient();
 
-        const folders = db.prepare(`
-            SELECT
-                f.*,
-                COUNT(DISTINCT g.id) as image_count
-            FROM character_folders f
-            LEFT JOIN generations g ON g.folder_id = f.id
-            GROUP BY f.id
-            ORDER BY f.name ASC
-        `).all();
+        // Get authenticated user
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
-        return NextResponse.json(folders);
+        const { searchParams } = new URL(request.url);
+        const characterId = searchParams.get('character_id');
+
+        // Build query
+        let query = supabase
+            .from('folders')
+            .select(`
+                *,
+                character:characters(id, name),
+                images:images(count)
+            `)
+            .eq('user_id', user.id);
+
+        // Filter by character if specified
+        if (characterId) {
+            query = query.eq('character_id', characterId);
+        }
+
+        query = query.order('name', { ascending: true });
+
+        const { data: folders, error } = await query;
+
+        if (error) throw error;
+
+        // Transform the response to include image count
+        const foldersWithCount = folders.map(folder => ({
+            ...folder,
+            image_count: folder.images[0]?.count || 0,
+        }));
+
+        return NextResponse.json(foldersWithCount);
     } catch (error) {
         console.error('Error fetching folders:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -27,23 +57,52 @@ export async function GET() {
 // POST create new folder
 export async function POST(request) {
     try {
-        const { name, description, parent_id } = await request.json();
+        const supabase = createAuthClient();
 
-        if (!name || !name.trim()) {
+        // Get authenticated user
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { name, description, character_id } = await request.json();
+
+        if (!name?.trim()) {
             return NextResponse.json({ error: 'Folder name is required' }, { status: 400 });
         }
 
-        const db = getDb();
-        const id = uuidv4();
+        if (!character_id) {
+            return NextResponse.json({ error: 'Character ID is required' }, { status: 400 });
+        }
 
-        const stmt = db.prepare(`
-            INSERT INTO character_folders (id, name, description, parent_id)
-            VALUES (?, ?, ?, ?)
-        `);
+        // Verify character belongs to user
+        const { data: character, error: charError } = await supabase
+            .from('characters')
+            .select('id')
+            .eq('id', character_id)
+            .eq('user_id', user.id)
+            .single();
 
-        stmt.run(id, name.trim(), description || null, parent_id || null);
+        if (charError || !character) {
+            return NextResponse.json({ error: 'Character not found' }, { status: 404 });
+        }
 
-        const folder = db.prepare('SELECT * FROM character_folders WHERE id = ?').get(id);
+        // Create folder
+        const { data: folder, error } = await supabase
+            .from('folders')
+            .insert({
+                name: name.trim(),
+                description: description?.trim() || null,
+                character_id,
+                user_id: user.id
+            })
+            .select(`
+                *,
+                character:characters(id, name)
+            `)
+            .single();
+
+        if (error) throw error;
 
         return NextResponse.json(folder);
     } catch (error) {

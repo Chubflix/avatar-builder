@@ -11,9 +11,15 @@ const API_BASE = process.env.REACT_APP_API_BASE || '';
 export const folderAPI = {
     /**
      * Get all folders with image counts
+     * Optionally filter by character_id
      */
-    async getAll() {
-        const response = await fetch(`${API_BASE}/api/folders`);
+    async getAll(characterId = null) {
+        let url = `${API_BASE}/api/folders`;
+        if (characterId) {
+            url += `?character_id=${characterId}`;
+        }
+
+        const response = await fetch(url);
         if (!response.ok) {
             throw new Error('Failed to load folders');
         }
@@ -21,13 +27,13 @@ export const folderAPI = {
     },
 
     /**
-     * Create a new folder
+     * Create a new folder (requires character_id)
      */
-    async create({ name, description = null, parent_id = null }) {
+    async create({ name, description = null, character_id }) {
         const response = await fetch(`${API_BASE}/api/folders`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, description, parent_id })
+            body: JSON.stringify({ name, description, character_id })
         });
 
         if (!response.ok) {
@@ -41,11 +47,11 @@ export const folderAPI = {
     /**
      * Update a folder
      */
-    async update(id, { name, description = null, parent_id = null }) {
+    async update(id, { name, description = null }) {
         const response = await fetch(`${API_BASE}/api/folders/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, description, parent_id })
+            body: JSON.stringify({ name, description })
         });
 
         if (!response.ok) {
@@ -79,12 +85,11 @@ export const imageAPI = {
     /**
      * Get images with optional folder filter
      */
-    async getAll({ folderId = null, limit = 50, offset = 0, includeSubfolders = true } = {}) {
+    async getAll({ folderId = null, limit = 50, offset = 0 } = {}) {
         let url = `${API_BASE}/api/images?limit=${limit}&offset=${offset}`;
         if (folderId) {
             url += `&folder_id=${folderId}`;
         }
-        url += `&include_subfolders=${includeSubfolders}`;
 
         const response = await fetch(url);
         if (!response.ok) {
