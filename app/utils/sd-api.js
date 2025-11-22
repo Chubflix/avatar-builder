@@ -90,6 +90,22 @@ class StableDiffusionAPI {
     }
 
     /**
+     * Skip current generation
+     */
+    async skip() {
+        debug.log('SD-API', 'Skipping current generation');
+        const response = await this.fetchWithTimeout(`${this.baseUrl}/sdapi/v1/skip`, {
+            method: 'POST'
+        }, 5000);
+        if (!response.ok) {
+            debug.warn('SD-API', 'Skip request failed', { status: response.status });
+            throw new Error('Failed to skip generation');
+        }
+        debug.log('SD-API', 'Skip successful');
+        return await response.json();
+    }
+
+    /**
      * Generate images using txt2img
      */
     async generateImage({

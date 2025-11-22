@@ -1,5 +1,25 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 
+// Cookie utilities
+const setCookie = (name, value, days = 365) => {
+    if (typeof window === 'undefined') return;
+    const expires = new Date();
+    expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+    document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+};
+
+const getCookie = (name) => {
+    if (typeof window === 'undefined') return null;
+    const nameEQ = name + '=';
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+};
+
 // Action types
 const ActionTypes = {
     // Config
@@ -379,12 +399,51 @@ export function AppProvider({ children }) {
                 dispatch({ type: ActionTypes.SET_BATCH_SIZE, payload: settings.batchSize || config.defaults.batchSize });
                 dispatch({ type: ActionTypes.SET_SEED, payload: settings.seed !== undefined ? settings.seed : -1 });
                 dispatch({ type: ActionTypes.SET_SHOW_ADVANCED, payload: settings.showAdvanced || false });
-                dispatch({ type: ActionTypes.SET_SELECTED_FOLDER, payload: settings.selectedFolder || '' });
+
+                // Load selectedFolder from cookie instead of localStorage
+                const selectedFolderFromCookie = getCookie('selectedFolder');
+                dispatch({ type: ActionTypes.SET_SELECTED_FOLDER, payload: selectedFolderFromCookie || '' });
+
                 dispatch({ type: ActionTypes.SET_CURRENT_FOLDER, payload: settings.currentFolder || null });
                 dispatch({ type: ActionTypes.SET_NOTIFICATIONS_ENABLED, payload: settings.notificationsEnabled !== undefined ? settings.notificationsEnabled : true });
                 dispatch({ type: ActionTypes.SET_SHOW_IMAGE_INFO, payload: settings.showImageInfo !== undefined ? settings.showImageInfo : true });
                 dispatch({ type: ActionTypes.SET_HIDE_NSFW, payload: settings.hideNsfw !== undefined ? settings.hideNsfw : false });
                 dispatch({ type: ActionTypes.SET_LOCKS, payload: settings.locks !== undefined ? settings.locks : {} });
+
+                // Check for existing generation queue from sessionStorage
+                const savedQueue = sessionStorage.getItem('generationQueue');
+                if (savedQueue) {
+                    try {
+                        const queue = JSON.parse(savedQueue);
+                        if (Array.isArray(queue) && queue.length > 0) {
+                            // Queue exists from previous session - skip any pending SD generation
+                            console.log('Found existing queue from previous session, skipping SD generation and clearing queue');
+
+                            // Clear the queue from state immediately
+                            dispatch({ type: ActionTypes.CLEAR_QUEUE });
+                            dispatch({ type: ActionTypes.SET_GENERATING, payload: false });
+                            dispatch({ type: ActionTypes.SET_PROGRESS, payload: 0 });
+
+                            // Import SD API dynamically to avoid circular dependencies
+                            import('../utils/sd-api').then(({ default: sdAPI }) => {
+                                // Set base URL from config
+                                sdAPI.setBaseUrl(config.api.baseUrl);
+
+                                // Skip current generation
+                                sdAPI.skip().catch(err => {
+                                    console.warn('Failed to skip SD generation (may not be running):', err.message);
+                                }).finally(() => {
+                                    // Clear the queue in sessionStorage
+                                    sessionStorage.removeItem('generationQueue');
+                                });
+                            });
+                        }
+                    } catch (err) {
+                        console.error('Failed to process generation queue:', err);
+                        // Clear invalid queue data
+                        sessionStorage.removeItem('generationQueue');
+                    }
+                }
 
                 // Load lora settings
                 if (settings.loraSliders) {
@@ -413,7 +472,7 @@ export function AppProvider({ children }) {
         return false;
     }, []);
 
-    // Save settings to localStorage
+    // Save settings to localStorage (excluding selectedFolder which uses cookie)
     useEffect(() => {
         if (typeof window === 'undefined' || !state.settingsLoaded) return;
 
@@ -426,7 +485,6 @@ export function AppProvider({ children }) {
             batchSize: state.batchSize,
             seed: state.seed,
             showAdvanced: state.showAdvanced,
-            selectedFolder: state.selectedFolder,
             currentFolder: state.currentFolder,
             notificationsEnabled: state.notificationsEnabled,
             showImageInfo: state.showImageInfo,
@@ -450,7 +508,6 @@ export function AppProvider({ children }) {
         state.batchSize,
         state.seed,
         state.showAdvanced,
-        state.selectedFolder,
         state.currentFolder,
         state.notificationsEnabled,
         state.showImageInfo,
@@ -461,6 +518,28 @@ export function AppProvider({ children }) {
         state.settingsLoaded,
         state.locks,
     ]);
+
+    // Save selectedFolder to cookie
+    useEffect(() => {
+        if (typeof window === 'undefined' || !state.settingsLoaded) return;
+        setCookie('selectedFolder', state.selectedFolder || '', 365);
+    }, [state.selectedFolder, state.settingsLoaded]);
+
+    // Save generation queue to sessionStorage
+    useEffect(() => {
+        if (typeof window === 'undefined' || !state.settingsLoaded) return;
+
+        try {
+            if (state.generationQueue.length > 0) {
+                sessionStorage.setItem('generationQueue', JSON.stringify(state.generationQueue));
+            } else {
+                // Clear sessionStorage if queue is empty
+                sessionStorage.removeItem('generationQueue');
+            }
+        } catch (err) {
+            console.error('Failed to save generation queue:', err);
+        }
+    }, [state.generationQueue, state.settingsLoaded]);
 
     const value = {
         state,
