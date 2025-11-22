@@ -1,51 +1,59 @@
 /**
  * Supabase Server Client
  * For use in API routes and server components
+ *
+ * IMPORTANT: Uses @supabase/ssr for proper Next.js cookie handling
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient as createSSRServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-
-/**
- * Create Supabase client for server-side operations
- * Uses service role key for admin operations (bypasses RLS)
- */
-export function createServerClient() {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        throw new Error('Missing Supabase server environment variables');
-    }
-
-    return createClient(supabaseUrl, supabaseServiceKey, {
-        auth: {
-            persistSession: false,
-            autoRefreshToken: false,
-        }
-    });
-}
 
 /**
  * Create Supabase client with user session from cookies
  * Respects RLS policies
+ *
+ * This is the main function to use in API routes
  */
 export function createAuthClient() {
     const cookieStore = cookies();
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-    if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error('Missing Supabase environment variables');
-    }
-
-    return createClient(supabaseUrl, supabaseAnonKey, {
-        cookies: {
-            get(name) {
-                return cookieStore.get(name)?.value;
+    return createSSRServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        {
+            cookies: {
+                get(name) {
+                    return cookieStore.get(name)?.value;
+                },
+                set(name, value, options) {
+                    try {
+                        cookieStore.set({ name, value, ...options });
+                    } catch (error) {
+                        // The `set` method was called from a Server Component.
+                        // This can be ignored if you have middleware refreshing
+                        // user sessions.
+                    }
+                },
+                remove(name, options) {
+                    try {
+                        cookieStore.set({ name, value: '', ...options });
+                    } catch (error) {
+                        // The `delete` method was called from a Server Component.
+                        // This can be ignored if you have middleware refreshing
+                        // user sessions.
+                    }
+                },
             },
-        },
-    });
+        }
+    );
+}
+
+/**
+ * Legacy alias for backwards compatibility
+ * @deprecated Use createAuthClient instead
+ */
+export function createServerClient() {
+    return createAuthClient();
 }
 
 /**
