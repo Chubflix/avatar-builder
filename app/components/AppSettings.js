@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import HelpModal from './HelpModal';
 import './AppSettings.css';
 
 export default function AppSettings() {
     const { state, dispatch, actions } = useApp();
     const [isClosing, setIsClosing] = useState(false);
+    const [showHelp, setShowHelp] = useState(false);
 
     const handleClose = () => {
         setIsClosing(true);
@@ -20,6 +22,13 @@ export default function AppSettings() {
         dispatch({
             type: actions.SET_NOTIFICATIONS_ENABLED,
             payload: !state.notificationsEnabled
+        });
+    };
+
+    const handleToggleImageInfo = () => {
+        dispatch({
+            type: actions.SET_SHOW_IMAGE_INFO,
+            payload: !state.showImageInfo
         });
     };
 
@@ -52,6 +61,28 @@ export default function AppSettings() {
                                 <span className="toggle-slider"></span>
                             </label>
                         </div>
+
+                        <div className="setting-item">
+                            <div className="setting-label">
+                                <i className="fa fa-info-circle"></i>
+                                <span>Show Image Info</span>
+                            </div>
+                            <label className="toggle-switch">
+                                <input
+                                    type="checkbox"
+                                    checked={state.showImageInfo}
+                                    onChange={handleToggleImageInfo}
+                                />
+                                <span className="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div className="settings-footer">
+                            <button className="help-link" onClick={() => setShowHelp(true)}>
+                                <i className="fa fa-question-circle"></i>
+                                HELP
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -79,8 +110,32 @@ export default function AppSettings() {
                             <span className="toggle-slider"></span>
                         </label>
                     </div>
+
+                    <div className="setting-item">
+                        <div className="setting-label">
+                            <i className="fa fa-info-circle"></i>
+                            <span>Show Image Info</span>
+                        </div>
+                        <label className="toggle-switch">
+                            <input
+                                type="checkbox"
+                                checked={state.showImageInfo}
+                                onChange={handleToggleImageInfo}
+                            />
+                            <span className="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div className="settings-footer">
+                        <button className="help-link" onClick={() => setShowHelp(true)}>
+                            <i className="fa fa-question-circle"></i>
+                            HELP
+                        </button>
+                    </div>
                 </div>
             </div>
+
+            <HelpModal show={showHelp} onClose={() => setShowHelp(false)} />
         </>
     );
 }

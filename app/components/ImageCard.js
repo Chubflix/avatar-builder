@@ -4,7 +4,7 @@ import {imageAPI, API_BASE} from '../utils/backend-api';
 
 function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageMove, index}) {
     const {state, dispatch, actions} = useApp();
-    const {selectedImages, isSelecting, lastClickedIndex} = state;
+    const {selectedImages, isSelecting, lastClickedIndex, showImageInfo} = state;
 
     const imageSrc = `${API_BASE}${image.url || `/generated/${image.filename}`}`;
     const isSelected = selectedImages.includes(image.id);
@@ -102,13 +102,15 @@ function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageM
                     </button>
                 </div>}
             </div>
-            <div className="image-info">
-                {new Date(image.created_at).toLocaleString()}
-                {image.seed && image.seed !== -1 && (
-                    <span> • Seed: {image.seed}</span>
-                )}
-            </div>
-            <div className="image-tags">
+            {showImageInfo && (
+                <>
+                    <div className="image-info">
+                        {new Date(image.created_at).toLocaleString()}
+                        {image.seed && image.seed !== -1 && (
+                            <span> • Seed: {image.seed}</span>
+                        )}
+                    </div>
+                    <div className="image-tags">
                 {image.folder_path ? (
                     // Split path into individual badges with separators
                     <>
@@ -206,7 +208,9 @@ function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageM
                         </button>
                     </div>
                 )}
-            </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 }

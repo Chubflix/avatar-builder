@@ -177,6 +177,38 @@
     transform: translateX(22px);
 }
 
+/* Settings Footer & Help Link */
+.settings-footer {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: center;
+}
+
+.help-link {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.help-link:hover {
+    color: var(--text-primary);
+}
+
+.help-link i {
+    font-size: 1rem;
+}
+
 /* Animations */
 @keyframes fadeIn {
     from {

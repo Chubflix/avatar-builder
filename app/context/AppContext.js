@@ -71,6 +71,7 @@ const ActionTypes = {
 
     // App settings
     SET_NOTIFICATIONS_ENABLED: 'SET_NOTIFICATIONS_ENABLED',
+    SET_SHOW_IMAGE_INFO: 'SET_SHOW_IMAGE_INFO',
 
     // Bulk actions
     RESET_TO_DEFAULTS: 'RESET_TO_DEFAULTS',
@@ -147,6 +148,7 @@ const initialState = {
 
     // App settings
     notificationsEnabled: true,
+    showImageInfo: true,
 
     // Lora settings
     loraSliders: {}, // { 'Age': { enabled: false, value: 0 }, ... }
@@ -279,6 +281,8 @@ function appReducer(state, action) {
             return { ...state, showPromptModal: action.payload };
         case ActionTypes.SET_NOTIFICATIONS_ENABLED:
             return { ...state, notificationsEnabled: action.payload };
+        case ActionTypes.SET_SHOW_IMAGE_INFO:
+            return { ...state, showImageInfo: action.payload };
         case ActionTypes.RESET_TO_DEFAULTS:
             return {
                 ...state,
@@ -366,6 +370,7 @@ export function AppProvider({ children }) {
                 dispatch({ type: ActionTypes.SET_SELECTED_FOLDER, payload: settings.selectedFolder || '' });
                 dispatch({ type: ActionTypes.SET_CURRENT_FOLDER, payload: settings.currentFolder || null });
                 dispatch({ type: ActionTypes.SET_NOTIFICATIONS_ENABLED, payload: settings.notificationsEnabled !== undefined ? settings.notificationsEnabled : true });
+                dispatch({ type: ActionTypes.SET_SHOW_IMAGE_INFO, payload: settings.showImageInfo !== undefined ? settings.showImageInfo : true });
                 dispatch({ type: ActionTypes.SET_LOCKS, payload: settings.locks !== undefined ? settings.locks : {} });
 
                 // Load lora settings
@@ -411,6 +416,7 @@ export function AppProvider({ children }) {
             selectedFolder: state.selectedFolder,
             currentFolder: state.currentFolder,
             notificationsEnabled: state.notificationsEnabled,
+            showImageInfo: state.showImageInfo,
             loraSliders: state.loraSliders,
             loraToggles: state.loraToggles,
             loraStyle: state.loraStyle,
@@ -433,6 +439,7 @@ export function AppProvider({ children }) {
         state.selectedFolder,
         state.currentFolder,
         state.notificationsEnabled,
+        state.showImageInfo,
         state.loraSliders,
         state.loraToggles,
         state.loraStyle,
