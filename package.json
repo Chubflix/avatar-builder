@@ -11,10 +11,8 @@
     "supabase:stop": "supabase stop",
     "supabase:status": "supabase status",
     "supabase:reset": "supabase db reset",
-    "migrate": "NODE_TLS_REJECT_UNAUTHORIZED=0 node scripts/run-migrations.js",
     "migrate:cli": "supabase db push",
-    "migrate:new": "supabase migration new",
-    "vercel-build": "NODE_TLS_REJECT_UNAUTHORIZED=0 yarn migrate && next build"
+    "migrate:new": "supabase migration new"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",
