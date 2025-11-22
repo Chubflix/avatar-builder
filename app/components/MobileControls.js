@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import FolderSelector from './FolderSelector';
 import LoraSettings from './LoraSettings';
 import MobileToast from './MobileToast';
+import MobileSlideout from './MobileSlideout';
 
 function MobileControls({ onGenerate, onResetDefaults }) {
     const { state, dispatch, actions } = useApp();
     const [showFolderSelector, setShowFolderSelector] = useState(false);
-    const [isClosingSettings, setIsClosingSettings] = useState(false);
     const {
         config,
         positivePrompt,
@@ -26,15 +26,6 @@ function MobileControls({ onGenerate, onResetDefaults }) {
         generationQueue
     } = state;
 
-    // Handle settings close with animation
-    const handleCloseSettings = () => {
-        setIsClosingSettings(true);
-        setTimeout(() => {
-            dispatch({ type: actions.SET_SHOW_MOBILE_SETTINGS, payload: false });
-            setIsClosingSettings(false);
-        }, 300); // Match animation duration
-    };
-
     if (!config) return null;
 
     return (
@@ -52,10 +43,13 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                 onDismiss={() => dispatch({ type: actions.SET_STATUS, payload: null })}
             />
 
-            {/* Settings Overlay - Sibling to input bar */}
-            {showMobileSettings && (
-                <div className={`mobile-settings-overlay ${isClosingSettings ? 'closing' : ''}`}>
-                    <div className="mobile-settings-content">
+            {/* Advanced Settings Slideout */}
+            <MobileSlideout
+                show={showMobileSettings}
+                onClose={() => dispatch({ type: actions.SET_SHOW_MOBILE_SETTINGS, payload: false })}
+                title="Advanced Settings"
+            >
+                <div className="mobile-settings-content">
                         <div className="form-group">
                             <label className="form-label">Save to Folder</label>
                             <button
@@ -167,8 +161,7 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                             Reset to Defaults
                         </button>
                     </div>
-                </div>
-            )}
+            </MobileSlideout>
 
             {/* Input Bar */}
             <div className="mobile-input-bar mobile-only-flex">
@@ -177,18 +170,24 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                     <button
                         className={`mobile-settings-btn ${showMobileSettings ? 'active' : ''}`}
                         onClick={() => {
-                            if (showMobileSettings) {
-                                handleCloseSettings();
-                            } else {
-                                dispatch({ type: actions.SET_SHOW_MOBILE_SETTINGS, payload: true });
+                            if (!showMobileSettings && state.showMobilePrompt) {
+                                // Close prompt if open
+                                dispatch({ type: actions.SET_SHOW_MOBILE_PROMPT, payload: false });
                             }
+                            dispatch({ type: actions.SET_SHOW_MOBILE_SETTINGS, payload: !showMobileSettings });
                         }}
                     >
                         <i className={`fa fa-${showMobileSettings ? 'times' : 'sliders'}`}></i>
                     </button>
                     <button
                         className="mobile-prompt-btn"
-                        onClick={() => dispatch({ type: actions.SET_SHOW_MOBILE_PROMPT, payload: !state.showMobilePrompt })}
+                        onClick={() => {
+                            if (!state.showMobilePrompt && showMobileSettings) {
+                                // Close settings if open
+                                dispatch({ type: actions.SET_SHOW_MOBILE_SETTINGS, payload: false });
+                            }
+                            dispatch({ type: actions.SET_SHOW_MOBILE_PROMPT, payload: !state.showMobilePrompt });
+                        }}
                     >
                         <i className="fa fa-pencil"></i>
                         <span>{positivePrompt || 'Enter prompt...'}</span>
