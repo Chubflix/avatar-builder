@@ -32,6 +32,13 @@ export default function AppSettings() {
         });
     };
 
+    const handleToggleHideNsfw = () => {
+        dispatch({
+            type: actions.SET_HIDE_NSFW,
+            payload: !state.hideNsfw
+        });
+    };
+
     if (!state.showAppSettings) return null;
 
     return (
@@ -72,6 +79,21 @@ export default function AppSettings() {
                                     type="checkbox"
                                     checked={state.showImageInfo}
                                     onChange={handleToggleImageInfo}
+                                />
+                                <span className="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div className="setting-item">
+                            <div className="setting-label">
+                                <i className="fa fa-eye-slash"></i>
+                                <span>Hide NSFW Images</span>
+                            </div>
+                            <label className="toggle-switch">
+                                <input
+                                    type="checkbox"
+                                    checked={state.hideNsfw}
+                                    onChange={handleToggleHideNsfw}
                                 />
                                 <span className="toggle-slider"></span>
                             </label>
@@ -121,6 +143,21 @@ export default function AppSettings() {
                                 type="checkbox"
                                 checked={state.showImageInfo}
                                 onChange={handleToggleImageInfo}
+                            />
+                            <span className="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div className="setting-item">
+                        <div className="setting-label">
+                            <i className="fa fa-eye-slash"></i>
+                            <span>Hide NSFW Images</span>
+                        </div>
+                        <label className="toggle-switch">
+                            <input
+                                type="checkbox"
+                                checked={state.hideNsfw}
+                                onChange={handleToggleHideNsfw}
                             />
                             <span className="toggle-slider"></span>
                         </label>

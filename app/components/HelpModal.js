@@ -27,6 +27,8 @@ export default function HelpModal({ show, onClose }) {
             { key: 'Arrow Left / Right', description: 'Navigate between images' },
             { key: 'Arrow Down', description: 'Close lightbox' },
             { key: 'i', description: 'Toggle generation details' },
+            { key: 'f', description: 'Toggle favorite' },
+            { key: 'h', description: 'Toggle NSFW' },
             { key: 'd', description: 'Delete current image' },
         ]
     };

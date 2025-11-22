@@ -416,6 +416,7 @@ function AppContent() {
                 onMoveToFolder={handleMoveToFolder}
                 onRestoreSettings={handleRestoreSettings}
                 onDelete={handleDeleteImage}
+                onLoadMore={loadMoreImages}
             />
 
             {/* App Settings */}

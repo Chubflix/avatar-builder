@@ -6,10 +6,19 @@ import ImageCard from './ImageCard';
 
 function ImageGallery({onOpenLightbox, onRestoreSettings, onDelete, onLoadMore}) {
     const {state, dispatch, actions} = useApp();
-    const {images, totalImages, hasMore, isLoadingMore, selectedImages, isSelecting} = state;
+    const {images, totalImages, hasMore, isLoadingMore, selectedImages, isSelecting, hideNsfw, showFavoritesOnly} = state;
     const [showFolderSelector, setShowFolderSelector] = useState(false);
     const [selectedImageForMove, setSelectedImageForMove] = useState(null);
     const [bulkMoveMode, setBulkMoveMode] = useState(false);
+
+    // Filter images based on NSFW and favorites settings
+    let filteredImages = images;
+    if (hideNsfw) {
+        filteredImages = filteredImages.filter(img => !img.is_nsfw);
+    }
+    if (showFavoritesOnly) {
+        filteredImages = filteredImages.filter(img => img.is_favorite);
+    }
 
     const handleSelectAll = () => {
         dispatch({type: actions.SELECT_ALL_IMAGES});
@@ -65,6 +74,26 @@ function ImageGallery({onOpenLightbox, onRestoreSettings, onDelete, onLoadMore})
         );
     }
 
+    if (filteredImages.length === 0 && hideNsfw) {
+        return (
+            <div className="empty-state">
+                <i className="fa fa-eye-slash"></i>
+                <h3>All images are hidden</h3>
+                <p>All images are marked as NSFW. Disable "Hide NSFW Images" in settings to view them.</p>
+            </div>
+        );
+    }
+
+    if (filteredImages.length === 0 && showFavoritesOnly) {
+        return (
+            <div className="empty-state">
+                <i className="fa fa-heart-o"></i>
+                <h3>No favorite images</h3>
+                <p>Mark images as favorites to see them here.</p>
+            </div>
+        );
+    }
+
     return (
         <>
             {/* Selection Toolbar */}
@@ -77,6 +106,14 @@ function ImageGallery({onOpenLightbox, onRestoreSettings, onDelete, onLoadMore})
                         >
                             <i className="fa fa-check-square-o"></i>
                             Select
+                        </button>
+                        <button
+                            className={`btn-filter ${showFavoritesOnly ? 'active' : ''}`}
+                            onClick={() => dispatch({type: actions.SET_SHOW_FAVORITES_ONLY, payload: !showFavoritesOnly})}
+                            title={showFavoritesOnly ? 'Show all images' : 'Show favorites only'}
+                        >
+                            <i className={`fa ${showFavoritesOnly ? 'fa-heart' : 'fa-heart-o'}`}></i>
+                            Favorites Only
                         </button>
                     </>
                 ) : (
@@ -133,9 +170,11 @@ function ImageGallery({onOpenLightbox, onRestoreSettings, onDelete, onLoadMore})
             </div>
 
             <div className="image-grid">
-                {images.map((image, index) => {
+                {filteredImages.map((image, filteredIndex) => {
+                    // Find the actual index in the original images array
+                    const actualIndex = images.findIndex(img => img.id === image.id);
                     return <ImageCard key={image.id}
-                                      index={index}
+                                      index={actualIndex}
                                       image={image}
                                       onRestoreSettings={onRestoreSettings}
                                       onOpenLightbox={onOpenLightbox}

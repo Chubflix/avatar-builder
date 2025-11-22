@@ -175,6 +175,27 @@ export const imageAPI = {
     },
 
     /**
+     * Update image flags (favorite, nsfw)
+     */
+    async updateFlags(id, { is_favorite, is_nsfw }) {
+        const updates = {};
+        if (is_favorite !== undefined) updates.is_favorite = is_favorite;
+        if (is_nsfw !== undefined) updates.is_nsfw = is_nsfw;
+
+        const response = await fetch(`${API_BASE}/api/images/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to update image flags');
+        }
+
+        return await response.json();
+    },
+
+    /**
      * Delete an image
      */
     async delete(id) {

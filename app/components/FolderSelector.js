@@ -59,6 +59,8 @@ function FolderSelector({ show, onClose, onSelect, currentFolderId, title = "Sel
         let filtered = folders;
         if (modalSelectedCharacter) {
             filtered = folders.filter(f => f.character_id === modalSelectedCharacter.id);
+        } else {
+            filtered = [];
         }
 
         // Then filter by search query
@@ -310,24 +312,26 @@ function FolderSelector({ show, onClose, onSelect, currentFolderId, title = "Sel
                 </div>
 
                 {/* Search Input */}
-                <div className="folder-selector-search">
-                    <i className="fa fa-search"></i>
-                    <input
-                        type="text"
-                        placeholder="Search folders..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                    {searchQuery && (
-                        <button
-                            className="clear-search-btn"
-                            onClick={() => setSearchQuery('')}
-                            title="Clear search"
-                        >
-                            <i className="fa fa-times"></i>
-                        </button>
-                    )}
-                </div>
+                {filteredFolders.length > 5 && (
+                    <div className="folder-selector-search">
+                        <i className="fa fa-search"></i>
+                        <input
+                            type="text"
+                            placeholder="Search folders..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                        {searchQuery && (
+                            <button
+                                className="clear-search-btn"
+                                onClick={() => setSearchQuery('')}
+                                title="Clear search"
+                            >
+                                <i className="fa fa-times"></i>
+                            </button>
+                        )}
+                    </div>
+                )}
 
                 {/* Folder List */}
                 <div className="folder-selector-list">

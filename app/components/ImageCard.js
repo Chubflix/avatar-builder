@@ -48,6 +48,38 @@ function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageM
         dispatch({type: actions.SET_LAST_CLICKED_INDEX, payload: imageIndex});
     };
 
+    const handleToggleFavorite = async (e) => {
+        e.stopPropagation();
+        try {
+            const updatedImage = await imageAPI.updateFlags(image.id, {
+                is_favorite: !image.is_favorite
+            });
+            dispatch({ type: actions.UPDATE_IMAGE, payload: updatedImage });
+        } catch (error) {
+            console.error('Failed to toggle favorite:', error);
+            dispatch({
+                type: actions.SET_STATUS,
+                payload: { type: 'error', message: 'Failed to update favorite' }
+            });
+        }
+    };
+
+    const handleToggleNsfw = async (e) => {
+        e.stopPropagation();
+        try {
+            const updatedImage = await imageAPI.updateFlags(image.id, {
+                is_nsfw: !image.is_nsfw
+            });
+            dispatch({ type: actions.UPDATE_IMAGE, payload: updatedImage });
+        } catch (error) {
+            console.error('Failed to toggle NSFW:', error);
+            dispatch({
+                type: actions.SET_STATUS,
+                payload: { type: 'error', message: 'Failed to update NSFW flag' }
+            });
+        }
+    };
+
     return (
         <div className={`image-card ${isSelected ? 'selected' : ''}`}>
             <div
@@ -64,6 +96,24 @@ function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageM
                             onChange={(e) => handleToggleSelection(e, image.id, index)}
                             onClick={(e) => e.stopPropagation()}
                         />
+                    </div>
+                )}
+                {!isSelecting && (
+                    <div className="image-flags">
+                        <button
+                            className={`flag-btn favorite-btn ${image.is_favorite ? 'active' : ''}`}
+                            onClick={handleToggleFavorite}
+                            title={image.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
+                        >
+                            <i className={`fa ${image.is_favorite ? 'fa-heart' : 'fa-heart-o'}`}></i>
+                        </button>
+                        <button
+                            className={`flag-btn nsfw-btn ${image.is_nsfw ? 'active' : ''}`}
+                            onClick={handleToggleNsfw}
+                            title={image.is_nsfw ? 'Mark as SFW' : 'Mark as NSFW'}
+                        >
+                            <i className={`fa ${image.is_nsfw ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                        </button>
                     </div>
                 )}
                 <img

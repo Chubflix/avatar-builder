@@ -4,10 +4,19 @@ import { imageAPI, API_BASE } from '../utils/backend-api';
 import { useFolders } from '../hooks';
 import FolderSelector from './FolderSelector';
 
-function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
+function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete, onLoadMore }) {
     const { state, dispatch, actions } = useApp();
-    const { lightboxIndex, images } = state;
+    const { lightboxIndex, images, hideNsfw, showFavoritesOnly, hasMore, isLoadingMore } = state;
     const { loadFolders } = useFolders();
+
+    // Filter images based on NSFW and favorites settings
+    let filteredImages = images;
+    if (hideNsfw) {
+        filteredImages = filteredImages.filter(img => !img.is_nsfw);
+    }
+    if (showFavoritesOnly) {
+        filteredImages = filteredImages.filter(img => img.is_favorite);
+    }
     const [touchStart, setTouchStart] = useState({ x: null, y: null });
     const [touchEnd, setTouchEnd] = useState({ x: null, y: null });
     const [showFolderSelector, setShowFolderSelector] = useState(false);
@@ -18,6 +27,7 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
     const [lastTap, setLastTap] = useState(0);
     const [isPanning, setIsPanning] = useState(false);
     const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+    const [isMousePanning, setIsMousePanning] = useState(false);
 
     // Load details state from localStorage
     const [showGenerationDetails, setShowGenerationDetails] = useState(() => {
@@ -33,7 +43,88 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
     }, [showGenerationDetails]);
 
     const minSwipeDistance = 50;
-    const currentImage = lightboxIndex !== null ? images[lightboxIndex] : null;
+
+    // Find the current image in the filtered array
+    // lightboxIndex refers to the original images array
+    const currentImageFromOriginal = lightboxIndex !== null ? images[lightboxIndex] : null;
+
+    // Find the index of this image in the filtered array
+    const filteredLightboxIndex = currentImageFromOriginal
+        ? filteredImages.findIndex(img => img.id === currentImageFromOriginal.id)
+        : null;
+
+    // Use the filtered index for display
+    const currentImage = filteredLightboxIndex !== null && filteredLightboxIndex !== -1
+        ? filteredImages[filteredLightboxIndex]
+        : null;
+
+    // Helper function to navigate to next/previous image in filtered array
+    const navigateToFilteredIndex = (newFilteredIndex) => {
+        if (newFilteredIndex >= 0 && newFilteredIndex < filteredImages.length) {
+            const targetImage = filteredImages[newFilteredIndex];
+            const originalIndex = images.findIndex(img => img.id === targetImage.id);
+            if (originalIndex !== -1) {
+                dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: originalIndex });
+            }
+        }
+    };
+
+    // If current image is filtered out, navigate like deletion: try next, then previous, then close
+    useEffect(() => {
+        if (lightboxIndex !== null && (!currentImage || filteredLightboxIndex === -1)) {
+            // Current image is filtered out, try to find next available image from current position
+
+            // Look forward from current position
+            let nextValidIndex = null;
+            for (let i = lightboxIndex + 1; i < images.length; i++) {
+                const img = images[i];
+                const passesNsfwFilter = !hideNsfw || !img.is_nsfw;
+                const passesFavFilter = !showFavoritesOnly || img.is_favorite;
+                if (passesNsfwFilter && passesFavFilter) {
+                    nextValidIndex = i;
+                    break;
+                }
+            }
+
+            if (nextValidIndex !== null) {
+                // Found a next valid image, navigate to it
+                dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: nextValidIndex });
+            } else {
+                // No next image, look backward from current position
+                let prevValidIndex = null;
+                for (let i = lightboxIndex - 1; i >= 0; i--) {
+                    const img = images[i];
+                    const passesNsfwFilter = !hideNsfw || !img.is_nsfw;
+                    const passesFavFilter = !showFavoritesOnly || img.is_favorite;
+                    if (passesNsfwFilter && passesFavFilter) {
+                        prevValidIndex = i;
+                        break;
+                    }
+                }
+
+                if (prevValidIndex !== null) {
+                    // Found a previous valid image, navigate to it
+                    dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: prevValidIndex });
+                } else {
+                    // No valid images left, close lightbox
+                    onClose();
+                }
+            }
+        }
+    }, [currentImage, filteredLightboxIndex, lightboxIndex, images, hideNsfw, showFavoritesOnly, dispatch, actions, onClose]);
+
+    // Infinite scroll: Load more images when reaching second-to-last image
+    useEffect(() => {
+        if (
+            filteredLightboxIndex !== null &&
+            filteredLightboxIndex === filteredImages.length - 2 &&
+            hasMore &&
+            !isLoadingMore &&
+            onLoadMore
+        ) {
+            onLoadMore();
+        }
+    }, [filteredLightboxIndex, filteredImages.length, hasMore, isLoadingMore, onLoadMore]);
 
     // Keyboard navigation
     useEffect(() => {
@@ -45,13 +136,13 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
                     onClose();
                     break;
                 case 'ArrowLeft':
-                    if (lightboxIndex > 0) {
-                        dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: lightboxIndex - 1 });
+                    if (filteredLightboxIndex > 0) {
+                        navigateToFilteredIndex(filteredLightboxIndex - 1);
                     }
                     break;
                 case 'ArrowRight':
-                    if (lightboxIndex < images.length - 1) {
-                        dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: lightboxIndex + 1 });
+                    if (filteredLightboxIndex < filteredImages.length - 1) {
+                        navigateToFilteredIndex(filteredLightboxIndex + 1);
                     }
                     break;
                 case 'ArrowDown':
@@ -62,6 +153,12 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
                     break;
                 case 'd':
                     onDelete(currentImage.id);
+                    break;
+                case 'f':
+                    handleToggleFavorite({ stopPropagation: () => {} });
+                    break;
+                case 'h':
+                    handleToggleNsfw({ stopPropagation: () => {} });
                     break;
                 default:
                     break;
@@ -149,10 +246,10 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
             const isLeftSwipe = distanceX > minSwipeDistance;
             const isRightSwipe = distanceX < -minSwipeDistance;
 
-            if (isLeftSwipe && lightboxIndex < images.length - 1) {
-                dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: lightboxIndex + 1 });
-            } else if (isRightSwipe && lightboxIndex > 0) {
-                dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: lightboxIndex - 1 });
+            if (isLeftSwipe && filteredLightboxIndex < filteredImages.length - 1) {
+                navigateToFilteredIndex(filteredLightboxIndex + 1);
+            } else if (isRightSwipe && filteredLightboxIndex > 0) {
+                navigateToFilteredIndex(filteredLightboxIndex - 1);
             }
         } else {
             // Vertical swipes
@@ -175,7 +272,7 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
         }
     };
 
-    // Handle double tap on image to zoom
+    // Handle double tap on image to zoom (mobile)
     const handleImageTouchEnd = (e) => {
         // Only allow zoom when details are closed
         if (showGenerationDetails) return;
@@ -197,6 +294,54 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
         }
         setLastTap(now);
     };
+
+    // Handle double click on image to zoom (desktop)
+    const handleImageDoubleClick = (e) => {
+        // Only allow zoom when details are closed
+        if (showGenerationDetails) return;
+
+        e.stopPropagation();
+        if (isZoomed) {
+            // Zoom out
+            setIsZoomed(false);
+            setPanPosition({ x: 0, y: 0 });
+        } else {
+            // Zoom in
+            setIsZoomed(true);
+        }
+    };
+
+    // Mouse handlers for panning when zoomed (desktop)
+    const handleMouseDown = (e) => {
+        if (!isZoomed) return;
+        e.preventDefault();
+        setIsMousePanning(true);
+        setPanStart({
+            x: e.clientX - panPosition.x,
+            y: e.clientY - panPosition.y
+        });
+    };
+
+    const handleMouseMove = (e) => {
+        if (!isZoomed || !isMousePanning) return;
+        e.preventDefault();
+        setPanPosition({
+            x: e.clientX - panStart.x,
+            y: e.clientY - panStart.y
+        });
+    };
+
+    const handleMouseUp = () => {
+        setIsMousePanning(false);
+    };
+
+    // Add mouse up listener to window to catch when mouse is released outside the image
+    useEffect(() => {
+        if (isMousePanning) {
+            window.addEventListener('mouseup', handleMouseUp);
+            return () => window.removeEventListener('mouseup', handleMouseUp);
+        }
+    }, [isMousePanning]);
 
     const handleMoveToFolder = async (folderId) => {
         await onMoveToFolder(currentImage.id, folderId);
@@ -233,6 +378,38 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
         onClose();
     };
 
+    const handleToggleFavorite = async (e) => {
+        e.stopPropagation();
+        try {
+            const updatedImage = await imageAPI.updateFlags(currentImage.id, {
+                is_favorite: !currentImage.is_favorite
+            });
+            dispatch({ type: actions.UPDATE_IMAGE, payload: updatedImage });
+        } catch (error) {
+            console.error('Failed to toggle favorite:', error);
+            dispatch({
+                type: actions.SET_STATUS,
+                payload: { type: 'error', message: 'Failed to update favorite' }
+            });
+        }
+    };
+
+    const handleToggleNsfw = async (e) => {
+        e.stopPropagation();
+        try {
+            const updatedImage = await imageAPI.updateFlags(currentImage.id, {
+                is_nsfw: !currentImage.is_nsfw
+            });
+            dispatch({ type: actions.UPDATE_IMAGE, payload: updatedImage });
+        } catch (error) {
+            console.error('Failed to toggle NSFW:', error);
+            dispatch({
+                type: actions.SET_STATUS,
+                payload: { type: 'error', message: 'Failed to update NSFW flag' }
+            });
+        }
+    };
+
     if (!currentImage) return null;
 
     return (
@@ -244,6 +421,25 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
             onTouchEnd={onTouchEnd}
         >
             <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
+                {!isZoomed && (
+                    <div className="lightbox-flag-controls">
+                        <button
+                            className={`lightbox-control-btn favorite-btn ${currentImage.is_favorite ? 'active' : ''}`}
+                            onClick={handleToggleFavorite}
+                            title={currentImage.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
+                        >
+                            <i className={`fa ${currentImage.is_favorite ? 'fa-heart' : 'fa-heart-o'}`}></i>
+                        </button>
+                        <button
+                            className={`lightbox-control-btn nsfw-btn ${currentImage.is_nsfw ? 'active' : ''}`}
+                            onClick={handleToggleNsfw}
+                            title={currentImage.is_nsfw ? 'Mark as SFW' : 'Mark as NSFW'}
+                        >
+                            <i className={`fa ${currentImage.is_nsfw ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                        </button>
+                    </div>
+                )}
+
                 <div className="lightbox-controls">
                     <button className="lightbox-close" onClick={onClose}>
                         <i className="fa fa-times"></i>
@@ -258,18 +454,18 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
                     </button>
                 </div>
 
-                {lightboxIndex > 0 && (
+                {filteredLightboxIndex > 0 && (
                     <button
                         className="lightbox-nav lightbox-prev"
-                        onClick={() => dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: lightboxIndex - 1 })}
+                        onClick={() => navigateToFilteredIndex(filteredLightboxIndex - 1)}
                     >
                         <i className="fa fa-chevron-left"></i>
                     </button>
                 )}
-                {lightboxIndex < images.length - 1 && (
+                {filteredLightboxIndex < filteredImages.length - 1 && (
                     <button
                         className="lightbox-nav lightbox-next"
-                        onClick={() => dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: lightboxIndex + 1 })}
+                        onClick={() => navigateToFilteredIndex(filteredLightboxIndex + 1)}
                     >
                         <i className="fa fa-chevron-right"></i>
                     </button>
@@ -281,13 +477,18 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
                             src={`${API_BASE}${currentImage.url || `/generated/${currentImage.filename}`}`}
                             alt={`Generated ${currentImage.id}`}
                             onTouchEnd={handleImageTouchEnd}
+                            onDoubleClick={handleImageDoubleClick}
+                            onMouseDown={handleMouseDown}
+                            onMouseMove={handleMouseMove}
+                            onMouseUp={handleMouseUp}
                             style={{
                                 transform: isZoomed
                                     ? `scale(2) translate(${panPosition.x / 2}px, ${panPosition.y / 2}px)`
                                     : 'scale(1)',
-                                transition: isPanning ? 'none' : 'transform 0.3s ease',
+                                transition: (isPanning || isMousePanning) ? 'none' : 'transform 0.3s ease',
                                 cursor: isZoomed ? 'move' : 'default',
-                                touchAction: isZoomed ? 'none' : 'auto'
+                                touchAction: isZoomed ? 'none' : 'auto',
+                                userSelect: 'none'
                             }}
                         />
                     </div>

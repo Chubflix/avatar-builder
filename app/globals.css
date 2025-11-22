@@ -674,6 +674,37 @@ body {
     background: var(--accent-hover);
 }
 
+.btn-filter {
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-family: inherit;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-filter:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.btn-filter.active {
+    background: #e50914;
+    color: var(--text-primary);
+    border-color: #e50914;
+}
+
+.btn-filter.active:hover {
+    background: #b20710;
+}
+
 .selection-info {
     flex: 1;
 }
@@ -1144,6 +1175,16 @@ body {
     justify-content: center;
 }
 
+.lightbox-flag-controls {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    z-index: 10;
+}
+
 .lightbox-controls {
     position: absolute;
     top: 0;
@@ -1152,6 +1193,38 @@ body {
     flex-direction: column;
     gap: 0;
     z-index: 10;
+}
+
+.lightbox-control-btn {
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.75rem 1rem;
+    transition: all 0.2s ease;
+}
+
+.lightbox-control-btn.favorite-btn {
+    border-radius: 4px 0 0 0;
+}
+
+.lightbox-control-btn.nsfw-btn {
+    border-radius: 0 0 0 4px;
+}
+
+.lightbox-control-btn:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.lightbox-control-btn.favorite-btn.active,
+.lightbox-control-btn.favorite-btn:hover {
+    color: #e50914;
+}
+
+.lightbox-control-btn.nsfw-btn.active,
+.lightbox-control-btn.nsfw-btn:hover {
+    color: #ffa500;
 }
 
 .lightbox-close {
@@ -1210,6 +1283,7 @@ body {
     align-items: center;
     justify-content: center;
     flex: 1;
+    position: relative;
 }
 
 .lightbox-image-container img {
@@ -1217,6 +1291,71 @@ body {
     max-height: 100%;
     object-fit: contain;
     border-radius: 4px;
+}
+
+/* Image flags (favorite and NSFW) for gallery */
+.image-flags {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    z-index: 10;
+}
+
+/* Hide image-flags on mobile and show on hover for desktop */
+.image-flags {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.image-wrapper:hover .image-flags {
+    opacity: 1;
+}
+
+/* Always show on mobile */
+@media (max-width: 768px) {
+    .image-flags {
+        display: none;
+    }
+}
+
+.flag-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.6);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(4px);
+}
+
+.flag-btn:hover {
+    background: rgba(0, 0, 0, 0.8);
+    transform: scale(1.1);
+}
+
+.flag-btn.favorite-btn.active {
+    color: #e50914;
+}
+
+.flag-btn.favorite-btn:hover {
+    color: #e50914;
+}
+
+.flag-btn.nsfw-btn.active {
+    color: #ffa500;
+}
+
+.flag-btn.nsfw-btn:hover {
+    color: #ffa500;
 }
 
 .lightbox-info {
