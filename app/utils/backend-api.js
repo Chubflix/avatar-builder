@@ -85,10 +85,13 @@ export const imageAPI = {
     /**
      * Get images with optional folder filter
      */
-    async getAll({ folderId = null, limit = 50, offset = 0 } = {}) {
+    async getAll({ folderId = null, character_id = null, limit = 50, offset = 0 } = {}) {
         let url = `${API_BASE}/api/images?limit=${limit}&offset=${offset}`;
         if (folderId) {
             url += `&folder_id=${folderId}`;
+        }
+        if (character_id) {
+            // url += `&character_id=${character_id}`;
         }
 
         const response = await fetch(url);

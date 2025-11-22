@@ -53,8 +53,12 @@ export async function GET(request) {
                 const folderIds = characterFolders.map(f => f.id);
                 query = query.in('folder_id', folderIds);
             } else {
-                // No folders for this character, return empty
-                query = query.eq('folder_id', 'no-match');
+                // No folders found for this character, return empty result
+                return NextResponse.json({
+                    images: [],
+                    total: 0,
+                    hasMore: false
+                });
             }
         }
 

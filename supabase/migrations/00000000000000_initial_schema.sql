@@ -52,8 +52,8 @@ CREATE TABLE IF NOT EXISTS folders (
 );
 
 -- Index for faster lookups
-CREATE INDEX idx_folders_character_id ON folders(character_id);
-CREATE INDEX idx_folders_user_id ON folders(user_id);
+CREATE INDEX IF NOT EXISTS idx_folders_character_id ON folders(character_id);
+CREATE INDEX IF NOT EXISTS idx_folders_user_id ON folders(user_id);
 
 -- Enable RLS
 ALTER TABLE folders ENABLE ROW LEVEL SECURITY;
@@ -108,9 +108,9 @@ CREATE TABLE IF NOT EXISTS images (
 );
 
 -- Indexes for faster lookups
-CREATE INDEX idx_images_folder_id ON images(folder_id);
-CREATE INDEX idx_images_user_id ON images(user_id);
-CREATE INDEX idx_images_created_at ON images(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_images_folder_id ON images(folder_id);
+CREATE INDEX IF NOT EXISTS idx_images_user_id ON images(user_id);
+CREATE INDEX IF NOT EXISTS idx_images_created_at ON images(created_at DESC);
 
 -- Enable RLS
 ALTER TABLE images ENABLE ROW LEVEL SECURITY;

@@ -14,7 +14,7 @@ export default function CharacterFolderSelector() {
         loadCharacters();
     }, []);
 
-    // Reload character images when includeSubfolders changes
+    // Reload character images when changes
     useEffect(() => {
         if (state.selectedCharacter && !state.currentFolder) {
             const loadImages = async () => {
@@ -30,11 +30,6 @@ export default function CharacterFolderSelector() {
                         let images = data.images || [];
                         let totalCount = data.total || 0;
 
-                        if (!state.includeSubfolders) {
-                            images = images.filter(img => !img.folder_id);
-                            totalCount = images.length;
-                        }
-
                         dispatch({ type: actions.SET_IMAGES, payload: images });
                         dispatch({ type: actions.SET_TOTAL_IMAGES, payload: totalCount });
                         dispatch({ type: actions.SET_HAS_MORE, payload: data.hasMore || false });
@@ -47,7 +42,7 @@ export default function CharacterFolderSelector() {
             };
             loadImages();
         }
-    }, [state.includeSubfolders, state.selectedCharacter, state.currentFolder, dispatch, actions]);
+    }, [state.selectedCharacter, state.currentFolder, dispatch, actions]);
 
     const loadCharacters = async () => {
         try {
@@ -102,6 +97,7 @@ export default function CharacterFolderSelector() {
             if (response.ok) {
                 const data = await response.json();
                 dispatch({ type: actions.SET_IMAGES, payload: data.images || [] });
+                dispatch({ type: actions.SET_TOTAL_IMAGES, payload: data.total || 0 });
             }
         } catch (error) {
             console.error('Error loading all images:', error);
@@ -125,16 +121,11 @@ export default function CharacterFolderSelector() {
             dispatch({ type: actions.SET_IMAGES, payload: [] });
             dispatch({ type: actions.SET_LOADING_IMAGES, payload: true });
 
-            // If includeSubfolders is true, load all images from character's folders
             // Otherwise, only load unfiled images for this character
             let url;
-            if (state.includeSubfolders) {
-                url = `/api/images?character_id=${characterId}&limit=50`;
-            } else {
-                // Load unfiled images - we need a different approach
-                // For now, just load character images without folders
-                url = `/api/images?character_id=${characterId}&limit=50`;
-            }
+            // Load unfiled images - we need a different approach
+            // For now, just load character images without folders
+            url = `/api/images?character_id=${characterId}&limit=50`;
 
             const response = await fetch(url);
             if (response.ok) {
@@ -143,11 +134,6 @@ export default function CharacterFolderSelector() {
                 // If not including subfolders, filter to only unfiled images
                 let images = data.images || [];
                 let totalCount = data.total || 0;
-
-                if (!state.includeSubfolders) {
-                    images = images.filter(img => !img.folder_id);
-                    totalCount = images.length; // Update count for filtered results
-                }
 
                 dispatch({ type: actions.SET_IMAGES, payload: images });
                 dispatch({ type: actions.SET_TOTAL_IMAGES, payload: totalCount });
@@ -291,6 +277,7 @@ export default function CharacterFolderSelector() {
                                 className={`folder-selector-item ${
                                     !state.selectedCharacter && !state.currentFolder ? 'active' : ''
                                 }`}
+                                style={{ marginBottom: '10px' }}
                                 onClick={handleSelectAllImages}
                             >
                                 <i className="fa fa-th"></i>

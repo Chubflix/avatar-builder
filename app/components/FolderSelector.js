@@ -374,20 +374,22 @@ function FolderSelector({ show, onClose, onSelect, currentFolderId, title = "Sel
                     )}
 
                     {!modalSelectedCharacter && (
-                        <div className="folder-selector-empty">
-                            Please select a character to view folders
-                        </div>
-                    )}
+                        <>
+                            <div className="folder-selector-empty">
+                                Please select a character to view folders
+                            </div>
 
-                    {/* Unfiled Option */}
-                    <button
-                        className={`folder-selector-item ${!currentFolderId ? 'active' : ''}`}
-                        onClick={() => handleSelect('')}
-                    >
-                        <i className="fa fa-folder-o"></i>
-                        <span>Unfiled</span>
-                        {!currentFolderId && <i className="fa fa-check"></i>}
-                    </button>
+                            {/* Unfiled Option */}
+                            <button
+                                className={`folder-selector-item ${!currentFolderId ? 'active' : ''}`}
+                                onClick={() => handleSelect(null)}
+                            >
+                                <i className="fa fa-folder-o"></i>
+                                <span>Unfiled</span>
+                                {!currentFolderId && <i className="fa fa-check"></i>}
+                            </button>
+                        </>
+                    )}
 
                     {/* Flat folder list with search */}
                     {filteredFolders.length > 0 ? (

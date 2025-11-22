@@ -75,11 +75,12 @@ export function useFolders() {
 export function useImages() {
     const { state, dispatch, actions } = useApp();
 
-    const loadImages = useCallback(async (offset = 0, folderId = state.currentFolder) => {
+    const loadImages = useCallback(async (offset = 0, folderId = state.currentFolder, characterId = state.selectedCharacter) => {
         try {
             debug.log('Images', 'Fetching images', { offset, folderId });
             const data = await imageAPI.getAll({
                 folderId: folderId,
+                characterId: characterId,
                 limit: 50,
                 offset
             });
@@ -98,7 +99,7 @@ export function useImages() {
         } catch (err) {
             debug.error('Images', 'Error loading images', err);
         }
-    }, [state.includeSubfolders, dispatch, actions]);
+    }, [dispatch, actions]);
 
     const loadMoreImages = useCallback(async () => {
         if (state.isLoadingMore || !state.hasMore) return;
