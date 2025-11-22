@@ -278,7 +278,7 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete, onLoad
         if (showGenerationDetails) return;
 
         const now = Date.now();
-        const DOUBLE_TAP_DELAY = 300;
+        const DOUBLE_TAP_DELAY = 500; // Half a second for two separate taps
 
         if (now - lastTap < DOUBLE_TAP_DELAY) {
             // Double tap detected

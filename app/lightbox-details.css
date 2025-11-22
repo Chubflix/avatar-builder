@@ -111,7 +111,7 @@
         border-radius: 8px 8px 0 0;
         padding: 1rem;
         padding-bottom: max(1rem, env(safe-area-inset-bottom));
-        z-index: 15;
+        z-index: 15000;
     }
 
     /* Adjust button sizes on mobile */

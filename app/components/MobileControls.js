@@ -188,7 +188,7 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                     </button>
                     <button
                         className="mobile-prompt-btn"
-                        onClick={() => dispatch({ type: actions.SET_SHOW_MOBILE_PROMPT, payload: true })}
+                        onClick={() => dispatch({ type: actions.SET_SHOW_MOBILE_PROMPT, payload: !state.showMobilePrompt })}
                     >
                         <i className="fa fa-pencil"></i>
                         <span>{positivePrompt || 'Enter prompt...'}</span>

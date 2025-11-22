@@ -3,12 +3,12 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import FolderSelector from './FolderSelector';
+import MobileSlideout from './MobileSlideout';
 import './MobilePromptSlideout.css';
 
 function MobilePromptSlideout({ show, onClose, onGenerate }) {
     const { state, dispatch, actions } = useApp();
     const [showFolderSelector, setShowFolderSelector] = useState(false);
-    const [isClosing, setIsClosing] = useState(false);
 
     const {
         positivePrompt,
@@ -21,20 +21,10 @@ function MobilePromptSlideout({ show, onClose, onGenerate }) {
         selectedModel
     } = state;
 
-    const handleClose = () => {
-        setIsClosing(true);
-        setTimeout(() => {
-            onClose();
-            setIsClosing(false);
-        }, 300);
-    };
-
     const handleGenerate = () => {
         onGenerate();
-        handleClose();
+        onClose();
     };
-
-    if (!show) return null;
 
     const selectedFolderName = selectedFolder
         ? folders.find(f => f.id === selectedFolder)?.name || 'Unfiled'
@@ -49,15 +39,8 @@ function MobilePromptSlideout({ show, onClose, onGenerate }) {
                 </div>
             )}
 
-            <div className={`mobile-prompt-slideout ${isClosing ? 'closing' : ''}`}>
-                <div className="slideout-header">
-                    <h2>Generate Image</h2>
-                    <button className="btn-close" onClick={handleClose}>
-                        <i className="fa fa-times"></i>
-                    </button>
-                </div>
-
-                <div className="slideout-body">
+            <MobileSlideout show={show} onClose={onClose} title="Generate Image">
+                <div className="prompt-slideout-content">
                     {/* Positive Prompt - takes remaining space */}
                     <div className="prompt-row">
                         <textarea
@@ -117,7 +100,7 @@ function MobilePromptSlideout({ show, onClose, onGenerate }) {
                         </button>
                     </div>
                 </div>
-            </div>
+            </MobileSlideout>
 
             {/* Folder Selector Modal */}
             <FolderSelector

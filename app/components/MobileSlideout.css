@@ -1,0 +1,87 @@
+/* Mobile Slideout */
+.mobile-slideout {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for iOS */
+    background: var(--bg-secondary);
+    z-index: 10001;
+    display: flex;
+    flex-direction: column;
+    animation: slideInUp 0.3s ease;
+    overflow: hidden;
+}
+
+.mobile-slideout.closing {
+    animation: slideOutDown 0.3s ease;
+}
+
+.mobile-slideout-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    padding-top: max(1rem, env(safe-area-inset-top));
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-primary);
+    flex-shrink: 0;
+}
+
+.mobile-slideout-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-primary);
+}
+
+.mobile-slideout .btn-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    transition: color 0.2s;
+}
+
+.mobile-slideout .btn-close:hover {
+    color: var(--text-primary);
+}
+
+.mobile-slideout-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    padding-bottom: 200px;
+    gap: 1rem;
+    overflow-y: auto;
+}
+
+/* Animations */
+@keyframes slideInUp {
+    from {
+        transform: translateY(100%);
+    }
+    to {
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideOutDown {
+    from {
+        transform: translateY(0);
+    }
+    to {
+        transform: translateY(100%);
+    }
+}
+
+/* Desktop - hide this component */
+@media (min-width: 769px) {
+    .mobile-slideout {
+        display: none;
+    }
+}
