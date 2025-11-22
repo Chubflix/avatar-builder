@@ -53,9 +53,11 @@ const ActionTypes = {
     // Selection
     SET_SELECTED_IMAGES: 'SET_SELECTED_IMAGES',
     TOGGLE_IMAGE_SELECTION: 'TOGGLE_IMAGE_SELECTION',
+    SELECT_IMAGE_RANGE: 'SELECT_IMAGE_RANGE',
     SELECT_ALL_IMAGES: 'SELECT_ALL_IMAGES',
     CLEAR_SELECTION: 'CLEAR_SELECTION',
     SET_IS_SELECTING: 'SET_IS_SELECTING',
+    SET_LAST_CLICKED_INDEX: 'SET_LAST_CLICKED_INDEX',
 
     // UI state
     SET_LIGHTBOX_INDEX: 'SET_LIGHTBOX_INDEX',
@@ -131,6 +133,7 @@ const initialState = {
     // Selection
     selectedImages: [],
     isSelecting: false,
+    lastClickedIndex: null,
 
     // UI state
     lightboxIndex: null,
@@ -238,12 +241,26 @@ function appReducer(state, action) {
                     ? state.selectedImages.filter(id => id !== imageId)
                     : [...state.selectedImages, imageId]
             };
+        case ActionTypes.SELECT_IMAGE_RANGE: {
+            const { startIndex, endIndex } = action.payload;
+            const start = Math.min(startIndex, endIndex);
+            const end = Math.max(startIndex, endIndex);
+            const rangeIds = state.images.slice(start, end + 1).map(img => img.id);
+            // Merge with existing selections (union)
+            const newSelection = [...new Set([...state.selectedImages, ...rangeIds])];
+            return {
+                ...state,
+                selectedImages: newSelection
+            };
+        }
         case ActionTypes.SELECT_ALL_IMAGES:
             return { ...state, selectedImages: state.images.map(img => img.id) };
         case ActionTypes.CLEAR_SELECTION:
-            return { ...state, selectedImages: [], isSelecting: false };
+            return { ...state, selectedImages: [], isSelecting: false, lastClickedIndex: null };
         case ActionTypes.SET_IS_SELECTING:
             return { ...state, isSelecting: action.payload };
+        case ActionTypes.SET_LAST_CLICKED_INDEX:
+            return { ...state, lastClickedIndex: action.payload };
         case ActionTypes.SET_LIGHTBOX_INDEX:
             return { ...state, lightboxIndex: action.payload };
         case ActionTypes.SET_SHOW_MOBILE_SETTINGS:

@@ -8,10 +8,17 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
     const { state, dispatch, actions } = useApp();
     const { lightboxIndex, images } = state;
     const { loadFolders } = useFolders();
-    const [touchStart, setTouchStart] = useState(null);
-    const [touchEnd, setTouchEnd] = useState(null);
+    const [touchStart, setTouchStart] = useState({ x: null, y: null });
+    const [touchEnd, setTouchEnd] = useState({ x: null, y: null });
     const [showFolderSelector, setShowFolderSelector] = useState(false);
-    
+
+    // Zoom state
+    const [isZoomed, setIsZoomed] = useState(false);
+    const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
+    const [lastTap, setLastTap] = useState(0);
+    const [isPanning, setIsPanning] = useState(false);
+    const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+
     // Load details state from localStorage
     const [showGenerationDetails, setShowGenerationDetails] = useState(() => {
         if (typeof window === 'undefined') return true;
@@ -77,28 +84,118 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
         };
     }, [lightboxIndex]);
 
+    // Reset zoom when image changes
+    useEffect(() => {
+        setIsZoomed(false);
+        setPanPosition({ x: 0, y: 0 });
+    }, [lightboxIndex]);
+
     // Touch handlers
     const onTouchStart = (e) => {
-        setTouchEnd(null);
-        setTouchStart(e.targetTouches[0].clientX);
+        const touch = e.targetTouches[0];
+
+        if (isZoomed) {
+            // When zoomed, start panning
+            setIsPanning(true);
+            setPanStart({
+                x: touch.clientX - panPosition.x,
+                y: touch.clientY - panPosition.y
+            });
+        } else {
+            // When not zoomed, track for swipe gestures
+            setTouchEnd({ x: null, y: null });
+            setTouchStart({
+                x: touch.clientX,
+                y: touch.clientY
+            });
+        }
     };
 
     const onTouchMove = (e) => {
-        setTouchEnd(e.targetTouches[0].clientX);
+        const touch = e.targetTouches[0];
+
+        if (isZoomed && isPanning) {
+            // Pan the zoomed image
+            e.preventDefault();
+            setPanPosition({
+                x: touch.clientX - panStart.x,
+                y: touch.clientY - panStart.y
+            });
+        } else if (!isZoomed) {
+            // Track for swipe gestures
+            setTouchEnd({
+                x: touch.clientX,
+                y: touch.clientY
+            });
+        }
     };
 
     const onTouchEnd = () => {
-        if (!touchStart || !touchEnd) return;
-
-        const distance = touchStart - touchEnd;
-        const isLeftSwipe = distance > minSwipeDistance;
-        const isRightSwipe = distance < -minSwipeDistance;
-
-        if (isLeftSwipe && lightboxIndex < images.length - 1) {
-            dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: lightboxIndex + 1 });
-        } else if (isRightSwipe && lightboxIndex > 0) {
-            dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: lightboxIndex - 1 });
+        if (isZoomed) {
+            setIsPanning(false);
+            return;
         }
+
+        if (!touchStart.x || !touchStart.y || !touchEnd.x || !touchEnd.y) return;
+
+        const distanceX = touchStart.x - touchEnd.x;
+        const distanceY = touchStart.y - touchEnd.y;
+
+        // Determine if it's primarily a horizontal or vertical swipe
+        const isHorizontalSwipe = Math.abs(distanceX) > Math.abs(distanceY);
+
+        if (isHorizontalSwipe) {
+            // Horizontal swipes for navigation
+            const isLeftSwipe = distanceX > minSwipeDistance;
+            const isRightSwipe = distanceX < -minSwipeDistance;
+
+            if (isLeftSwipe && lightboxIndex < images.length - 1) {
+                dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: lightboxIndex + 1 });
+            } else if (isRightSwipe && lightboxIndex > 0) {
+                dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: lightboxIndex - 1 });
+            }
+        } else {
+            // Vertical swipes
+            const isUpSwipe = distanceY > minSwipeDistance;
+            const isDownSwipe = distanceY < -minSwipeDistance;
+
+            if (isUpSwipe) {
+                // Swipe up: open generation details if closed
+                if (!showGenerationDetails) {
+                    setShowGenerationDetails(true);
+                }
+            } else if (isDownSwipe) {
+                // Swipe down: close generation details if open, otherwise close lightbox
+                if (showGenerationDetails) {
+                    setShowGenerationDetails(false);
+                } else {
+                    onClose();
+                }
+            }
+        }
+    };
+
+    // Handle double tap on image to zoom
+    const handleImageTouchEnd = (e) => {
+        // Only allow zoom when details are closed
+        if (showGenerationDetails) return;
+
+        const now = Date.now();
+        const DOUBLE_TAP_DELAY = 300;
+
+        if (now - lastTap < DOUBLE_TAP_DELAY) {
+            // Double tap detected
+            e.stopPropagation();
+            if (isZoomed) {
+                // Zoom out
+                setIsZoomed(false);
+                setPanPosition({ x: 0, y: 0 });
+            } else {
+                // Zoom in
+                setIsZoomed(true);
+            }
+        }
+        setLastTap(now);
     };
 
     const handleMoveToFolder = async (folderId) => {
@@ -183,6 +280,15 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete }) {
                         <img
                             src={`${API_BASE}${currentImage.url || `/generated/${currentImage.filename}`}`}
                             alt={`Generated ${currentImage.id}`}
+                            onTouchEnd={handleImageTouchEnd}
+                            style={{
+                                transform: isZoomed
+                                    ? `scale(2) translate(${panPosition.x / 2}px, ${panPosition.y / 2}px)`
+                                    : 'scale(1)',
+                                transition: isPanning ? 'none' : 'transform 0.3s ease',
+                                cursor: isZoomed ? 'move' : 'default',
+                                touchAction: isZoomed ? 'none' : 'auto'
+                            }}
                         />
                     </div>
 

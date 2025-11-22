@@ -230,7 +230,6 @@ function FolderSelector({ show, onClose, onSelect, currentFolderId, title = "Sel
                                     placeholder="Search characters..."
                                     value={characterSearchQuery}
                                     onChange={(e) => setCharacterSearchQuery(e.target.value)}
-                                    autoFocus
                                 />
                                 {characterSearchQuery && (
                                     <button

@@ -4,7 +4,7 @@ import {imageAPI, API_BASE} from '../utils/backend-api';
 
 function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageMove, index}) {
     const {state, dispatch, actions} = useApp();
-    const {selectedImages, isSelecting} = state;
+    const {selectedImages, isSelecting, lastClickedIndex} = state;
 
     const imageSrc = `${API_BASE}${image.url || `/generated/${image.filename}`}`;
     const isSelected = selectedImages.includes(image.id);
@@ -29,9 +29,23 @@ function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageM
         onDelete(imageId);
     };
 
-    const handleToggleSelection = (e, imageId) => {
+    const handleToggleSelection = (e, imageId, imageIndex) => {
         e.stopPropagation();
-        dispatch({type: actions.TOGGLE_IMAGE_SELECTION, payload: imageId});
+
+        // Check if shift key is pressed and we have a previous click
+        if (e.shiftKey && lastClickedIndex !== null) {
+            // Select range from lastClickedIndex to current index
+            dispatch({
+                type: actions.SELECT_IMAGE_RANGE,
+                payload: { startIndex: lastClickedIndex, endIndex: imageIndex }
+            });
+        } else {
+            // Normal toggle
+            dispatch({type: actions.TOGGLE_IMAGE_SELECTION, payload: imageId});
+        }
+
+        // Update last clicked index
+        dispatch({type: actions.SET_LAST_CLICKED_INDEX, payload: imageIndex});
     };
 
     return (
@@ -39,10 +53,7 @@ function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageM
             <div
                 className="image-wrapper"
                 style={{'--bg-image': `url(${imageSrc})`}}
-                onClick={() => isSelecting ? handleToggleSelection({
-                    stopPropagation: () => {
-                    }
-                }, image.id) : onOpenLightbox(index)}
+                onClick={(e) => isSelecting ? handleToggleSelection(e, image.id, index) : onOpenLightbox(index)}
             >
                 {isSelecting && (
                     <div className="image-checkbox">
@@ -50,7 +61,7 @@ function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageM
                         <input
                             type="checkbox"
                             checked={isSelected}
-                            onChange={(e) => handleToggleSelection(e, image.id)}
+                            onChange={(e) => handleToggleSelection(e, image.id, index)}
                             onClick={(e) => e.stopPropagation()}
                         />
                     </div>
