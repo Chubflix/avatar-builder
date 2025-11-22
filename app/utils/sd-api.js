@@ -82,7 +82,7 @@ class StableDiffusionAPI {
      * Get current generation progress
      */
     async getProgress() {
-        const response = await this.fetchWithTimeout(`${this.baseUrl}/sdapi/v1/progress`, {}, 5000);
+        const response = await this.fetchWithTimeout(`${this.baseUrl}/sdapi/v1/progress?skip_current_image=true`, {}, 5000);
         if (!response.ok) {
             throw new Error('Failed to fetch progress');
         }
