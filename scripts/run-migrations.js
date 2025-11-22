@@ -32,7 +32,7 @@ async function runMigrations() {
   // Check environment variables
   // Supabase connection string format:
   // postgresql://postgres:[password]@[project-ref].supabase.co:5432/postgres
-  const databaseUrl = process.env.DATABASE_URL || buildConnectionString();
+  const databaseUrl = process.env.POSTGRES_URL || buildConnectionString();
 
   if (!databaseUrl) {
     log(colors.red, '❌ Error: Missing database connection');
@@ -200,7 +200,7 @@ async function runMigrations() {
 function buildConnectionString() {
   // Build connection string from Supabase URL and password
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const dbPassword = process.env.SUPABASE_DB_PASSWORD;
+  const dbPassword = process.env.POSTGRES_PASSWORD;
 
   if (!supabaseUrl || !dbPassword) {
     return null;
