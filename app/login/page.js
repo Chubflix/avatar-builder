@@ -20,22 +20,46 @@ export default function LoginPage() {
 
         try {
             if (isSignUp) {
-                const { data } = await signUp(email, password);
+                // signUp returns data directly (not { data, error })
+                const data = await signUp(email, password);
+
+                console.log('Signup result:', data);
+                console.log('Signup session:', data?.session);
+                console.log('Signup user:', data?.user);
 
                 // In local dev with confirmations disabled, session is created immediately
                 if (data?.session) {
-                    router.push('/');
-                    router.refresh();
-                } else {
-                    // Only show this message if email confirmation is required
+                    console.log('Session created, redirecting...');
+                    // Wait a bit for cookies to be set
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    // Force full page reload to ensure middleware picks up session
+                    window.location.href = '/';
+                } else if (data?.user && !data?.session) {
+                    // User created but no session (email confirmation required)
                     setError('Check your email to confirm your account');
+                } else {
+                    setError('Signup failed - no user or session returned');
                 }
             } else {
-                await signInWithPassword(email, password);
-                router.push('/');
-                router.refresh();
+                // signInWithPassword returns data directly (not { data, error })
+                const data = await signInWithPassword(email, password);
+
+                console.log('Login result:', data);
+                console.log('Login session:', data?.session);
+                console.log('Login user:', data?.user);
+
+                if (data?.session) {
+                    console.log('Session created, redirecting...');
+                    // Wait a bit for cookies to be set
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    // Force full page reload to ensure middleware picks up session
+                    window.location.href = '/';
+                } else {
+                    setError('No session returned from login');
+                }
             }
         } catch (err) {
+            console.error('Auth error:', err);
             setError(err.message || 'Authentication failed');
         } finally {
             setLoading(false);

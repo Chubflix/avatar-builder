@@ -1,9 +1,12 @@
 /**
  * Supabase Client Configuration
  * Handles database and storage operations
+ *
+ * IMPORTANT: Uses @supabase/ssr for cookie-based sessions
+ * This ensures the middleware can read the session from cookies
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
 // Supabase configuration from environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -13,13 +16,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error('Missing Supabase environment variables');
 }
 
-// Create Supabase client (client-side)
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-    }
-});
+// Create Supabase client (client-side) with cookie storage
+// This ensures sessions are stored in cookies that middleware can read
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
 
 /**
  * Get the current authenticated user
