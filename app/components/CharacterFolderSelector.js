@@ -98,6 +98,7 @@ export default function CharacterFolderSelector() {
                 const data = await response.json();
                 dispatch({ type: actions.SET_IMAGES, payload: data.images || [] });
                 dispatch({ type: actions.SET_TOTAL_IMAGES, payload: data.total || 0 });
+                dispatch({ type: actions.SET_HAS_MORE, payload: data.hasMore || false });
             }
         } catch (error) {
             console.error('Error loading all images:', error);
