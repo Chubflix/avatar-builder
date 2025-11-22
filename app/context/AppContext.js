@@ -62,6 +62,7 @@ const ActionTypes = {
     // UI state
     SET_LIGHTBOX_INDEX: 'SET_LIGHTBOX_INDEX',
     SET_SHOW_MOBILE_SETTINGS: 'SET_SHOW_MOBILE_SETTINGS',
+    SET_SHOW_MOBILE_PROMPT: 'SET_SHOW_MOBILE_PROMPT',
     SET_SHOW_FOLDER_MODAL: 'SET_SHOW_FOLDER_MODAL',
     SET_EDITING_FOLDER: 'SET_EDITING_FOLDER',
     SET_NEW_FOLDER_NAME: 'SET_NEW_FOLDER_NAME',
@@ -141,6 +142,7 @@ const initialState = {
     // UI state
     lightboxIndex: null,
     showMobileSettings: false,
+    showMobilePrompt: false,
     showFolderModal: false,
     editingFolder: null,
     newFolderName: '',
@@ -271,6 +273,8 @@ function appReducer(state, action) {
             return { ...state, lightboxIndex: action.payload };
         case ActionTypes.SET_SHOW_MOBILE_SETTINGS:
             return { ...state, showMobileSettings: action.payload };
+        case ActionTypes.SET_SHOW_MOBILE_PROMPT:
+            return { ...state, showMobilePrompt: action.payload };
         case ActionTypes.SET_SHOW_FOLDER_MODAL:
             return { ...state, showFolderModal: action.payload };
         case ActionTypes.SET_EDITING_FOLDER:

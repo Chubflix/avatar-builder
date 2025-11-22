@@ -321,6 +321,52 @@ body {
     }
 }
 
+.mobile-prompt-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    font-family: inherit;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    height: 44px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.mobile-prompt-btn i {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.mobile-prompt-btn span {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Placeholder styling when no prompt */
+.mobile-prompt-btn span:empty::before,
+.mobile-prompt-btn span:only-child:not(:has(text))::before {
+    color: var(--text-muted);
+}
+
+/* Only apply hover effects on devices with hover capability */
+@media (hover: hover) {
+    .mobile-prompt-btn:hover {
+        border-color: var(--accent);
+    }
+}
+
 .mobile-prompt-input {
     flex: 1;
     padding: 0.75rem 1rem;

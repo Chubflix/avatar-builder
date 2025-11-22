@@ -6,7 +6,6 @@ import LoraSettings from './LoraSettings';
 function MobileControls({ onGenerate, onResetDefaults }) {
     const { state, dispatch, actions } = useApp();
     const [showFolderSelector, setShowFolderSelector] = useState(false);
-    const [isPromptFocused, setIsPromptFocused] = useState(false);
     const [isClosingSettings, setIsClosingSettings] = useState(false);
     const {
         config,
@@ -211,15 +210,13 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                     >
                         <i className={`fa fa-${showMobileSettings ? 'times' : 'sliders'}`}></i>
                     </button>
-                    <textarea
-                        className="mobile-prompt-input"
-                        value={positivePrompt}
-                        onChange={(e) => dispatch({ type: actions.SET_POSITIVE_PROMPT, payload: e.target.value })}
-                        onFocus={() => setIsPromptFocused(true)}
-                        onBlur={() => setIsPromptFocused(false)}
-                        placeholder="Enter prompt..."
-                        rows={1}
-                    />
+                    <button
+                        className="mobile-prompt-btn"
+                        onClick={() => dispatch({ type: actions.SET_SHOW_MOBILE_PROMPT, payload: true })}
+                    >
+                        <i className="fa fa-pencil"></i>
+                        <span>{positivePrompt || 'Enter prompt...'}</span>
+                    </button>
                     <button
                         className={`mobile-generate-btn ${isGenerating ? 'loading' : ''}`}
                         onClick={onGenerate}

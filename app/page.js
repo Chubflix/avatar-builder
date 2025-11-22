@@ -12,6 +12,7 @@ import ImageGallery from './components/ImageGallery';
 import FolderModal from './components/FolderModal';
 import Lightbox from './components/Lightbox';
 import MobileControls from './components/MobileControls';
+import MobilePromptSlideout from './components/MobilePromptSlideout';
 import PWAManager from './components/PWAManager';
 import AppSettings from './components/AppSettings';
 import PromptModal from './components/PromptModal';
@@ -397,6 +398,13 @@ function AppContent() {
             <MobileControls
                 onGenerate={generate}
                 onResetDefaults={handleResetDefaults}
+            />
+
+            {/* Mobile Prompt Slideout */}
+            <MobilePromptSlideout
+                show={state.showMobilePrompt}
+                onClose={() => dispatch({ type: actions.SET_SHOW_MOBILE_PROMPT, payload: false })}
+                onGenerate={generate}
             />
 
             {/* Modals */}
