@@ -36,6 +36,13 @@ body {
     min-height: 100vh;
 }
 
+/* iOS Safari - improved touch scrolling */
+@media (max-width: 768px) {
+    body {
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
 .pointer {
     cursor: pointer;
 }
@@ -101,6 +108,7 @@ body {
 @media (max-width: 768px) {
     .nav {
         padding: 1rem 1.5rem;
+        padding-top: max(1rem, env(safe-area-inset-top));
     }
 
     .btn-settings {
@@ -220,7 +228,7 @@ body {
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border);
     overflow-y: auto;
-    z-index: 1001;
+    z-index: 10002;
     padding-top: 5rem;
     animation: slideUp 0.3s ease-out;
 }
@@ -267,19 +275,7 @@ body {
     right: 0;
     flex-direction: column;
     gap: 0;
-    z-index: 1002;
-}
-
-.mobile-input-bar::before {
-    content: '';
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: calc(100px + env(safe-area-inset-bottom));
-    background: var(--bg-secondary);
-    z-index: -1;
-    pointer-events: none;
+    z-index: 10002;
 }
 
 .mobile-input-bar > div:last-child {
@@ -406,6 +402,7 @@ body {
     justify-content: center;
     flex-shrink: 0;
     transition: all 0.2s ease;
+    position: relative;
 }
 
 /* Only apply hover effects on devices with hover capability */
@@ -422,6 +419,21 @@ body {
 
 .mobile-generate-btn.loading {
     background: var(--bg-hover);
+}
+
+.mobile-generate-btn .queue-count {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: var(--accent);
+    color: var(--text-primary);
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    min-width: 20px;
+    text-align: center;
+    border: 2px solid var(--bg-secondary);
 }
 
 .mobile-progress {

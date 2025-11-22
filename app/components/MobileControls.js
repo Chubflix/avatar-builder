@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import FolderSelector from './FolderSelector';
 import LoraSettings from './LoraSettings';
+import MobileToast from './MobileToast';
 
 function MobileControls({ onGenerate, onResetDefaults }) {
     const { state, dispatch, actions } = useApp();
@@ -25,16 +26,6 @@ function MobileControls({ onGenerate, onResetDefaults }) {
         generationQueue
     } = state;
 
-    // Auto-dismiss status messages after 3 seconds
-    useEffect(() => {
-        if (status) {
-            const timer = setTimeout(() => {
-                dispatch({ type: actions.SET_STATUS, payload: null });
-            }, 3000);
-            return () => clearTimeout(timer);
-        }
-    }, [status, dispatch, actions.SET_STATUS]);
-
     // Handle settings close with animation
     const handleCloseSettings = () => {
         setIsClosingSettings(true);
@@ -48,6 +39,19 @@ function MobileControls({ onGenerate, onResetDefaults }) {
 
     return (
         <>
+            {/* Top Progress Bar */}
+            {isGenerating && (
+                <div className="mobile-top-progress">
+                    <div className="mobile-top-progress-fill" style={{ width: `${progress}%` }}></div>
+                </div>
+            )}
+
+            {/* Toast Notification */}
+            <MobileToast
+                status={status}
+                onDismiss={() => dispatch({ type: actions.SET_STATUS, payload: null })}
+            />
+
             {/* Settings Overlay - Sibling to input bar */}
             {showMobileSettings && (
                 <div className={`mobile-settings-overlay ${isClosingSettings ? 'closing' : ''}`}>
@@ -166,36 +170,8 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                 </div>
             )}
 
-            {/* Input Bar with integrated notifications */}
+            {/* Input Bar */}
             <div className="mobile-input-bar mobile-only-flex">
-                {/* Status Overlay - Inside input bar */}
-                {(isGenerating || generationQueue.length > 0 || status) && (
-                    <div className="mobile-overlay-container">
-                        {isGenerating && (
-                            <div className="mobile-progress">
-                                <div className="progress-bar">
-                                    <div
-                                        className="progress-fill"
-                                        style={{ width: `${progress}%` }}
-                                    ></div>
-                                </div>
-                            </div>
-                        )}
-
-                        {generationQueue.length > 0 && (
-                            <div className="mobile-queue-status">
-                                {generationQueue.length} {generationQueue.length === 1 ? 'generation' : 'generations'} queued...
-                            </div>
-                        )}
-
-                        {status && (
-                            <div className={`mobile-status ${status.type}`}>
-                                {status.message}
-                            </div>
-                        )}
-                    </div>
-                )}
-
                 {/* Input controls */}
                 <div>
                     <button
@@ -223,7 +199,12 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                         disabled={!selectedModel}
                     >
                         {isGenerating ? (
-                            <div className="spinner"></div>
+                            <>
+                                <div className="spinner"></div>
+                                {generationQueue.length > 0 && (
+                                    <span className="queue-count">{generationQueue.length}</span>
+                                )}
+                            </>
                         ) : (
                             <i className="fa fa-magic"></i>
                         )}

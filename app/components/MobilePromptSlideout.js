@@ -65,7 +65,6 @@ function MobilePromptSlideout({ show, onClose, onGenerate }) {
                             value={positivePrompt}
                             onChange={(e) => dispatch({ type: actions.SET_POSITIVE_PROMPT, payload: e.target.value })}
                             placeholder="Enter your prompt..."
-                            autoFocus
                         />
                     </div>
 
