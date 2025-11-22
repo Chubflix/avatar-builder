@@ -46,9 +46,20 @@ async function runMigrations() {
   }
 
   // Create PostgreSQL client
+  // Handle SSL configuration based on environment
+  const isLocalSupabase = databaseUrl.includes('127.0.0.1') || databaseUrl.includes('localhost');
+
+  // SSL configuration for Supabase
+  // Set NODE_TLS_REJECT_UNAUTHORIZED=0 environment variable if you still get SSL errors
+  const sslConfig = isLocalSupabase
+    ? false
+    : process.env.DATABASE_SSL === 'false'
+    ? false
+    : { rejectUnauthorized: false };
+
   const client = new Client({
     connectionString: databaseUrl,
-    ssl: { rejectUnauthorized: false } // Supabase requires SSL
+    ssl: sslConfig
   });
 
   try {
