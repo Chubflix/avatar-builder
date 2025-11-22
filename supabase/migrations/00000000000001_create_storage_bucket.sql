@@ -1,13 +1,14 @@
 -- Create storage bucket for generated images
+-- Note: Bucket is public but RLS policies protect user data
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
     'generated-images',
     'generated-images',
-    false,
+    true,  -- Public bucket (RLS policies ensure users only see their own images)
     52428800, -- 50MB
     ARRAY['image/png', 'image/jpeg', 'image/jpg', 'image/webp']
 )
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET public = true;
 
 -- Storage RLS policies for generated-images bucket
 -- Users can only access their own images (organized by user_id folder)

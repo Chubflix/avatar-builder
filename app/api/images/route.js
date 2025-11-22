@@ -4,8 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { createAuthClient } from '@/app/lib/supabase-server';
-import { uploadImage, getImageUrl } from '@/app/lib/supabase';
+import { createAuthClient, getImageUrl, uploadImage, deleteImageFromStorage } from '@/app/lib/supabase-server';
 import { v4 as uuidv4 } from 'uuid';
 
 // GET images with pagination and optional folder filter

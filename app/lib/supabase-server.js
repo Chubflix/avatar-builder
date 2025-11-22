@@ -83,3 +83,48 @@ export async function requireAuth() {
 
     return user;
 }
+
+/**
+ * Get public URL for an image in storage (server-side)
+ * @param {string} storagePath - Path in storage
+ * @returns {string} - Public URL
+ */
+export function getImageUrl(storagePath) {
+    if (!storagePath) return null;
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    return `${supabaseUrl}/storage/v1/object/public/generated-images/${storagePath}`;
+}
+
+/**
+ * Upload image to Supabase Storage (server-side)
+ * @param {Buffer|Blob} file - Image file to upload
+ * @param {string} storagePath - Path where file should be stored
+ * @returns {Promise<void>}
+ */
+export async function uploadImage(file, storagePath) {
+    const supabase = createAuthClient();
+
+    const { error } = await supabase.storage
+        .from('generated-images')
+        .upload(storagePath, file, {
+            contentType: 'image/png',
+            upsert: false
+        });
+
+    if (error) throw error;
+}
+
+/**
+ * Delete image from storage (server-side)
+ * @param {string} storagePath - Path in storage
+ */
+export async function deleteImageFromStorage(storagePath) {
+    const supabase = createAuthClient();
+
+    const { error } = await supabase.storage
+        .from('generated-images')
+        .remove([storagePath]);
+
+    if (error) throw error;
+}
