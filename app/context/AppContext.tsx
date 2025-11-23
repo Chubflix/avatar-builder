@@ -63,6 +63,10 @@ export interface AppState {
   seed: number;
   showAdvanced: boolean;
 
+  // Img2Img
+  initImage: string | null;
+  denoisingStrength: number;
+
   // Generation state
   isGenerating: boolean;
   progress: number;
@@ -157,6 +161,10 @@ const ActionTypes = {
   SET_BATCH_SIZE: 'SET_BATCH_SIZE',
   SET_SEED: 'SET_SEED',
   SET_SHOW_ADVANCED: 'SET_SHOW_ADVANCED',
+
+  // Img2Img
+  SET_INIT_IMAGE: 'SET_INIT_IMAGE',
+  SET_DENOISING_STRENGTH: 'SET_DENOISING_STRENGTH',
 
   // Generation state
   SET_GENERATING: 'SET_GENERATING',
@@ -255,6 +263,10 @@ const initialState: AppState = {
   seed: -1,
   showAdvanced: false,
 
+  // Img2Img
+  initImage: null,
+  denoisingStrength: 0.5,
+
   // Generation state
   isGenerating: false,
   progress: 0,
@@ -335,6 +347,10 @@ function appReducer(state: AppState, action: Action): AppState {
       return { ...state, seed: Number(action.payload) };
     case 'SET_SHOW_ADVANCED':
       return { ...state, showAdvanced: Boolean(action.payload) };
+    case 'SET_INIT_IMAGE':
+      return { ...state, initImage: (action.payload as string) ?? null };
+    case 'SET_DENOISING_STRENGTH':
+      return { ...state, denoisingStrength: Number(action.payload) };
     case 'SET_GENERATING':
       return { ...state, isGenerating: Boolean(action.payload) };
     case 'SET_PROGRESS':

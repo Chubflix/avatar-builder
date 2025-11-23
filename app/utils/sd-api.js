@@ -162,6 +162,94 @@ class StableDiffusionAPI {
 
         return await response.json();
     }
+
+    /**
+     * Generate images using img2img (image-to-image)
+     *
+     * Params:
+     * - initImage: base64 string of the source image (may include data URL prefix)
+     * - maskImage: optional base64 string of the mask image (white = keep/or paint area depending on mode)
+     * - denoisingStrength: how strongly to transform the source image (0..1)
+     * - other params mirror generateImage
+     */
+    async generateImageFromImage({
+                                    initImage,
+                                    maskImage = null,
+                                    prompt,
+                                    negativePrompt = '',
+                                    width = 512,
+                                    height = 512,
+                                    batchSize = 1,
+                                    samplerName = 'Euler a',
+                                    scheduler = 'Automatic',
+                                    steps = 20,
+                                    cfgScale = 7,
+                                    seed = -1,
+                                    denoisingStrength = 0.5,
+                                    adetailerEnabled = false,
+                                    adetailerModel = null
+                                }) {
+        if (!initImage) {
+            throw new Error('initImage is required for img2img');
+        }
+
+        // Helper to strip data URL prefixes if present
+        const normalizeBase64 = (b64) => {
+            if (!b64) return b64;
+            const commaIdx = b64.indexOf(',');
+            if (b64.startsWith('data:') && commaIdx !== -1) {
+                return b64.substring(commaIdx + 1);
+            }
+            // Some SD UIs accept with prefix, but we normalize to raw base64
+            return b64;
+        };
+
+        const payload = {
+            init_images: [normalizeBase64(initImage)],
+            prompt,
+            negative_prompt: negativePrompt,
+            width,
+            height,
+            batch_size: batchSize,
+            sampler_name: samplerName,
+            scheduler,
+            steps,
+            cfg_scale: cfgScale,
+            seed,
+            denoising_strength: denoisingStrength
+        };
+
+        if (maskImage) {
+            payload.mask = normalizeBase64(maskImage);
+        }
+
+        // Add ADetailer if enabled (mirrors txt2img usage)
+        if (adetailerEnabled && adetailerModel) {
+            payload.alwayson_scripts = {
+                ADetailer: {
+                    args: [
+                        true,
+                        false,
+                        {
+                            ad_model: adetailerModel
+                        }
+                    ]
+                }
+            };
+        }
+
+        const response = await this.fetchWithTimeout(`${this.baseUrl}/sdapi/v1/img2img`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }, 300000); // 5 minutes timeout for generation
+
+        if (!response.ok) {
+            throw new Error('Image-to-image generation failed');
+        }
+
+        return await response.json();
+    }
 }
 
 // Create singleton instance

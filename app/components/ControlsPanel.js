@@ -70,6 +70,51 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
                 </button>
             </div>
 
+            {/* Optional: Image-to-Image source */}
+            <div className="form-group">
+                <label className="form-label">Init Image (optional)</label>
+                <input
+                    type="file"
+                    accept="image/*"
+                    className="form-input"
+                    onChange={async (e) => {
+                        const file = e.target.files && e.target.files[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            // Store as data URL; sd-api will normalize if needed
+                            dispatch({ type: actions.SET_INIT_IMAGE, payload: reader.result });
+                        };
+                        reader.readAsDataURL(file);
+                    }}
+                />
+                {state.initImage && (
+                    <div className="image-preview">
+                        <img src={state.initImage} alt="Init Preview" style={{ maxWidth: '100%', maxHeight: 200, display: 'block', marginTop: 8 }} />
+                        <div className="input-with-button" style={{ marginTop: 8 }}>
+                            <label className="form-label" style={{ marginRight: 8 }}>Denoising Strength: {state.denoisingStrength.toFixed(2)}</label>
+                            <input
+                                type="range"
+                                min={0}
+                                max={1}
+                                step={0.01}
+                                value={state.denoisingStrength}
+                                onChange={(e) => dispatch({ type: actions.SET_DENOISING_STRENGTH, payload: parseFloat(e.target.value) })}
+                            />
+                        </div>
+                        <button
+                            className="btn btn-secondary"
+                            type="button"
+                            onClick={() => dispatch({ type: actions.SET_INIT_IMAGE, payload: null })}
+                            style={{ marginTop: 8 }}
+                        >
+                            <i className="fa fa-times"></i> Clear Init Image
+                        </button>
+                    </div>
+                )}
+                <p className="settings-hint">If an init image is provided, image-to-image will be used. Clear it to use text-to-image.</p>
+            </div>
+
             {/* Orientation & Batch Size */}
             <div className="form-row">
                 <div className="form-group">
@@ -196,6 +241,9 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
                         <div><strong>CFG Scale:</strong> {config.generation.cfgScale}</div>
                         <div><strong>ADetailer:</strong> {config.adetailer.enabled ? config.adetailer.model : 'Disabled'}</div>
                         <div><strong>Dimensions:</strong> {config.dimensions[orientation].width}x{config.dimensions[orientation].height}</div>
+                        {state.initImage && (
+                            <div><strong>Mode:</strong> Img2Img (denoise {state.denoisingStrength.toFixed(2)})</div>
+                        )}
                     </div>
                     <p className="settings-hint">
                         Edit config.json to change these values
