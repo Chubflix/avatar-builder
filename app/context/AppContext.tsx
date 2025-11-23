@@ -66,6 +66,9 @@ export interface AppState {
   // Img2Img
   initImage: string | null;
   denoisingStrength: number;
+  // Inpaint
+  maskImage?: string | null;
+  showInpaintModal?: boolean;
 
   // Generation state
   isGenerating: boolean;
@@ -165,6 +168,9 @@ const ActionTypes = {
   // Img2Img
   SET_INIT_IMAGE: 'SET_INIT_IMAGE',
   SET_DENOISING_STRENGTH: 'SET_DENOISING_STRENGTH',
+  // Inpaint
+  SET_MASK_IMAGE: 'SET_MASK_IMAGE',
+  SET_SHOW_INPAINT_MODAL: 'SET_SHOW_INPAINT_MODAL',
 
   // Generation state
   SET_GENERATING: 'SET_GENERATING',
@@ -266,6 +272,9 @@ const initialState: AppState = {
   // Img2Img
   initImage: null,
   denoisingStrength: 0.5,
+  // Inpaint
+  maskImage: null,
+  showInpaintModal: false,
 
   // Generation state
   isGenerating: false,
@@ -351,6 +360,10 @@ function appReducer(state: AppState, action: Action): AppState {
       return { ...state, initImage: (action.payload as string) ?? null };
     case 'SET_DENOISING_STRENGTH':
       return { ...state, denoisingStrength: Number(action.payload) };
+    case 'SET_MASK_IMAGE':
+      return { ...state, maskImage: (action.payload as string) ?? null };
+    case 'SET_SHOW_INPAINT_MODAL':
+      return { ...state, showInpaintModal: Boolean(action.payload) };
     case 'SET_GENERATING':
       return { ...state, isGenerating: Boolean(action.payload) };
     case 'SET_PROGRESS':

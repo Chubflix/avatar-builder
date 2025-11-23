@@ -250,6 +250,88 @@ class StableDiffusionAPI {
 
         return await response.json();
     }
+
+    /**
+     * Inpaint using an init image and a mask
+     * White areas in the mask are repainted; black areas are preserved.
+     * This uses the same /sdapi/v1/img2img endpoint with a mask payload.
+     */
+    async inpaintImage({
+                           initImage,
+                           maskImage,
+                           prompt,
+                           negativePrompt = '',
+                           width = 512,
+                           height = 512,
+                           batchSize = 1,
+                           samplerName = 'Euler a',
+                           scheduler = 'Automatic',
+                           steps = 20,
+                           cfgScale = 7,
+                           seed = -1,
+                           denoisingStrength = 0.5,
+                           adetailerEnabled = false,
+                           adetailerModel = null
+                       }) {
+        if (!initImage) throw new Error('initImage is required for inpaint');
+        if (!maskImage) throw new Error('maskImage is required for inpaint');
+
+        const normalizeBase64 = (b64) => {
+            if (!b64) return b64;
+            const commaIdx = b64.indexOf(',');
+            if (b64.startsWith('data:') && commaIdx !== -1) {
+                return b64.substring(commaIdx + 1);
+            }
+            return b64;
+        };
+
+        const payload = {
+            init_images: [normalizeBase64(initImage)],
+            mask: normalizeBase64(maskImage),
+            prompt,
+            negative_prompt: negativePrompt,
+            width,
+            height,
+            batch_size: batchSize,
+            sampler_name: samplerName,
+            scheduler,
+            steps,
+            cfg_scale: cfgScale,
+            seed,
+            denoising_strength: denoisingStrength,
+            // Sensible defaults; keep minimal to avoid breaking
+            inpainting_fill: 1, // original
+            inpaint_full_res: true,
+            inpaint_full_res_padding: 0,
+            inpainting_mask_invert: 0
+        };
+
+        if (adetailerEnabled && adetailerModel) {
+            payload.alwayson_scripts = {
+                ADetailer: {
+                    args: [
+                        true,
+                        false,
+                        {
+                            ad_model: adetailerModel
+                        }
+                    ]
+                }
+            };
+        }
+
+        const response = await this.fetchWithTimeout(`${this.baseUrl}/sdapi/v1/img2img`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }, 300000);
+
+        if (!response.ok) {
+            throw new Error('Inpaint generation failed');
+        }
+
+        return await response.json();
+    }
 }
 
 // Create singleton instance

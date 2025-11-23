@@ -170,7 +170,7 @@ export function useGeneration() {
 
     // Process a single generation from the queue
     const processGeneration = useCallback(async (queueItem) => {
-        const { config, positivePrompt, selectedModel, negativePrompt, orientation, batchSize, seed, selectedFolder, currentFolder, totalImages, notificationsEnabled, loraSliders, loraToggles, loraStyle, initImage, denoisingStrength } = queueItem;
+        const { config, positivePrompt, selectedModel, negativePrompt, orientation, batchSize, seed, selectedFolder, currentFolder, totalImages, notificationsEnabled, loraSliders, loraToggles, loraStyle, initImage, denoisingStrength, maskImage } = queueItem;
 
         dispatch({ type: actions.SET_GENERATING, payload: true });
         dispatch({ type: actions.SET_STATUS, payload: { type: 'info', message: 'Generating images...' } });
@@ -189,22 +189,40 @@ export function useGeneration() {
             // Generate images
             const dims = config.dimensions[orientation];
             const result = initImage
-                ? await sdAPI.generateImageFromImage({
-                    initImage,
-                    prompt: finalPrompt,
-                    negativePrompt,
-                    width: dims.width,
-                    height: dims.height,
-                    batchSize,
-                    samplerName: config.generation.samplerName,
-                    scheduler: config.generation.scheduler,
-                    steps: config.generation.steps,
-                    cfgScale: config.generation.cfgScale,
-                    seed,
-                    denoisingStrength: typeof denoisingStrength === 'number' ? denoisingStrength : 0.5,
-                    adetailerEnabled: config.adetailer.enabled,
-                    adetailerModel: config.adetailer.model
-                })
+                ? (maskImage
+                    ? await sdAPI.inpaintImage({
+                        initImage,
+                        maskImage,
+                        prompt: finalPrompt,
+                        negativePrompt,
+                        width: dims.width,
+                        height: dims.height,
+                        batchSize,
+                        samplerName: config.generation.samplerName,
+                        scheduler: config.generation.scheduler,
+                        steps: config.generation.steps,
+                        cfgScale: config.generation.cfgScale,
+                        seed,
+                        denoisingStrength: typeof denoisingStrength === 'number' ? denoisingStrength : 0.5,
+                        adetailerEnabled: config.adetailer.enabled,
+                        adetailerModel: config.adetailer.model
+                    })
+                    : await sdAPI.generateImageFromImage({
+                        initImage,
+                        prompt: finalPrompt,
+                        negativePrompt,
+                        width: dims.width,
+                        height: dims.height,
+                        batchSize,
+                        samplerName: config.generation.samplerName,
+                        scheduler: config.generation.scheduler,
+                        steps: config.generation.steps,
+                        cfgScale: config.generation.cfgScale,
+                        seed,
+                        denoisingStrength: typeof denoisingStrength === 'number' ? denoisingStrength : 0.5,
+                        adetailerEnabled: config.adetailer.enabled,
+                        adetailerModel: config.adetailer.model
+                    }))
                 : await sdAPI.generateImage({
                     prompt: finalPrompt,
                     negativePrompt,
@@ -252,7 +270,7 @@ export function useGeneration() {
                         style: loraStyle
                     },
                     // annotate generation mode minimally
-                    generationMode: initImage ? 'img2img' : 'txt2img'
+                    generationMode: initImage ? (maskImage ? 'inpaint' : 'img2img') : 'txt2img'
                 });
 
                 savedImages.push(saved);
@@ -282,7 +300,7 @@ export function useGeneration() {
 
     // Add generation to queue
     const generate = useCallback(async () => {
-        const { config, positivePrompt, selectedModel, negativePrompt, orientation, batchSize, seed, selectedFolder, currentFolder, totalImages, notificationsEnabled, loraSliders, loraToggles, loraStyle, initImage, denoisingStrength } = state;
+        const { config, positivePrompt, selectedModel, negativePrompt, orientation, batchSize, seed, selectedFolder, currentFolder, totalImages, notificationsEnabled, loraSliders, loraToggles, loraStyle, initImage, denoisingStrength, maskImage } = state;
 
         if (!config || !positivePrompt.trim()) {
             dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: 'Please enter a positive prompt' } });
@@ -307,6 +325,7 @@ export function useGeneration() {
             loraStyle,
             initImage,
             denoisingStrength,
+            maskImage,
             id: Date.now() + Math.random() // Unique ID for this queue item
         };
 

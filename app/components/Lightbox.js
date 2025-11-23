@@ -610,6 +610,63 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete, onLoad
                             </button>
                             <button
                                 className="image-btn secondary"
+                                onClick={async () => {
+                                    try {
+                                        const imgUrl = `${API_BASE}${currentImage.url || `/generated/${currentImage.filename}`}`;
+                                        const res = await fetch(imgUrl);
+                                        const blob = await res.blob();
+                                        const reader = new FileReader();
+                                        reader.onloadend = () => {
+                                            dispatch({ type: actions.SET_INIT_IMAGE, payload: reader.result });
+                                            // Clear any existing mask; user can create a new one for this source
+                                            dispatch({ type: actions.SET_MASK_IMAGE, payload: null });
+                                            dispatch({
+                                                type: actions.SET_STATUS,
+                                                payload: { type: 'success', message: 'Set current image as Img2Img source' }
+                                            });
+                                        };
+                                        reader.readAsDataURL(blob);
+                                    } catch (err) {
+                                        console.error('Failed to set init image:', err);
+                                        dispatch({
+                                            type: actions.SET_STATUS,
+                                            payload: { type: 'error', message: 'Failed to use image as source' }
+                                        });
+                                    }
+                                }}
+                                title="Use as Img2Img source"
+                            >
+                                <i className="fa fa-file-image-o"></i> <span className="btn-label">Img2Img</span>
+                            </button>
+                            <button
+                                className="image-btn secondary"
+                                onClick={async () => {
+                                    try {
+                                        const imgUrl = `${API_BASE}${currentImage.url || `/generated/${currentImage.filename}`}`;
+                                        const res = await fetch(imgUrl);
+                                        const blob = await res.blob();
+                                        const reader = new FileReader();
+                                        reader.onloadend = () => {
+                                            dispatch({ type: actions.SET_INIT_IMAGE, payload: reader.result });
+                                            // Reset previous mask and open modal to paint a new one
+                                            dispatch({ type: actions.SET_MASK_IMAGE, payload: null });
+                                            dispatch({ type: actions.SET_SHOW_INPAINT_MODAL, payload: true });
+                                        };
+                                        reader.readAsDataURL(blob);
+                                    } catch (err) {
+                                        console.error('Failed to start inpaint:', err);
+                                        dispatch({
+                                            type: actions.SET_STATUS,
+                                            payload: { type: 'error', message: 'Failed to start inpaint' }
+                                        });
+                                    }
+                                }}
+                                title="Inpaint: paint a mask and regenerate"
+                            >
+                                <i className="fa fa-paint-brush"></i> <span className="btn-label">Inpaint</span>
+                            </button>
+                            <button
+                                className="image-btn secondary"
                                 onClick={handleCopyToClipboard}
                                 title="Copy to clipboard"
                             >

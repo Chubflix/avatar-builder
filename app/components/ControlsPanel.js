@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import FolderSelector from './FolderSelector';
 import LoraSettings from './LoraSettings';
+import './LoraSettings.css';
+import InpaintModal from './InpaintModal';
 import GenerateButton from "./GenerateButton";
 import FormLabelInfo from "./FormLabelInfo";
 
@@ -9,6 +11,7 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
     const { state, dispatch, actions } = useApp();
     const [showFolderSelector, setShowFolderSelector] = useState(false);
     const [showLoraSettings, setShowLoraSettings] = useState(false);
+    const [showImg2ImgSettings, setShowImg2ImgSettings] = useState(false);
 
     const {
         config,
@@ -70,51 +73,6 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
                 </button>
             </div>
 
-            {/* Optional: Image-to-Image source */}
-            <div className="form-group">
-                <label className="form-label">Init Image (optional)</label>
-                <input
-                    type="file"
-                    accept="image/*"
-                    className="form-input"
-                    onChange={async (e) => {
-                        const file = e.target.files && e.target.files[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                            // Store as data URL; sd-api will normalize if needed
-                            dispatch({ type: actions.SET_INIT_IMAGE, payload: reader.result });
-                        };
-                        reader.readAsDataURL(file);
-                    }}
-                />
-                {state.initImage && (
-                    <div className="image-preview">
-                        <img src={state.initImage} alt="Init Preview" style={{ maxWidth: '100%', maxHeight: 200, display: 'block', marginTop: 8 }} />
-                        <div className="input-with-button" style={{ marginTop: 8 }}>
-                            <label className="form-label" style={{ marginRight: 8 }}>Denoising Strength: {state.denoisingStrength.toFixed(2)}</label>
-                            <input
-                                type="range"
-                                min={0}
-                                max={1}
-                                step={0.01}
-                                value={state.denoisingStrength}
-                                onChange={(e) => dispatch({ type: actions.SET_DENOISING_STRENGTH, payload: parseFloat(e.target.value) })}
-                            />
-                        </div>
-                        <button
-                            className="btn btn-secondary"
-                            type="button"
-                            onClick={() => dispatch({ type: actions.SET_INIT_IMAGE, payload: null })}
-                            style={{ marginTop: 8 }}
-                        >
-                            <i className="fa fa-times"></i> Clear Init Image
-                        </button>
-                    </div>
-                )}
-                <p className="settings-hint">If an init image is provided, image-to-image will be used. Clear it to use text-to-image.</p>
-            </div>
-
             {/* Orientation & Batch Size */}
             <div className="form-row">
                 <div className="form-group">
@@ -147,6 +105,112 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
                     </select>
                 </div>
             </div>
+
+            {/* Img2Img (and Inpaint) Section */}
+            <div
+                className={`collapsible-header ${showImg2ImgSettings ? 'open' : ''}`}
+                onClick={() => setShowImg2ImgSettings(!showImg2ImgSettings)}
+            >
+                <h3>img2img</h3>
+                <i className={`fa fa-chevron-${showImg2ImgSettings ? 'up' : 'down'}`}></i>
+            </div>
+            {showImg2ImgSettings && (
+                <div className={`collapsible-content ${showImg2ImgSettings ? 'open' : ''}`}>
+                    <div className="form-group">
+                        <label className="form-label">Init Image (optional)</label>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            className="form-input"
+                            onChange={async (e) => {
+                                const file = e.target.files && e.target.files[0];
+                                if (!file) return;
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                    // Store as data URL; sd-api will normalize if needed
+                                    dispatch({ type: actions.SET_INIT_IMAGE, payload: reader.result });
+                                    // When setting a new init image, clear any previous mask to avoid mismatch
+                                    dispatch({ type: actions.SET_MASK_IMAGE, payload: null });
+                                };
+                                reader.readAsDataURL(file);
+                            }}
+                        />
+                        {state.initImage && (
+                            <div className="image-preview">
+                                <img src={state.initImage} alt="Init Preview" style={{ maxWidth: '100%', maxHeight: 200, display: 'block', marginTop: 8 }} />
+                                <div className="lora-group" style={{ marginTop: 8 }}>
+                                    <div className="lora-slider-header">
+                                        <label className="lora-label">
+                                            <span>Denoising Strength</span>
+                                            <span
+                                                className="lora-doc-link"
+                                                title="Controls how much the output deviates from the source image. Lower = closer to original; higher = more creative changes."
+                                                style={{ cursor: 'help' }}
+                                            >
+                                                <i className="fa fa-question-circle"></i>
+                                            </span>
+                                        </label>
+                                        <span className="lora-slider-value">{state.denoisingStrength.toFixed(2)}</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        className="lora-slider"
+                                        min={0}
+                                        max={1}
+                                        step={0.01}
+                                        value={state.denoisingStrength}
+                                        onChange={(e) => dispatch({ type: actions.SET_DENOISING_STRENGTH, payload: parseFloat(e.target.value) })}
+                                    />
+                                    <div className="lora-slider-labels">
+                                        <span className="lora-slider-label-min">Original</span>
+                                        <span className="lora-slider-label-max">Creative</span>
+                                    </div>
+                                </div>
+                                <button
+                                    className="btn btn-secondary"
+                                    type="button"
+                                    onClick={() => {
+                                        dispatch({ type: actions.SET_INIT_IMAGE, payload: null });
+                                        dispatch({ type: actions.SET_MASK_IMAGE, payload: null });
+                                    }}
+                                    style={{ marginTop: 8 }}
+                                >
+                                    <i className="fa fa-times"></i> Clear Init Image
+                                </button>
+                                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
+                                    <button
+                                        className="btn btn-secondary"
+                                        type="button"
+                                        onClick={() => dispatch({ type: actions.SET_SHOW_INPAINT_MODAL, payload: true })}
+                                        title="Open inpaint mask editor"
+                                    >
+                                        <i className="fa fa-paint-brush"></i> Inpaint Mask
+                                    </button>
+                                    {state.maskImage ? (
+                                        <>
+                                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Mask set</span>
+                                            <button
+                                                className="btn btn-secondary"
+                                                type="button"
+                                                onClick={() => dispatch({ type: actions.SET_MASK_IMAGE, payload: null })}
+                                                title="Clear mask"
+                                            >
+                                                <i className="fa fa-eraser"></i> Clear Mask
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>No mask</span>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                        <p className="settings-hint">If an init image is provided, image-to-image will be used. Clear it to use text-to-image.</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Inpaint Modal */}
+            <InpaintModal />
 
             {/* Lora Settings */}
             {config.loras && config.loras.length > 0 && (
