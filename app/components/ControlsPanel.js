@@ -55,6 +55,10 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
                 />
             </div>
 
+            {/* Generate Button */}
+            <div className="form-group">
+                <GenerateButton onGenerate={onGenerate} />
+            </div>
             {/* Save to Folder */}
             <div className="form-group">
                 <label className="form-label">Save to Folder</label>
@@ -323,9 +327,6 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
                     Reset to Defaults
                 </button>
             </div>
-
-            {/* Generate Button */}
-            <GenerateButton onGenerate={onGenerate} />
 
             {isGenerating && (
                 <div className="progress-container">

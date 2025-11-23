@@ -624,6 +624,8 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete, onLoad
                                                 type: actions.SET_STATUS,
                                                 payload: { type: 'success', message: 'Set current image as Img2Img source' }
                                             });
+                                            // Close lightbox per request
+                                            onClose();
                                         };
                                         reader.readAsDataURL(blob);
                                     } catch (err) {
@@ -651,6 +653,8 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete, onLoad
                                             // Reset previous mask and open modal to paint a new one
                                             dispatch({ type: actions.SET_MASK_IMAGE, payload: null });
                                             dispatch({ type: actions.SET_SHOW_INPAINT_MODAL, payload: true });
+                                            // Close lightbox per request
+                                            onClose();
                                         };
                                         reader.readAsDataURL(blob);
                                     } catch (err) {
