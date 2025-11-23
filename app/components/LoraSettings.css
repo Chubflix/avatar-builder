@@ -216,12 +216,6 @@
 
 /* Mobile Styles */
 @media (max-width: 768px) {
-    .lora-settings {
-        margin-top: 1rem;
-        padding-top: 1rem;
-        border-top: 1px solid var(--border);
-    }
-
     .lora-settings-title {
         font-size: 0.95rem;
     }

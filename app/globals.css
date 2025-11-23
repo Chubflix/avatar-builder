@@ -233,7 +233,6 @@ body {
 .mobile-settings-content {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
 }
 
 .mobile-overlay-container {
@@ -1101,11 +1100,17 @@ body {
 
 .collapsible-content {
     display: none;
-    padding-top: 1rem;
+    padding: 1rem;
+
 }
 
 .collapsible-content.open {
     display: block;
+}
+
+.mobile-settings-content .collapsible-header {
+    margin: 0;
+    padding: 0.75rem;
 }
 
 /* Load More Button */

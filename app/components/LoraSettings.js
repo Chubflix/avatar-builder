@@ -46,7 +46,7 @@ export default function LoraSettings() {
 
     return (
         <div className="lora-settings">
-            <h3 className="lora-settings-title">Lora Settings</h3>
+            <h3 className="lora-settings-title desktop-only">Lora Settings</h3>
 
             {/* Style Dropdown */}
             {sortedStyles.length > 0 && (

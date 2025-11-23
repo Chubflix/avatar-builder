@@ -10,6 +10,10 @@ import MobileSlideout from './MobileSlideout';
 function MobileControls({ onGenerate, onResetDefaults }) {
     const { state, dispatch, actions } = useApp();
     const [showFolderSelector, setShowFolderSelector] = useState(false);
+    // Collapsible sections inside mobile Advanced Settings
+    const [showGeneralSettings, setShowGeneralSettings] = useState(true);
+    const [showImg2ImgSettings, setShowImg2ImgSettings] = useState(false);
+    const [showLoraSettings, setShowLoraSettings] = useState(false);
     const {
         config,
         positivePrompt,
@@ -52,15 +56,125 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                 title="Advanced Settings"
             >
                 <div className="mobile-settings-content">
+                        {/* General Section */}
+                        <div
+                            className={`collapsible-header ${showGeneralSettings ? 'open' : ''}`}
+                            style={{ marginTop: 0 }}
+                            onClick={() => setShowGeneralSettings(!showGeneralSettings)}
+                        >
+                            <h3>General</h3>
+                            <i className="fa fa-chevron-down"></i>
+                        </div>
+                        <div className={`collapsible-content ${showGeneralSettings ? 'open' : ''}`}>
+                            <div className="form-group">
+                                <label className="form-label">Save to Folder</label>
+                                <button
+                                    className="folder-select-display-btn"
+                                    onClick={() => setShowFolderSelector(true)}
+                                    type="button"
+                                >
+                                    <i className="fa fa-folder"></i>
+                                    <span>
+                                        {selectedFolder ?
+                                            folders.find(f => f.id === selectedFolder)?.name || 'Unfiled'
+                                            : 'Unfiled'}
+                                    </span>
+                                    <i className="fa fa-chevron-down"></i>
+                                </button>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Negative Prompt</label>
+                                <textarea
+                                    className="form-textarea"
+                                    value={negativePrompt}
+                                    onChange={(e) => dispatch({ type: actions.SET_NEGATIVE_PROMPT, payload: e.target.value })}
+                                    placeholder="lowres, bad anatomy, watermark..."
+                                    rows={3}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Model</label>
+                                <select
+                                    className="form-select"
+                                    value={selectedModel}
+                                    onChange={(e) => dispatch({ type: actions.SET_SELECTED_MODEL, payload: e.target.value })}
+                                >
+                                    {models.map(model => (
+                                        <option key={model.model_name} value={model.model_name}>
+                                            {model.model_name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label className="form-label">Orientation</label>
+                                    <div className="toggle-group">
+                                        <button
+                                            className={`toggle-option ${orientation === 'portrait' ? 'active' : ''}`}
+                                            onClick={() => dispatch({ type: actions.SET_ORIENTATION, payload: 'portrait' })}
+                                        >
+                                            Portrait
+                                        </button>
+                                        <button
+                                            className={`toggle-option ${orientation === 'landscape' ? 'active' : ''}`}
+                                            onClick={() => dispatch({ type: actions.SET_ORIENTATION, payload: 'landscape' })}
+                                        >
+                                            Landscape
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Batch</label>
+                                    <select
+                                        className="form-select"
+                                        value={batchSize}
+                                        onChange={(e) => dispatch({ type: actions.SET_BATCH_SIZE, payload: parseInt(e.target.value) })}
+                                    >
+                                        {[...Array(10)].map((_, i) => (
+                                            <option key={i + 1} value={i + 1}>{i + 1}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">
+                                    Seed
+                                    <span className="form-label-hint">-1 for random</span>
+                                </label>
+                                <div className="input-with-button">
+                                    <input
+                                        type="number"
+                                        className="form-input"
+                                        value={seed}
+                                        onChange={(e) => dispatch({ type: actions.SET_SEED, payload: parseInt(e.target.value) || -1 })}
+                                        min="-1"
+                                    />
+                                    <button
+                                        className="btn-input-action"
+                                        onClick={() => dispatch({ type: actions.SET_SEED, payload: -1 })}
+                                        title="Random seed"
+                                        type="button"
+                                    >
+                                        <i className="fa fa-random"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Img2Img (and Inpaint) Section */}
                         <div
-                            className="collapsible-header open"
-                            style={{ marginTop: 0 }}
+                            className={`collapsible-header ${showImg2ImgSettings ? 'open' : ''}`}
+                            onClick={() => setShowImg2ImgSettings(!showImg2ImgSettings)}
                         >
                             <h3>img2img</h3>
-                            <i className="fa fa-chevron-up"></i>
+                            <i className="fa fa-chevron-down"></i>
                         </div>
-                        <div className="collapsible-content open">
+                        <div className={`collapsible-content ${showImg2ImgSettings ? 'open' : ''}`}>
                             <div className="form-group">
                                 <label className="form-label">Init Image (optional)</label>
                                 <input
@@ -153,107 +267,17 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                             </div>
                         </div>
 
-                        <div className="form-group">
-                            <label className="form-label">Save to Folder</label>
-                            <button
-                                className="folder-select-display-btn"
-                                onClick={() => setShowFolderSelector(true)}
-                                type="button"
-                            >
-                                <i className="fa fa-folder"></i>
-                                <span>
-                                    {selectedFolder ?
-                                        folders.find(f => f.id === selectedFolder)?.name || 'Unfiled'
-                                        : 'Unfiled'}
-                                </span>
-                                <i className="fa fa-chevron-down"></i>
-                            </button>
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label">Negative Prompt</label>
-                            <textarea
-                                className="form-textarea"
-                                value={negativePrompt}
-                                onChange={(e) => dispatch({ type: actions.SET_NEGATIVE_PROMPT, payload: e.target.value })}
-                                placeholder="lowres, bad anatomy, watermark..."
-                                rows={3}
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label">Model</label>
-                            <select
-                                className="form-select"
-                                value={selectedModel}
-                                onChange={(e) => dispatch({ type: actions.SET_SELECTED_MODEL, payload: e.target.value })}
-                            >
-                                {models.map(model => (
-                                    <option key={model.model_name} value={model.model_name}>
-                                        {model.model_name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label className="form-label">Orientation</label>
-                                <div className="toggle-group">
-                                    <button
-                                        className={`toggle-option ${orientation === 'portrait' ? 'active' : ''}`}
-                                        onClick={() => dispatch({ type: actions.SET_ORIENTATION, payload: 'portrait' })}
-                                    >
-                                        Portrait
-                                    </button>
-                                    <button
-                                        className={`toggle-option ${orientation === 'landscape' ? 'active' : ''}`}
-                                        onClick={() => dispatch({ type: actions.SET_ORIENTATION, payload: 'landscape' })}
-                                    >
-                                        Landscape
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Batch</label>
-                                <select
-                                    className="form-select"
-                                    value={batchSize}
-                                    onChange={(e) => dispatch({ type: actions.SET_BATCH_SIZE, payload: parseInt(e.target.value) })}
-                                >
-                                    {[...Array(10)].map((_, i) => (
-                                        <option key={i + 1} value={i + 1}>{i + 1}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label">
-                                Seed
-                                <span className="form-label-hint">-1 for random</span>
-                            </label>
-                            <div className="input-with-button">
-                                <input
-                                    type="number"
-                                    className="form-input"
-                                    value={seed}
-                                    onChange={(e) => dispatch({ type: actions.SET_SEED, payload: parseInt(e.target.value) || -1 })}
-                                    min="-1"
-                                />
-                                <button
-                                    className="btn-input-action"
-                                    onClick={() => dispatch({ type: actions.SET_SEED, payload: -1 })}
-                                    title="Random seed"
-                                    type="button"
-                                >
-                                    <i className="fa fa-random"></i>
-                                </button>
-                            </div>
-                        </div>
-
                         {/* Lora Settings */}
-                        <LoraSettings />
+                        <div
+                            className={`collapsible-header ${showLoraSettings ? 'open' : ''}`}
+                            onClick={() => setShowLoraSettings(!showLoraSettings)}
+                        >
+                            <h3>Lora Settings</h3>
+                            <i className="fa fa-chevron-down"></i>
+                        </div>
+                        <div className={`collapsible-content ${showLoraSettings ? 'open' : ''}`}>
+                            <LoraSettings />
+                        </div>
 
                         <button
                             className="btn-reset"
