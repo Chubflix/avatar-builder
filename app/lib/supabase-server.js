@@ -269,7 +269,7 @@ export async function saveGeneratedImage({ supabase, userId, imageBase64, meta =
     // This allows clients to subscribe to a user-scoped channel and react immediately.
     // Do not block the request if Realtime is unavailable.
     try {
-        const channelName = `images`;
+        const channelName = 'images';
         // Create a temporary channel and send a broadcast event.
         const channel = supabase.channel(channelName, {
             config: { broadcast: { self: true }, private: true }
