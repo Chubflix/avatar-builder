@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useQueueContext } from '../context/QueueContext';
 import FolderSelector from './FolderSelector';
 import LoraSettings from './LoraSettings';
 import InpaintModal from './InpaintModal';
@@ -28,20 +29,16 @@ function MobileControls({ onGenerate, onResetDefaults }) {
         isGenerating,
         progress,
         status,
-        showMobileSettings,
-        generationQueue
+        showMobileSettings
     } = state;
+    const { items: queueItems } = useQueueContext();
 
     if (!config) return null;
 
     return (
         <>
             {/* Top Progress Bar */}
-            {isGenerating && (
-                <div className="mobile-top-progress">
-                    <div className="mobile-top-progress-fill" style={{ width: `${progress}%` }}></div>
-                </div>
-            )}
+            {/* Removed sticky top progress for mobile; queue counter moves to generate button */}
 
             {/* Toast Notification */}
             <MobileToast
@@ -330,12 +327,12 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                         {isGenerating ? (
                             <>
                                 <div className="spinner"></div>
-                                {generationQueue.length > 0 && (
-                                    <span className="queue-count">{generationQueue.length}</span>
-                                )}
                             </>
                         ) : (
                             <i className="fa fa-magic"></i>
+                        )}
+                        {queueItems.length > 0 && (
+                            <span className="queue-count">{queueItems.length}</span>
                         )}
                     </button>
                 </div>

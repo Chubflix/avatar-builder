@@ -70,9 +70,7 @@ export interface AppState {
   progress: number;
   status: string | null;
 
-  // Queue state
-  generationQueue: any[];
-  isProcessingQueue: boolean;
+  // Queue state moved to QueueContext
 
   // Characters
   characters: CharacterItem[];
@@ -172,11 +170,7 @@ const ActionTypes = {
   SET_PROGRESS: 'SET_PROGRESS',
   SET_STATUS: 'SET_STATUS',
 
-  // Queue state
-  ADD_TO_QUEUE: 'ADD_TO_QUEUE',
-  REMOVE_FROM_QUEUE: 'REMOVE_FROM_QUEUE',
-  CLEAR_QUEUE: 'CLEAR_QUEUE',
-  SET_PROCESSING_QUEUE: 'SET_PROCESSING_QUEUE',
+  // Queue state moved to QueueContext
 
   // Characters
   SET_CHARACTERS: 'SET_CHARACTERS',
@@ -276,9 +270,7 @@ const initialState: AppState = {
   progress: 0,
   status: null,
 
-  // Queue state
-  generationQueue: [],
-  isProcessingQueue: false,
+  // Queue state moved to QueueContext
 
   // Characters
   characters: [],
@@ -365,14 +357,7 @@ function appReducer(state: AppState, action: Action): AppState {
       return { ...state, progress: Number(action.payload) };
     case 'SET_STATUS':
       return { ...state, status: (action.payload as string) ?? null };
-    case 'ADD_TO_QUEUE':
-      return { ...state, generationQueue: [...state.generationQueue, action.payload] };
-    case 'REMOVE_FROM_QUEUE':
-      return { ...state, generationQueue: state.generationQueue.slice(1) };
-    case 'CLEAR_QUEUE':
-      return { ...state, generationQueue: [] };
-    case 'SET_PROCESSING_QUEUE':
-      return { ...state, isProcessingQueue: Boolean(action.payload) };
+    // queue: handled in QueueContext
     case 'SET_CHARACTERS':
       return { ...state, characters: (action.payload as CharacterItem[]) ?? [] };
     case 'SET_SELECTED_CHARACTER':
@@ -564,34 +549,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: 'SET_HIDE_NSFW', payload: settings.hideNsfw !== undefined ? settings.hideNsfw : false });
         dispatch({ type: 'SET_LOCKS', payload: settings.locks !== undefined ? settings.locks : {} });
 
-        // Check for existing generation queue from sessionStorage
-        const savedQueue = sessionStorage.getItem('generationQueue');
-        if (savedQueue) {
-          try {
-            const queue = JSON.parse(savedQueue);
-            if (Array.isArray(queue) && queue.length > 0) {
-              // Clear the queue from state immediately
-              dispatch({ type: 'CLEAR_QUEUE' });
-              dispatch({ type: 'SET_GENERATING', payload: false });
-              dispatch({ type: 'SET_PROGRESS', payload: 0 });
-
-              // Import SD API dynamically to avoid circular dependencies
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore - JS module without types
-              import('../utils/sd-api').then(({ default: sdAPI }: any) => {
-                sdAPI.skip().catch((err: any) => {
-                  console.warn('Failed to skip SD generation (may not be running):', err?.message ?? err);
-                }).finally(() => {
-                  sessionStorage.removeItem('generationQueue');
-                });
-              });
-            }
-          } catch (err) {
-            console.error('Failed to process generation queue:', err);
-            sessionStorage.removeItem('generationQueue');
-          }
-        }
-
         // Load lora settings
         if (settings.loraSliders) {
           Object.keys(settings.loraSliders).forEach((name: string) => {
@@ -672,20 +629,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCookie('selectedFolder', state.selectedFolder || '', 365);
   }, [state.selectedFolder, state.settingsLoaded]);
 
-  // Save generation queue to sessionStorage
-  useEffect(() => {
-    if (typeof window === 'undefined' || !state.settingsLoaded) return;
-
-    try {
-      if (state.generationQueue.length > 0) {
-        sessionStorage.setItem('generationQueue', JSON.stringify(state.generationQueue));
-      } else {
-        sessionStorage.removeItem('generationQueue');
-      }
-    } catch (err) {
-      console.error('Failed to save generation queue:', err);
-    }
-  }, [state.generationQueue, state.settingsLoaded]);
 
   const value: AppContextValue = {
     state,

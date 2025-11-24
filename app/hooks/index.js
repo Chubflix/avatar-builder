@@ -6,6 +6,8 @@ import debug from '../utils/debug';
 import { sendNotification } from '../utils/notifications';
 import { buildLoraPrompt } from '../utils/lora-builder';
 import { supabase } from '../lib/supabase';
+import { useQueueContext } from '../context/QueueContext';
+import { useQueue } from './queue';
 
 /**
  * Hook for managing folders
@@ -232,8 +234,10 @@ export function useImagesRealtime() {
  */
 export function useGeneration() {
     const { state, dispatch, actions } = useApp();
+    const { triggerQueuePolling, isPolling } = useQueue();
+    const { items: queueItems, enqueue, dequeue, isProcessing, setProcessing } = useQueueContext();
     const progressInterval = useRef(null);
-    const isProcessing = useRef(false);
+    const isProcessingLocal = useRef(false);
 
     const checkProgress = useCallback(async () => {
         try {
@@ -377,67 +381,15 @@ export function useGeneration() {
                     }
                 }
                 sendNotification(`Your generation job was queued (ID: ${jobId}). You'll receive results shortly.`, 'info', dispatch, actions, notificationsEnabled);
-                // Exit early; webhook will deliver results when ready
-                return;
             }
-
-            const info = JSON.parse(result.info || '{}');
-
-            // Save images
-            const savedImages = [];
-            for (let i = 0; i < result.images.length; i++) {
-                const imageData = result.images[i];
-                const imageSeed = info.all_seeds ? info.all_seeds[i] : info.seed;
-
-                const saved = await imageAPI.save({
-                    imageData,
-                    positivePrompt,
-                    negativePrompt,
-                    model: selectedModel,
-                    orientation,
-                    width: dims.width,
-                    height: dims.height,
-                    batchSize,
-                    samplerName: config.generation.samplerName,
-                    scheduler: config.generation.scheduler,
-                    steps: config.generation.steps,
-                    cfgScale: config.generation.cfgScale,
-                    seed: imageSeed,
-                    adetailerEnabled: config.adetailer.enabled,
-                    adetailerModel: config.adetailer.model,
-                    info,
-                    folderId: selectedFolder || null,
-                    loras: {
-                        sliders: loraSliders,
-                        toggles: loraToggles,
-                        style: loraStyle
-                    },
-                    // annotate generation mode minimally
-                    generationMode: initImage ? (maskImage ? 'inpaint' : 'img2img') : 'txt2img'
-                });
-
-                savedImages.push(saved);
-            }
-
-            // Update gallery if viewing all or same folder
-            if (!currentFolder || currentFolder === selectedFolder) {
-                dispatch({ type: actions.ADD_IMAGES, payload: savedImages });
-                dispatch({ type: actions.SET_TOTAL_IMAGES, payload: totalImages + savedImages.length });
-            }
-
-            sendNotification(`Generated and saved ${savedImages.length} image(s)!`, 'success', dispatch, actions, notificationsEnabled);
         } catch (err) {
             sendNotification('Generation failed: ' + err.message, 'error', dispatch, actions, notificationsEnabled);
         } finally {
-            dispatch({ type: actions.SET_GENERATING, payload: false });
             dispatch({ type: actions.SET_PROGRESS, payload: 0 });
             if (progressInterval.current) {
                 clearInterval(progressInterval.current);
                 progressInterval.current = null;
             }
-
-            // Remove from queue and mark processing as complete
-            dispatch({ type: actions.REMOVE_FROM_QUEUE });
         }
     }, [checkProgress, dispatch, actions]);
 
@@ -472,25 +424,35 @@ export function useGeneration() {
             id: Date.now() + Math.random() // Unique ID for this queue item
         };
 
-        dispatch({ type: actions.ADD_TO_QUEUE, payload: queueItem });
+        enqueue(queueItem);
         dispatch({ type: actions.SET_STATUS, payload: { type: 'info', message: 'Added to queue' } });
-    }, [state, dispatch, actions]);
+
+        // Ensure SD queue polling is running if not already
+        try {
+            if (!isPolling()) {
+                // Fire-and-forget; it will only start if jobs exist
+                triggerQueuePolling();
+            }
+        } catch (_) { /* non-fatal */ }
+    }, [state, dispatch, actions, enqueue]);
 
     // Process queue
     useEffect(() => {
-        if (isProcessing.current || state.generationQueue.length === 0 || state.isGenerating) {
+        if (isProcessingLocal.current || queueItems.length === 0 || state.isGenerating) {
             return;
         }
 
-        isProcessing.current = true;
-        dispatch({ type: actions.SET_PROCESSING_QUEUE, payload: true });
+        isProcessingLocal.current = true;
+        setProcessing(true);
 
-        const nextItem = state.generationQueue[0];
+        const nextItem = queueItems[0];
         processGeneration(nextItem).finally(() => {
-            isProcessing.current = false;
-            dispatch({ type: actions.SET_PROCESSING_QUEUE, payload: false });
+            isProcessingLocal.current = false;
+            setProcessing(false);
+            // remove processed item
+            try { dequeue(); } catch (_) { /* noop */ }
         });
-    }, [state.generationQueue, state.isGenerating, processGeneration, dispatch, actions]);
+    }, [queueItems, state.isGenerating, processGeneration, setProcessing, dequeue]);
 
     useEffect(() => {
         return () => {

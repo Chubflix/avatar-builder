@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useQueueContext } from '../context/QueueContext';
+import { useQueue } from "@/app/hooks/queue";
 import FolderSelector from './FolderSelector';
 import MobileSlideout from './MobileSlideout';
 import './MobilePromptSlideout.css';
@@ -17,9 +19,9 @@ function MobilePromptSlideout({ show, onClose, onGenerate }) {
         folders,
         isGenerating,
         progress,
-        generationQueue,
         selectedModel
     } = state;
+    const { items: queueItems } = useQueueContext();
 
     const handleGenerate = () => {
         onGenerate();
@@ -87,8 +89,8 @@ function MobilePromptSlideout({ show, onClose, onGenerate }) {
                             {isGenerating ? (
                                 <>
                                     <div className="spinner"></div>
-                                    {generationQueue.length > 0 && (
-                                        <span className="queue-count">{generationQueue.length}</span>
+                                    {queueItems.length > 0 && (
+                                        <span className="queue-count">{queueItems.length}</span>
                                     )}
                                 </>
                             ) : (

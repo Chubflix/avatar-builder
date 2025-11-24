@@ -12,6 +12,7 @@ import debug from '../utils/debug';
 const SD_API_URL = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SD_API_URL) || '';
 const SD_API_AUTH = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SD_API_AUTH_TOKEN) || '';
 const APP_URL = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_APP_URL) || '';
+const SD_WEBHOOK_URL = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SD_WEBHOOK_URL) || '';
 
 class StableDiffusionAsyncAdapter {
     constructor() {
@@ -25,7 +26,11 @@ class StableDiffusionAsyncAdapter {
     }
 
     getWebhookUrl() {
-        // Publicly reachable URL for the proxy to call
+        // If explicitly configured, prefer the provided webhook URL
+        if (SD_WEBHOOK_URL && String(SD_WEBHOOK_URL).trim().length > 0) {
+            return String(SD_WEBHOOK_URL).trim();
+        }
+        // Fallback: build from NEXT_PUBLIC_APP_URL
         // Example: https://your-app.com/api/sd/webhook
         return `${this.appUrl?.replace(/\/$/, '')}/api/sd/webhook`;
     }
@@ -104,6 +109,22 @@ class StableDiffusionAsyncAdapter {
     async skip() {
         // Optional: implement cancel endpoint if needed in future
         return { queued: true };
+    }
+
+    async getJobs() {
+        try {
+            const resp = await fetch(`${this.baseUrl.replace(/\/$/, '')}/sdapi/v1/jobs`, { headers: this.getAuthHeaders() });
+            if (resp.ok) return await resp.json();
+        } catch (_) {}
+        return [];
+    }
+
+    async getJob(jobId) {
+        try {
+            const resp = await fetch(`${this.baseUrl.replace(/\/$/, '')}/sdapi/v1/jobs/${jobId}`, { headers: this.getAuthHeaders() });
+            if (resp.ok) return await resp.json();
+        } catch (_) {}
+        return null;
     }
 
     async generateImage(params) {

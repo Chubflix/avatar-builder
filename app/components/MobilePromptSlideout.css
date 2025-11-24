@@ -22,6 +22,7 @@
     flex-direction: column;
     gap: 1rem;
     flex: 1;
+    padding: 1rem;
 }
 
 /* Prompt Row - takes remaining space */
@@ -153,10 +154,6 @@
 .generate-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-}
-
-.generate-btn.loading {
-    background: var(--bg-tertiary);
 }
 
 .generate-btn i {

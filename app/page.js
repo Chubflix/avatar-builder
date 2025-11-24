@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
+import { QueueProvider } from './context/QueueContext';
 import { useFolders, useImages, useGeneration, useModels, useImagesRealtime } from './hooks';
+import { useQueue } from './hooks/queue';
 import { useGalleryKeyboardShortcuts } from './hooks/keyboard';
 import debug from './utils/debug';
 
@@ -33,6 +35,8 @@ function AppContent() {
     // Start realtime subscription for images
     useImagesRealtime();
     useGalleryKeyboardShortcuts();
+    const { triggerQueuePolling } = useQueue();
+
     const isInitialized = useRef(false);
     const currentFolderRef = useRef(null);
     const skipGalleryToSaveSync = useRef(false);
@@ -40,6 +44,11 @@ function AppContent() {
 
     const { config, settingsLoaded, currentFolder, selectedFolder, folders, selectedCharacter } = state;
     const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+
+    // recover queue if needed
+    useEffect(() => {
+        triggerQueuePolling();
+    }, []);
 
     // Keep ref in sync with current folder
     useEffect(() => {
@@ -438,7 +447,9 @@ function AppContent() {
 export default function Page() {
     return (
         <AppProvider>
-            <AppContent />
+            <QueueProvider>
+                <AppContent />
+            </QueueProvider>
         </AppProvider>
     );
 }

@@ -210,36 +210,21 @@ export async function saveGeneratedImage({ supabase, userId, imageBase64, meta =
         folder_path: image.folder ? `${image.folder.character?.name || 'Unknown'}/${image.folder.name}` : null
     };
 
-    // Best-effort realtime broadcast that a new image was saved.
-    // This allows clients to subscribe to a user-scoped channel and react immediately.
-    // Do not block the request if Realtime is unavailable.
     try {
         const channelName = 'images';
-        // Create a temporary channel and send a broadcast event.
         const channel = supabase.channel(channelName, {
             config: { broadcast: { self: true }, private: true }
         });
 
-        // Send minimal payload containing identifiers and URL for quick UI updates
-        // Do not await to avoid blocking on websocket connection establishment
-        channel.send({
-            type: 'broadcast',
-            event: 'image_saved',
-            payload: {
-                id: result.id,
-                user_id: userId,
-                storage_path: result.storage_path,
-                url: result.url,
-                folder_id: result.folder_id,
-                character_id: result.character_id,
-                created_at: result.created_at,
-            }
+        await channel.httpSend('item_save', {
+            id: result.id,
+            user_id: userId,
+            storage_path: result.storage_path,
+            url: result.url,
+            folder_id: result.folder_id,
+            character_id: result.character_id,
+            created_at: result.created_at,
         });
-
-        // Cleanup the channel shortly after to avoid leaking sockets on the server
-        setTimeout(() => {
-            try { channel.unsubscribe(); } catch (_) { /* noop */ }
-        }, 1000);
     } catch (e) {
         // Swallow realtime errors; logging only
         console.warn('[Realtime] Failed to broadcast image_saved:', e?.message || e);

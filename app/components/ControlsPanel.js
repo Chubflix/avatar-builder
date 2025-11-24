@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useQueueContext } from '../context/QueueContext';
 import FolderSelector from './FolderSelector';
 import LoraSettings from './LoraSettings';
 import './LoraSettings.css';
@@ -28,9 +29,9 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
         isGenerating,
         progress,
         status,
-        generationQueue,
         locks
     } = state;
+    const { items: queueItems } = useQueueContext();
 
     if (!config) return null;
 
@@ -340,9 +341,9 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
                 </div>
             )}
 
-            {generationQueue.length > 0 && (
+            {queueItems.length > 0 && (
                 <div className="queue-status">
-                    {generationQueue.length} {generationQueue.length === 1 ? 'generation' : 'generations'} queued...
+                    {queueItems.length} {queueItems.length === 1 ? 'generation' : 'generations'} queued...
                 </div>
             )}
 
