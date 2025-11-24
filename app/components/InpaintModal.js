@@ -109,13 +109,15 @@ export default function InpaintModal() {
                 undoStackRef.current = stack;
             }
         } catch(_) {}
-        draw(clientX, clientY);
+        // Force the first dot to render even before state updates
+        draw(clientX, clientY, true);
     };
 
     const stopDraw = () => setIsDrawing(false);
 
-    const draw = (clientX, clientY) => {
-        if (!isDrawing || mode === 'pan') return;
+    const draw = (clientX, clientY, force = false) => {
+        if (mode === 'pan') return;
+        if (!isDrawing && !force) return;
         const { x, y } = getPos(clientX, clientY);
         const canvas = canvasRef.current;
         if (!canvas) return;
