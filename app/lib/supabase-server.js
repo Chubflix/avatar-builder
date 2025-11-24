@@ -10,6 +10,7 @@ import { cookies } from 'next/headers';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { getImageUrl } from './s3-server';
 import { s3Upload, s3Delete } from './s3-server';
+import { getAblyRest } from './ably';
 
 /**
  * Create Supabase client with user session from cookies
@@ -211,12 +212,10 @@ export async function saveGeneratedImage({ supabase, userId, imageBase64, meta =
     };
 
     try {
-        const channelName = 'images';
-        const channel = supabase.channel(channelName, {
-            config: { broadcast: { self: true } }
-        });
-
-        await channel.httpSend('item_save', {
+        const ably = getAblyRest();
+        if (!ably) throw new Error('Ably REST client not configured');
+        const channel = ably.channels.get('images');
+        await channel.publish('image_saved', {
             id: result.id,
             user_id: userId,
             storage_path: result.storage_path,
@@ -227,7 +226,7 @@ export async function saveGeneratedImage({ supabase, userId, imageBase64, meta =
         });
     } catch (e) {
         // Swallow realtime errors; logging only
-        console.warn('[Realtime] Failed to broadcast image_saved:', e?.message || e);
+        console.warn('[Realtime] Failed to broadcast image_saved via Ably:', e?.message || e);
     }
 
     return result;

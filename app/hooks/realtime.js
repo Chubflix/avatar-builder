@@ -1,6 +1,6 @@
 import {useApp} from "@/app/context/AppContext";
 import {useEffect, useRef} from "react";
-import {supabase} from "@/app/lib/supabase";
+import { getAblyRealtime } from "@/app/lib/ably";
 
 /**
  * Hook to subscribe to realtime image_saved events and append matching images
@@ -17,16 +17,22 @@ export function useImagesRealtime() {
     useEffect(() => { imagesRef.current = state.images; }, [state.images]);
 
     useEffect(() => {
-        // Subscribe to the private 'images' channel for broadcasts
-        const channel = supabase.channel('images', { config: { broadcast: { self: true } } });
+        // Subscribe to Ably channel 'images' for image_saved events
+        const realtime = getAblyRealtime();
+        if (!realtime) {
+            console.warn('[Realtime] Ably not configured; skipping subscription');
+            return () => {};
+        }
 
+        const channel = realtime.channels.get('images');
 
-        console.log('subscribed to #images', channel);
+        console.log('subscribed to Ably channel #images');
         const onImageSaved = async (payload) => {
-            console.log("received a message via broadcast on #images", payload);
+            console.log("received a message via Ably on #images", payload);
 
             try {
-                const data = payload?.payload || payload; // compat with supabase callback
+                // Ably message: { name, data }
+                const data = payload?.data ?? payload?.payload ?? payload;
                 const { id, folder_id, character_id } = data || {};
                 if (!id) return;
 
@@ -68,10 +74,11 @@ export function useImagesRealtime() {
             }
         };
 
-        channel.on('broadcast', { event: 'image_saved' }, onImageSaved).subscribe();
+        channel.subscribe('image_saved', onImageSaved);
 
         return () => {
-            try { channel.unsubscribe(); } catch (_) { /* noop */ }
+            try { channel.unsubscribe('image_saved', onImageSaved); } catch (_) { /* noop */ }
+            try { realtime.channels.release('images'); } catch (_) { /* noop */ }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
