@@ -64,7 +64,7 @@ export async function middleware(req) {
     } = await supabase.auth.getSession();
 
     // Allow access to login page and auth callback
-    if (req.nextUrl.pathname.startsWith('/login') || req.nextUrl.pathname.startsWith('/auth')) {
+    if (req.nextUrl.pathname.startsWith('/login') || req.nextUrl.pathname.startsWith('/auth') || req.nextUrl.pathname.startsWith('/api/sd')) {
         if (session) {
             // Redirect authenticated users away from login
             return NextResponse.redirect(new URL('/', req.url));

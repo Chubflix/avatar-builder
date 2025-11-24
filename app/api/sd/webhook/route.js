@@ -2,18 +2,10 @@ import { NextResponse } from 'next/server';
 import { createServiceClient, uploadImageWithService } from '@/app/lib/supabase-server';
 import { v4 as uuidv4 } from 'uuid';
 
-const getEnv = (key, fallback = undefined) => {
-    try {
-        return typeof process !== 'undefined' && process.env ? (process.env[key] ?? fallback) : fallback;
-    } catch (_) {
-        return fallback;
-    }
-};
-
 export async function POST(request) {
     // Verify auth header – in this flow, the proxy sends back the per-job token
-    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
-    const token = (authHeader || '').startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : null;
+    const authHeader = request.headers.get('x-webhook-key', '');
+    const { uuid: jobId } = request.body;
     if (!token) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -27,6 +19,7 @@ export async function POST(request) {
             .from('jobs')
             .select('*')
             .eq('webhook_auth_token', token)
+            .eq('job_uuid', jobId)
             .eq('status', 'pending')
             .single();
 
