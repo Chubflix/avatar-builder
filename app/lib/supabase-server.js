@@ -158,3 +158,110 @@ export async function deleteImageFromStorage(storagePath) {
 
     if (error) throw error;
 }
+
+/**
+ * Persist a generated image to Storage and the images table.
+ * This helper centralizes the logic used by /api/images and the SD webhook.
+ *
+ * Params:
+ * - supabase: a Supabase client (auth client for user context, or service client for webhooks)
+ * - userId: UUID of the owner user
+ * - imageBase64: base64 string, may include data URL prefix
+ * - meta: { positivePrompt, negativePrompt, model, orientation, width, height, batchSize,
+ *           samplerName, scheduler, steps, cfgScale, seed, adetailerEnabled, adetailerModel,
+ *           info, folderId, loras }
+ *
+ * Returns: the inserted image row with folder joined, same shape as /api/images POST
+ */
+export async function saveGeneratedImage({ supabase, userId, imageBase64, meta = {} }) {
+    if (!supabase) throw new Error('saveGeneratedImage: supabase client is required');
+    if (!userId) throw new Error('saveGeneratedImage: userId is required');
+    if (!imageBase64) throw new Error('saveGeneratedImage: imageBase64 is required');
+
+    const {
+        positivePrompt,
+        negativePrompt,
+        model,
+        orientation,
+        width,
+        height,
+        batchSize,
+        samplerName,
+        scheduler,
+        steps,
+        cfgScale,
+        seed,
+        adetailerEnabled,
+        adetailerModel,
+        info,
+        folderId,
+        loras
+    } = meta;
+
+    // Normalize base64 (strip data URL if present)
+    const normalized = typeof imageBase64 === 'string'
+        ? (imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64)
+        : imageBase64;
+
+    const buffer = Buffer.from(normalized, 'base64');
+    const id = crypto.randomUUID ? crypto.randomUUID() : (await import('uuid')).v4();
+    const filename = `${id}.png`;
+    const storagePath = `${userId}/${filename}`;
+
+    // Upload to storage
+    const { error: uploadError } = await supabase.storage
+        .from('generated-images')
+        .upload(storagePath, new Blob([buffer], { type: 'image/png' }), {
+            contentType: 'image/png',
+            cacheControl: '3600',
+            upsert: false
+        });
+    if (uploadError) throw uploadError;
+
+    // Insert DB row
+    const { data: image, error } = await supabase
+        .from('images')
+        .insert({
+            id,
+            filename,
+            storage_path: storagePath,
+            positive_prompt: positivePrompt,
+            negative_prompt: negativePrompt,
+            model,
+            orientation,
+            width,
+            height,
+            batch_size: batchSize,
+            sampler_name: samplerName,
+            scheduler,
+            steps,
+            cfg_scale: cfgScale,
+            seed,
+            adetailer_enabled: adetailerEnabled,
+            adetailer_model: adetailerModel,
+            info_json: info || {},
+            folder_id: folderId || null,
+            loras: loras || null,
+            user_id: userId
+        })
+        .select(`
+            *,
+            folder:folders(id, name, character:characters(id, name))
+        `)
+        .single();
+
+    if (error) {
+        // Cleanup file on failure
+        await supabase.storage.from('generated-images').remove([storagePath]);
+        throw error;
+    }
+
+    return {
+        ...image,
+        url: getImageUrl(image.storage_path),
+        folder_id: image.folder_id || null,
+        character_id: image.folder?.character?.id || null,
+        folder_name: image.folder?.name || null,
+        folder_path: image.folder ? `${image.folder.character?.name || 'Unknown'}/${image.folder.name}` : null
+    };
+}

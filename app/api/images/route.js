@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { createAuthClient, getImageUrl, uploadImage, deleteImageFromStorage } from '@/app/lib/supabase-server';
+import { createAuthClient, getImageUrl, uploadImage, deleteImageFromStorage, saveGeneratedImage } from '@/app/lib/supabase-server';
 import { v4 as uuidv4 } from 'uuid';
 
 // GET images with pagination and optional folder filter
@@ -105,92 +105,34 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const {
-            imageData,
-            positivePrompt,
-            negativePrompt,
-            model,
-            orientation,
-            width,
-            height,
-            batchSize,
-            samplerName,
-            scheduler,
-            steps,
-            cfgScale,
-            seed,
-            adetailerEnabled,
-            adetailerModel,
-            info,
-            folderId,
-            loras
-        } = await request.json();
+        const body = await request.json();
 
-        const id = uuidv4();
-        const filename = `${id}.png`;
-
-        // Convert base64 to blob
-        const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
-        const buffer = Buffer.from(base64Data, 'base64');
-        const blob = new Blob([buffer], { type: 'image/png' });
-
-        // Upload to Supabase Storage
-        const storagePath = `${user.id}/${filename}`;
-        const { error: uploadError } = await supabase.storage
-            .from('generated-images')
-            .upload(storagePath, blob, {
-                contentType: 'image/png',
-                cacheControl: '3600'
-            });
-
-        if (uploadError) throw uploadError;
-
-        // Save metadata to database
-        const { data: image, error } = await supabase
-            .from('images')
-            .insert({
-                id,
-                filename,
-                storage_path: storagePath,
-                positive_prompt: positivePrompt,
-                negative_prompt: negativePrompt,
-                model,
-                orientation,
-                width,
-                height,
-                batch_size: batchSize,
-                sampler_name: samplerName,
-                scheduler,
-                steps,
-                cfg_scale: cfgScale,
-                seed,
-                adetailer_enabled: adetailerEnabled,
-                adetailer_model: adetailerModel,
-                info_json: info || {},
-                folder_id: folderId || null,
-                loras: loras || null,
-                user_id: user.id
-            })
-            .select(`
-                *,
-                folder:folders(id, name, character:characters(id, name))
-            `)
-            .single();
-
-        if (error) {
-            // Cleanup: delete uploaded file if database insert fails
-            await supabase.storage.from('generated-images').remove([storagePath]);
-            throw error;
-        }
-
-        return NextResponse.json({
-            ...image,
-            url: getImageUrl(image.storage_path),
-            folder_id: image.folder_id || null,
-            character_id: image.folder?.character?.id || null,
-            folder_name: image.folder?.name || null,
-            folder_path: image.folder ? `${image.folder.character?.name || 'Unknown'}/${image.folder.name}` : null
+        const saved = await saveGeneratedImage({
+            supabase,
+            userId: user.id,
+            imageBase64: body.imageData,
+            meta: {
+                positivePrompt: body.positivePrompt,
+                negativePrompt: body.negativePrompt,
+                model: body.model,
+                orientation: body.orientation,
+                width: body.width,
+                height: body.height,
+                batchSize: body.batchSize,
+                samplerName: body.samplerName,
+                scheduler: body.scheduler,
+                steps: body.steps,
+                cfgScale: body.cfgScale,
+                seed: body.seed,
+                adetailerEnabled: body.adetailerEnabled,
+                adetailerModel: body.adetailerModel,
+                info: body.info,
+                folderId: body.folderId,
+                loras: body.loras
+            }
         });
+
+        return NextResponse.json(saved);
     } catch (error) {
         console.error('Error saving image:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
