@@ -159,32 +159,16 @@ export function useImages() {
  */
 export function useGeneration() {
     const { state, dispatch, actions } = useApp();
-    const { triggerQueuePolling, isPolling } = useQueue();
-    const { items: queueItems, enqueue, dequeue, isProcessing, setProcessing } = useQueueContext();
-    const progressInterval = useRef(null);
-    const isProcessingLocal = useRef(false);
+    const { triggerQueuePolling } = useQueue();
 
-    const checkProgress = useCallback(async () => {
-        try {
-            const data = await sdAPI.getProgress();
-            if (data && typeof data.progress === 'number' && !Number.isNaN(data.progress)) {
-                dispatch({ type: actions.SET_PROGRESS, payload: Math.round(data.progress * 100) });
-            }
-            // If async adapter returns { queued: true }, skip updating progress
-        } catch (err) {
-            // Ignore progress errors
+    // Submit generation job to SD API
+    const generate = useCallback(async () => {
+        const { config, positivePrompt, selectedModel, negativePrompt, orientation, batchSize, seed, selectedFolder, notificationsEnabled, loraSliders, loraToggles, loraStyle, initImage, denoisingStrength, maskImage } = state;
+
+        if (!config || !positivePrompt.trim()) {
+            dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: 'Please enter a positive prompt' } });
+            return;
         }
-    }, [dispatch, actions]);
-
-    // Process a single generation from the queue
-    const processGeneration = useCallback(async (queueItem) => {
-        const { config, positivePrompt, selectedModel, negativePrompt, orientation, batchSize, seed, selectedFolder, currentFolder, totalImages, notificationsEnabled, loraSliders, loraToggles, loraStyle, initImage, denoisingStrength, maskImage } = queueItem;
-
-        dispatch({ type: actions.SET_GENERATING, payload: true });
-        dispatch({ type: actions.SET_STATUS, payload: { type: 'info', message: 'Generating images...' } });
-        dispatch({ type: actions.SET_PROGRESS, payload: 0 });
-
-        progressInterval.current = setInterval(checkProgress, 500);
 
         try {
             // Set model
@@ -236,7 +220,7 @@ export function useGeneration() {
                 // If job creation fails, continue without token (webhook will use global token if configured)
             }
 
-            // Generate images
+            // Submit job to SD API
             const result = initImage
                 ? (maskImage
                     ? await sdAPI.inpaintImage({
@@ -305,87 +289,15 @@ export function useGeneration() {
                         // non-fatal
                     }
                 }
-                sendNotification(`Your generation job was queued (ID: ${jobId}). You'll receive results shortly.`, 'info', dispatch, actions, notificationsEnabled);
+                sendNotification(`Job queued (ID: ${jobId})`, 'info', dispatch, actions, notificationsEnabled);
+
+                // Start polling the SD queue to track progress
+                triggerQueuePolling();
             }
         } catch (err) {
             sendNotification('Generation failed: ' + err.message, 'error', dispatch, actions, notificationsEnabled);
-        } finally {
-            dispatch({ type: actions.SET_PROGRESS, payload: 0 });
-            if (progressInterval.current) {
-                clearInterval(progressInterval.current);
-                progressInterval.current = null;
-            }
         }
-    }, [checkProgress, dispatch, actions]);
-
-    // Add generation to queue
-    const generate = useCallback(async () => {
-        const { config, positivePrompt, selectedModel, negativePrompt, orientation, batchSize, seed, selectedFolder, currentFolder, totalImages, notificationsEnabled, loraSliders, loraToggles, loraStyle, initImage, denoisingStrength, maskImage } = state;
-
-        if (!config || !positivePrompt.trim()) {
-            dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: 'Please enter a positive prompt' } });
-            return;
-        }
-
-        // Add to queue with all necessary data captured at this moment
-        const queueItem = {
-            config,
-            positivePrompt,
-            selectedModel,
-            negativePrompt,
-            orientation,
-            batchSize,
-            seed,
-            selectedFolder,
-            currentFolder,
-            totalImages,
-            notificationsEnabled,
-            loraSliders,
-            loraToggles,
-            loraStyle,
-            initImage,
-            denoisingStrength,
-            maskImage,
-            id: Date.now() + Math.random() // Unique ID for this queue item
-        };
-
-        enqueue(queueItem);
-        dispatch({ type: actions.SET_STATUS, payload: { type: 'info', message: 'Added to queue' } });
-
-        // Ensure SD queue polling is running if not already
-        try {
-            if (!isPolling()) {
-                // Fire-and-forget; it will only start if jobs exist
-                triggerQueuePolling();
-            }
-        } catch (_) { /* non-fatal */ }
-    }, [state, dispatch, actions, enqueue]);
-
-    // Process queue
-    useEffect(() => {
-        if (isProcessingLocal.current || queueItems.length === 0 || state.isGenerating) {
-            return;
-        }
-
-        isProcessingLocal.current = true;
-        setProcessing(true);
-
-        const nextItem = queueItems[0];
-        processGeneration(nextItem).finally(() => {
-            isProcessingLocal.current = false;
-            setProcessing(false);
-            // remove processed item
-            try { dequeue(); } catch (_) { /* noop */ }
-        });
-    }, [queueItems, state.isGenerating, processGeneration, setProcessing, dequeue]);
-
-    useEffect(() => {
-        return () => {
-            if (progressInterval.current) {
-                clearInterval(progressInterval.current);
-            }
-        };
-    }, []);
+    }, [state, dispatch, actions, triggerQueuePolling]);
 
     return { generate };
 }

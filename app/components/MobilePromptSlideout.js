@@ -21,7 +21,7 @@ function MobilePromptSlideout({ show, onClose, onGenerate }) {
         progress,
         selectedModel
     } = state;
-    const { items: queueItems } = useQueueContext();
+    const { count: queueCount } = useQueueContext();
 
     const handleGenerate = () => {
         onGenerate();
@@ -89,8 +89,8 @@ function MobilePromptSlideout({ show, onClose, onGenerate }) {
                             {isGenerating ? (
                                 <>
                                     <div className="spinner"></div>
-                                    {queueItems.length > 0 && (
-                                        <span className="queue-count">{queueItems.length}</span>
+                                    {queueCount > 0 && (
+                                        <span className="queue-count">{queueCount}</span>
                                     )}
                                 </>
                             ) : (

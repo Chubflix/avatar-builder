@@ -31,7 +31,7 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
         status,
         locks
     } = state;
-    const { items: queueItems } = useQueueContext();
+    const { count: queueCount } = useQueueContext();
 
     if (!config) return null;
 
@@ -341,9 +341,9 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
                 </div>
             )}
 
-            {queueItems.length > 0 && (
+            {queueCount > 0 && (
                 <div className="queue-status">
-                    {queueItems.length} {queueItems.length === 1 ? 'generation' : 'generations'} queued...
+                    {queueCount} {queueCount === 1 ? 'job' : 'jobs'} in queue
                 </div>
             )}
 

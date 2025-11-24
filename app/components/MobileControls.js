@@ -31,7 +31,7 @@ function MobileControls({ onGenerate, onResetDefaults }) {
         status,
         showMobileSettings
     } = state;
-    const { items: queueItems } = useQueueContext();
+    const { count: queueCount } = useQueueContext();
 
     if (!config) return null;
 
@@ -331,8 +331,8 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                         ) : (
                             <i className="fa fa-magic"></i>
                         )}
-                        {queueItems.length > 0 && (
-                            <span className="queue-count">{queueItems.length}</span>
+                        {queueCount > 0 && (
+                            <span className="queue-count">{queueCount}</span>
                         )}
                     </button>
                 </div>
