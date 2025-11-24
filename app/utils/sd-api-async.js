@@ -47,9 +47,8 @@ class StableDiffusionAsyncAdapter {
                 headers: this.getAuthHeaders(),
                 body: JSON.stringify({
                     ...rest,
-                    webhook_url: this.getWebhookUrl(),
-                    // The proxy expects a webhook_token (not webhook_headers)
-                    webhook_token: __webhookAuthToken || this.authToken
+                    webhookUrl: this.getWebhookUrl(),
+                    webhookKey: __webhookAuthToken || this.authToken
                 }),
                 signal: controller.signal
             });
