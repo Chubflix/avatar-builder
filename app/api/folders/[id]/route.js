@@ -4,7 +4,8 @@
  */
 
 import { NextResponse } from 'next/server';
-import { createAuthClient, deleteImageFromStorage } from '@/app/lib/supabase-server';
+import { createAuthClient } from '@/app/lib/supabase-server';
+import { deleteImageFromStorage } from '@/app/lib/s3-server';
 
 // PUT update folder
 export async function PUT(request, { params }) {
