@@ -64,7 +64,7 @@ class StableDiffusionAsyncAdapter {
             // Normalize a minimal response shape the app can detect
             return {
                 queued: true,
-                jobId: data.jobId || data.id || data.queue_id || null,
+                jobId: data.jobId || data.id || data.uuid || null,
                 proxy: 'automatic1111-async-api-proxy',
                 raw: data
             };
