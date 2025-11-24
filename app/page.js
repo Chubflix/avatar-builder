@@ -5,6 +5,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { QueueProvider } from './context/QueueContext';
 import { useFolders, useImages, useGeneration, useModels } from './hooks';
 import { useImagesRealtime } from "@/app/hooks/realtime";
+import { useImageSync, useFolderSync, useCharacterSync } from "@/app/hooks/realtime-sync";
 import { useQueue } from './hooks/queue';
 import { useGalleryKeyboardShortcuts } from './hooks/keyboard';
 import debug from './utils/debug';
@@ -33,8 +34,11 @@ function AppContent() {
     const { loadImages, loadMoreImages, deleteImage, moveImageToFolder } = useImages();
     const { generate } = useGeneration();
     const { loadModels } = useModels();
-    // Start realtime subscriptions (queue realtime is now inside useQueue)
-    useImagesRealtime();
+    // Start realtime subscriptions
+    useImagesRealtime();      // For new images (image_saved)
+    useImageSync();           // For image updates/moves/deletes
+    useFolderSync();          // For folder CRUD
+    useCharacterSync();       // For character CRUD
     useGalleryKeyboardShortcuts();
     const { triggerQueuePolling } = useQueue();
 
@@ -221,7 +225,7 @@ function AppContent() {
         dispatch({ type: actions.SET_NEW_FOLDER_NAME, payload: '' });
         dispatch({ type: actions.SET_PARENT_FOLDER_ID, payload: null });
 
-        await loadFolders();
+        // Real-time sync will handle folder updates automatically
     };
 
     const handleOpenLightbox = (index) => {
@@ -323,12 +327,12 @@ function AppContent() {
 
     const handleMoveToFolder = async (imageId, folderId) => {
         await moveImageToFolder(imageId, folderId);
-        await loadFolders();
+        // Real-time sync will handle folder updates automatically
     };
 
     const handleDeleteImage = async (imageId) => {
         await deleteImage(imageId);
-        await loadFolders();
+        // Real-time sync will handle folder updates automatically
     };
 
     if (isLoadingConfig) {

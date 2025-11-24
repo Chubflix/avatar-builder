@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { createAuthClient } from '@/app/lib/supabase-server';
 import { getImageUrl, deleteImageFromStorage } from '@/app/lib/s3-server';
+import { publishRealtimeEvent } from '@/app/lib/ably';
 
 // PATCH update image flags (favorite, nsfw)
 export async function PATCH(request, { params }) {
@@ -47,6 +48,14 @@ export async function PATCH(request, { params }) {
         if (!image) {
             return NextResponse.json({ error: 'Image not found' }, { status: 404 });
         }
+
+        // Publish realtime event
+        await publishRealtimeEvent('images', 'image_updated', {
+            id: image.id,
+            user_id: user.id,
+            is_favorite: image.is_favorite,
+            is_nsfw: image.is_nsfw
+        });
 
         // Return in same format as GET endpoint
         return NextResponse.json({
@@ -109,6 +118,14 @@ export async function PUT(request, { params }) {
             return NextResponse.json({ error: 'Image not found' }, { status: 404 });
         }
 
+        // Publish realtime event
+        await publishRealtimeEvent('images', 'image_moved', {
+            id: image.id,
+            user_id: user.id,
+            folder_id: image.folder_id,
+            character_id: image.folder?.character?.id || null
+        });
+
         // Return in same format as GET endpoint
         return NextResponse.json({
             ...image,
@@ -165,6 +182,12 @@ export async function DELETE(request, { params }) {
             .eq('user_id', user.id);
 
         if (error) throw error;
+
+        // Publish realtime event
+        await publishRealtimeEvent('images', 'image_deleted', {
+            id,
+            user_id: user.id
+        });
 
         return NextResponse.json({ success: true });
     } catch (error) {

@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { createAuthClient } from '@/app/lib/supabase-server';
+import { publishRealtimeEvent } from '@/app/lib/ably';
 
 // PUT update character
 export async function PUT(request, { params }) {
@@ -42,6 +43,13 @@ export async function PUT(request, { params }) {
             return NextResponse.json({ error: 'Character not found' }, { status: 404 });
         }
 
+        // Publish realtime event
+        await publishRealtimeEvent('characters', 'character_updated', {
+            id: character.id,
+            user_id: user.id,
+            name: character.name
+        });
+
         return NextResponse.json(character);
     } catch (error) {
         console.error('Error updating character:', error);
@@ -70,6 +78,12 @@ export async function DELETE(request, { params }) {
             .eq('user_id', user.id); // Extra safety check
 
         if (error) throw error;
+
+        // Publish realtime event
+        await publishRealtimeEvent('characters', 'character_deleted', {
+            id,
+            user_id: user.id
+        });
 
         return NextResponse.json({ success: true });
     } catch (error) {

@@ -5,7 +5,7 @@ import debug from "@/app/utils/debug";
 import {imageAPI} from "@/app/utils/backend-api";
 
 /**
- * Hook to subscribe to realtime image_saved events and append matching images
+ * Hook to subscribe to realtime image events (saved, updated, moved, deleted)
  */
 export function useImagesRealtime() {
     const { state, dispatch, actions } = useApp();
@@ -13,10 +13,12 @@ export function useImagesRealtime() {
     const selectedFolderRef = useRef(state.selectedFolder);
     const selectedCharacterRef = useRef(state.selectedCharacter);
     const imagesRef = useRef(state.images);
+    const currentFolderRef = useRef(state.currentFolder);
 
     useEffect(() => { selectedFolderRef.current = state.selectedFolder; }, [state.selectedFolder]);
     useEffect(() => { selectedCharacterRef.current = state.selectedCharacter; }, [state.selectedCharacter]);
     useEffect(() => { imagesRef.current = state.images; }, [state.images]);
+    useEffect(() => { currentFolderRef.current = state.currentFolder; }, [state.currentFolder]);
 
     useEffect(() => {
         // Subscribe to Ably channel 'images' for image_saved events

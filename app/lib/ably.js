@@ -34,3 +34,30 @@ export function getAblyRest() {
   _rest = new Ably.Rest(key);
   return _rest;
 }
+
+/**
+ * Publish a realtime event to Ably (server-side only)
+ * @param {string} channelName - Channel to publish to (e.g., 'images', 'folders', 'characters')
+ * @param {string} eventName - Event name (e.g., 'image_deleted', 'folder_created')
+ * @param {object} data - Event data
+ */
+export async function publishRealtimeEvent(channelName, eventName, data) {
+  try {
+    const ably = getAblyRest();
+    if (!ably) {
+      console.warn(`[Ably] Cannot publish ${channelName}:${eventName} - REST client not configured`);
+      return;
+    }
+
+    const channel = ably.channels.get(channelName);
+    await channel.publish(eventName, {
+      timestamp: Date.now(),
+      ...data
+    });
+
+    console.log(`[Ably] Published ${channelName}:${eventName}`, data);
+  } catch (error) {
+    // Swallow realtime errors; logging only
+    console.warn(`[Ably] Failed to publish ${channelName}:${eventName}:`, error?.message || error);
+  }
+}

@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { createAuthClient } from '@/app/lib/supabase-server';
+import { publishRealtimeEvent } from '@/app/lib/ably';
 
 // GET all folders for authenticated user (optionally filtered by character)
 export async function GET(request) {
@@ -103,6 +104,14 @@ export async function POST(request) {
             .single();
 
         if (error) throw error;
+
+        // Publish realtime event
+        await publishRealtimeEvent('folders', 'folder_created', {
+            id: folder.id,
+            user_id: user.id,
+            name: folder.name,
+            character_id: folder.character_id
+        });
 
         return NextResponse.json(folder);
     } catch (error) {

@@ -229,10 +229,10 @@ function ImageGallery({onOpenLightbox, onRestoreSettings, onDelete, onLoadMore})
                                 payload: {type: 'success', message: `Moved ${selectedImages.length} images`}
                             });
                             dispatch({type: actions.CLEAR_SELECTION});
-                            window.location.reload();
+                            // Real-time sync will handle UI updates automatically
                         } else if (selectedImageForMove) {
                             await imageAPI.update(selectedImageForMove.id, {folderId: folderId || null});
-                            window.location.reload();
+                            // Real-time sync will handle UI updates automatically
                         }
                     } catch (err) {
                         dispatch({

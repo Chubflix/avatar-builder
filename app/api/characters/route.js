@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { createAuthClient } from '@/app/lib/supabase-server';
+import { publishRealtimeEvent } from '@/app/lib/ably';
 
 // GET all characters for authenticated user
 export async function GET() {
@@ -70,6 +71,13 @@ export async function POST(request) {
             .single();
 
         if (error) throw error;
+
+        // Publish realtime event
+        await publishRealtimeEvent('characters', 'character_created', {
+            id: character.id,
+            user_id: user.id,
+            name: character.name
+        });
 
         return NextResponse.json(character);
     } catch (error) {

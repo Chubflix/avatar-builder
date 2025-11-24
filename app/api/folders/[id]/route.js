@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { createAuthClient } from '@/app/lib/supabase-server';
 import { deleteImageFromStorage } from '@/app/lib/s3-server';
+import { publishRealtimeEvent } from '@/app/lib/ably';
 
 // PUT update folder
 export async function PUT(request, { params }) {
@@ -45,6 +46,14 @@ export async function PUT(request, { params }) {
         if (!folder) {
             return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
         }
+
+        // Publish realtime event
+        await publishRealtimeEvent('folders', 'folder_updated', {
+            id: folder.id,
+            user_id: user.id,
+            name: folder.name,
+            character_id: folder.character_id
+        });
 
         return NextResponse.json(folder);
     } catch (error) {
@@ -90,6 +99,12 @@ export async function DELETE(request, { params }) {
             .eq('user_id', user.id); // Extra safety check
 
         if (error) throw error;
+
+        // Publish realtime event
+        await publishRealtimeEvent('folders', 'folder_deleted', {
+            id,
+            user_id: user.id
+        });
 
         return NextResponse.json({ success: true });
     } catch (error) {
