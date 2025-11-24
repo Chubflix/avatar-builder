@@ -5,7 +5,6 @@ import { v4 as uuidv4 } from 'uuid';
 export async function POST(request) {
     // Verify auth header – in this flow, the proxy sends back the per-job token
     const token = request.headers.get('x-webhook-key', '');
-    const { uuid: jobId } = request.body;
     if (!token) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -19,7 +18,7 @@ export async function POST(request) {
             .from('jobs')
             .select('*')
             .eq('webhook_auth_token', token)
-            .eq('job_uuid', jobId)
+            .eq('job_uuid', body?.uuid)
             .eq('status', 'pending')
             .single();
 
