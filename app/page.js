@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
-import { useFolders, useImages, useGeneration, useModels } from './hooks';
+import { useFolders, useImages, useGeneration, useModels, useImagesRealtime } from './hooks';
 import { useGalleryKeyboardShortcuts } from './hooks/keyboard';
 import debug from './utils/debug';
 
@@ -30,6 +30,8 @@ function AppContent() {
     const { loadImages, loadMoreImages, deleteImage, moveImageToFolder } = useImages();
     const { generate } = useGeneration();
     const { loadModels } = useModels();
+    // Start realtime subscription for images
+    useImagesRealtime();
     useGalleryKeyboardShortcuts();
     const isInitialized = useRef(false);
     const currentFolderRef = useRef(null);

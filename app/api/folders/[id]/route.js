@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { createAuthClient } from '@/app/lib/supabase-server';
+import { createAuthClient, deleteImageFromStorage } from '@/app/lib/supabase-server';
 
 // PUT update folder
 export async function PUT(request, { params }) {
@@ -74,17 +74,11 @@ export async function DELETE(request, { params }) {
 
         if (imagesError) throw imagesError;
 
-        // Delete images from storage
+        // Delete images from S3 storage (best-effort)
         if (images && images.length > 0) {
-            const storagePaths = images.map(img => img.storage_path);
-            const { error: storageError } = await supabase.storage
-                .from('generated-images')
-                .remove(storagePaths);
-
-            if (storageError) {
-                console.error('Error deleting images from storage:', storageError);
-                // Continue anyway - database deletion is more important
-            }
+            await Promise.allSettled(
+                images.map(img => deleteImageFromStorage(img.storage_path))
+            );
         }
 
         // Delete folder (will set folder_id to NULL on images due to ON DELETE SET NULL)

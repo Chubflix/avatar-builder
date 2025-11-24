@@ -4,7 +4,8 @@
  */
 
 import { NextResponse } from 'next/server';
-import { createAuthClient, getImageUrl } from '@/app/lib/supabase-server';
+import { createAuthClient } from '@/app/lib/supabase-server';
+import { getImageUrl, deleteImageFromStorage } from '@/app/lib/s3-server';
 
 // PATCH update image flags (favorite, nsfw)
 export async function PATCH(request, { params }) {
@@ -148,13 +149,11 @@ export async function DELETE(request, { params }) {
             return NextResponse.json({ error: 'Image not found' }, { status: 404 });
         }
 
-        // Delete from storage
-        const { error: storageError } = await supabase.storage
-            .from('generated-images')
-            .remove([image.storage_path]);
-
-        if (storageError) {
-            console.error('Error deleting from storage:', storageError);
+        // Delete from S3 storage (best-effort)
+        try {
+            await deleteImageFromStorage(image.storage_path);
+        } catch (e) {
+            console.error('Error deleting from storage:', e);
             // Continue anyway - database deletion is more important
         }
 

@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { createAuthClient } from '@/app/lib/supabase-server';
+import { getImageUrl } from '@/app/lib/s3-server';
 import archiver from 'archiver';
 
 export async function POST(request) {
@@ -60,18 +61,16 @@ export async function POST(request) {
         // Download and add each image to archive
         const downloadPromises = images.map(async (image) => {
             try {
-                // Download from Supabase Storage
-                const { data: blob, error } = await supabase.storage
-                    .from('generated-images')
-                    .download(image.storage_path);
-
-                if (error) {
-                    console.error(`Error downloading ${image.filename}:`, error);
+                // Fetch from public S3 URL
+                const url = getImageUrl(image.storage_path);
+                if (!url) return;
+                const resp = await fetch(url);
+                if (!resp.ok) {
+                    console.error(`Error fetching ${image.filename}:`, resp.statusText);
                     return;
                 }
-
-                // Convert blob to buffer
-                const buffer = Buffer.from(await blob.arrayBuffer());
+                const arrayBuf = await resp.arrayBuffer();
+                const buffer = Buffer.from(arrayBuf);
 
                 // Add to archive
                 archive.append(buffer, { name: image.filename });

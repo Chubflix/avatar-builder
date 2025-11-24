@@ -103,6 +103,19 @@ export const imageAPI = {
     },
 
     /**
+     * Get a single image by id
+     */
+    async getById(id) {
+        const url = `${API_BASE}/api/images?id=${encodeURIComponent(id)}`;
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error('Failed to load image');
+        }
+        const data = await response.json();
+        return Array.isArray(data.images) ? data.images[0] : null;
+    },
+
+    /**
      * Save a new image
      */
     async save({

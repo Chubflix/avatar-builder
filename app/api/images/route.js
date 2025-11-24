@@ -4,7 +4,8 @@
  */
 
 import { NextResponse } from 'next/server';
-import { createAuthClient, getImageUrl, uploadImage, deleteImageFromStorage, saveGeneratedImage } from '@/app/lib/supabase-server';
+import { createAuthClient, saveGeneratedImage } from '@/app/lib/supabase-server';
+import { getImageUrl } from '@/app/lib/s3-server';
 import { v4 as uuidv4 } from 'uuid';
 
 // GET images with pagination and optional folder filter
@@ -23,6 +24,39 @@ export async function GET(request) {
         const offset = parseInt(searchParams.get('offset')) || 0;
         const folderId = searchParams.get('folder_id');
         const characterId = searchParams.get('character_id');
+        const id = searchParams.get('id');
+
+        // If a specific image id is requested, return that image only
+        if (id) {
+            let singleQuery = supabase
+                .from('images')
+                .select(`
+                    *,
+                    folder:folders(id, name, character:characters(id, name))
+                `)
+                .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+                .eq('id', id)
+                .limit(1);
+
+            const { data: one, error: oneErr } = await singleQuery;
+            if (oneErr) throw oneErr;
+
+            const img = one && one[0];
+            if (!img) {
+                return NextResponse.json({ images: [], total: 0, hasMore: false });
+            }
+
+            const imgWithUrl = {
+                ...img,
+                url: getImageUrl(img.storage_path),
+                folder_id: img.folder_id || null,
+                character_id: img.folder?.character?.id || null,
+                folder_name: img.folder?.name || null,
+                folder_path: img.folder ? `${img.folder.character?.name || 'Unknown'}/${img.folder.name}` : null
+            };
+
+            return NextResponse.json({ images: [imgWithUrl], total: 1, hasMore: false });
+        }
 
         // Build query
         let query = supabase

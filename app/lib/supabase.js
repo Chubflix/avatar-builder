@@ -7,6 +7,7 @@
  */
 
 import { createBrowserClient } from '@supabase/ssr';
+import { getImageUrl as s3GetImageUrl, deleteImage as s3DeleteImage, downloadImage as s3DownloadImage } from './s3';
 
 // Supabase configuration from environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -101,36 +102,17 @@ export async function uploadImage(file, filename, userId) {
  * @param {string} storagePath - Path in storage
  * @returns {string} - Public URL
  */
-export function getImageUrl(storagePath) {
-    const { data } = supabase.storage
-        .from('generated-images')
-        .getPublicUrl(storagePath);
-
-    return data.publicUrl;
-}
+export const getImageUrl = s3GetImageUrl;
 
 /**
  * Delete image from storage
  * @param {string} storagePath - Path in storage
  */
-export async function deleteImage(storagePath) {
-    const { error } = await supabase.storage
-        .from('generated-images')
-        .remove([storagePath]);
-
-    if (error) throw error;
-}
+export const deleteImage = s3DeleteImage;
 
 /**
  * Download image from storage
  * @param {string} storagePath - Path in storage
  * @returns {Promise<Blob>} - Image blob
  */
-export async function downloadImage(storagePath) {
-    const { data, error } = await supabase.storage
-        .from('generated-images')
-        .download(storagePath);
-
-    if (error) throw error;
-    return data;
-}
+export const downloadImage = s3DownloadImage;

@@ -8,6 +8,8 @@
 import { createServerClient as createSSRServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { getImageUrl } from './s3-server';
+import { s3Upload, s3Delete } from './s3-server';
 
 /**
  * Create Supabase client with user session from cookies
@@ -105,59 +107,7 @@ export async function requireAuth() {
  * @param {string} storagePath - Path in storage
  * @returns {string} - Public URL
  */
-export function getImageUrl(storagePath) {
-    if (!storagePath) return null;
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    return `${supabaseUrl}/storage/v1/object/public/generated-images/${storagePath}`;
-}
-
-/**
- * Upload image to Supabase Storage (server-side)
- * @param {Buffer|Blob} file - Image file to upload
- * @param {string} storagePath - Path where file should be stored
- * @returns {Promise<void>}
- */
-export async function uploadImage(file, storagePath) {
-    const supabase = createAuthClient();
-
-    const { error } = await supabase.storage
-        .from('generated-images')
-        .upload(storagePath, file, {
-            contentType: 'image/png',
-            upsert: false
-        });
-
-    if (error) throw error;
-}
-
-/**
- * Upload image using service client (bypasses RLS). For webhooks.
- */
-export async function uploadImageWithService(file, storagePath) {
-    const supabase = createServiceClient();
-    const { error } = await supabase.storage
-        .from('generated-images')
-        .upload(storagePath, file, {
-            contentType: 'image/png',
-            upsert: false
-        });
-    if (error) throw error;
-}
-
-/**
- * Delete image from storage (server-side)
- * @param {string} storagePath - Path in storage
- */
-export async function deleteImageFromStorage(storagePath) {
-    const supabase = createAuthClient();
-
-    const { error } = await supabase.storage
-        .from('generated-images')
-        .remove([storagePath]);
-
-    if (error) throw error;
-}
+// Note: S3 operations moved to app/lib/s3-server.js
 
 /**
  * Persist a generated image to Storage and the images table.
@@ -208,15 +158,10 @@ export async function saveGeneratedImage({ supabase, userId, imageBase64, meta =
     const filename = `${id}.png`;
     const storagePath = `${userId}/${filename}`;
 
-    // Upload to storage
-    const { error: uploadError } = await supabase.storage
-        .from('generated-images')
-        .upload(storagePath, new Blob([buffer], { type: 'image/png' }), {
-            contentType: 'image/png',
-            cacheControl: '3600',
-            upsert: false
-        });
-    if (uploadError) throw uploadError;
+    // Upload to S3 via s3-server helpers
+    const bucket = process.env.S3_BUCKET;
+    if (!bucket) throw new Error('Missing S3_BUCKET');
+    await s3Upload({ bucket, key: storagePath, body: buffer, contentType: 'image/png', cacheControl: '3600' });
 
     // Insert DB row
     const { data: image, error } = await supabase
@@ -252,7 +197,7 @@ export async function saveGeneratedImage({ supabase, userId, imageBase64, meta =
 
     if (error) {
         // Cleanup file on failure
-        await supabase.storage.from('generated-images').remove([storagePath]);
+        try { await s3Delete({ bucket, key: storagePath }); } catch (_) { /* noop */ }
         throw error;
     }
 

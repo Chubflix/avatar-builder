@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { createAuthClient } from '@/app/lib/supabase-server';
+import { deleteImageFromStorage } from '@/app/lib/s3-server';
 
 export async function POST(request) {
     try {
@@ -31,17 +32,12 @@ export async function POST(request) {
 
         if (fetchError) throw fetchError;
 
-        // Delete from storage
+        // Delete from S3 storage (best-effort per object)
         if (images && images.length > 0) {
-            const storagePaths = images.map(img => img.storage_path);
-            const { error: storageError } = await supabase.storage
-                .from('generated-images')
-                .remove(storagePaths);
-
-            if (storageError) {
-                console.error('Error deleting from storage:', storageError);
-                // Continue anyway - database deletion is more important
-            }
+            const deletes = images.map(img => deleteImageFromStorage(img.storage_path).catch(e => {
+                console.error('Error deleting from storage:', e);
+            }));
+            await Promise.allSettled(deletes);
         }
 
         // Delete from database
