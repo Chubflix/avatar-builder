@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { QueueProvider } from './context/QueueContext';
 import { useFolders, useImages, useGeneration, useModels } from './hooks';
-import {useImagesRealtime} from "@/app/hooks/realtime";
+import { useImagesRealtime } from "@/app/hooks/realtime";
 import { useQueue } from './hooks/queue';
 import { useGalleryKeyboardShortcuts } from './hooks/keyboard';
 import debug from './utils/debug';
@@ -33,7 +33,7 @@ function AppContent() {
     const { loadImages, loadMoreImages, deleteImage, moveImageToFolder } = useImages();
     const { generate } = useGeneration();
     const { loadModels } = useModels();
-    // Start realtime subscription for images
+    // Start realtime subscriptions (queue realtime is now inside useQueue)
     useImagesRealtime();
     useGalleryKeyboardShortcuts();
     const { triggerQueuePolling } = useQueue();

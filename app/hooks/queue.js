@@ -3,10 +3,12 @@ import { useApp } from '../context/AppContext';
 import { useQueueContext } from '../context/QueueContext';
 import sdAPI from '../utils/sd-api';
 import debug from '../utils/debug';
+import { getAblyRealtime } from '../lib/ably';
 
 /**
  * Hook to poll SD API jobs endpoint and keep queue count in sync.
  * The SD API is the single source of truth for queue status.
+ * Also subscribes to real-time queue events from other devices.
  */
 export function useQueue() {
     const { dispatch, actions } = useApp();
@@ -81,6 +83,33 @@ export function useQueue() {
         if (isPollingRef.current) return;
         startPolling();
     }, [startPolling]);
+
+    // Subscribe to real-time queue events from other devices
+    useEffect(() => {
+        const realtime = getAblyRealtime();
+        if (!realtime) {
+            debug.warn('Queue-Realtime', 'Ably not configured; skipping subscription');
+            return () => {};
+        }
+
+        const channel = realtime.channels.get('queue');
+
+        const onJobQueued = (payload) => {
+            debug.log('Queue-Realtime', 'Received job_queued event', payload);
+
+            // Another device queued a job, start polling to check for new jobs
+            // Uses the SAME refs as the main polling logic
+            triggerQueuePolling();
+        };
+
+        channel.subscribe('job_queued', onJobQueued);
+        debug.log('Queue-Realtime', 'Subscribed to Ably channel #queue');
+
+        return () => {
+            try { channel.unsubscribe('job_queued', onJobQueued); } catch (_) { /* noop */ }
+            try { realtime.channels.release('queue'); } catch (_) { /* noop */ }
+        };
+    }, [triggerQueuePolling]);
 
     // Clean up on unmount
     useEffect(() => {

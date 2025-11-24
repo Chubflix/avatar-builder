@@ -8,6 +8,7 @@ import { buildLoraPrompt } from '../utils/lora-builder';
 import { supabase } from '../lib/supabase';
 import { useQueueContext } from '../context/QueueContext';
 import { useQueue } from './queue';
+import { notifyJobQueued } from '../utils/queue-notifications';
 
 /**
  * Hook for managing folders
@@ -290,6 +291,9 @@ export function useGeneration() {
                     }
                 }
                 sendNotification(`Job queued (ID: ${jobId})`, 'info', dispatch, actions, notificationsEnabled);
+
+                // Notify other devices via real-time that a job was queued
+                notifyJobQueued(jobId);
 
                 // Start polling the SD queue to track progress
                 triggerQueuePolling();
