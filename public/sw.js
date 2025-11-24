@@ -1,5 +1,5 @@
 // Service Worker for Avatar Builder PWA
-const CACHE_NAME = 'avatar-builder-v4'; // Increment this to force cache refresh
+const CACHE_NAME = 'avatar-builder-v5'; // Increment this to force cache refresh
 
 // Install event - skip precaching to avoid errors
 self.addEventListener('install', (event) => {
@@ -30,16 +30,19 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // API requests - network first, then cache
+  // API requests - network first. Only cache safe GET responses.
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(request)
         .then((response) => {
           // Clone the response before caching
           const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseToCache);
-          });
+          if (request.method === 'GET' && response && response.ok) {
+            caches.open(CACHE_NAME).then((cache) => {
+              // Only cache GET requests; Cache API doesn't support non-GET methods
+              cache.put(request, responseToCache).catch(() => {/* ignore cache put errors */});
+            });
+          }
           return response;
         })
         .catch(() => {
@@ -61,7 +64,10 @@ self.addEventListener('fetch', (event) => {
         if (request.url.match(/\.(jpg|jpeg|png|gif|webp|svg|woff|woff2|ttf|eot)$/)) {
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseToCache);
+            // These should be GET requests, but guard just in case
+            if (request.method === 'GET') {
+              cache.put(request, responseToCache).catch(() => {/* ignore */});
+            }
           });
         }
         return response;
