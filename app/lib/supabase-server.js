@@ -286,6 +286,7 @@ export async function saveGeneratedImage({ supabase, userId, imageBase64, meta =
                 storage_path: result.storage_path,
                 url: result.url,
                 folder_id: result.folder_id,
+                character_id: result.character_id,
                 created_at: result.created_at,
             }
         });
