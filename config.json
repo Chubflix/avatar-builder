@@ -1,7 +1,4 @@
 {
-  "api": {
-    "baseUrl": "https://ai-sd.svc.cklio.com"
-  },
   "defaults": {
     "positivePrompt": "",
     "negativePrompt": "lazyneg, lazyhand",

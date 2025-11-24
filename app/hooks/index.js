@@ -162,7 +162,10 @@ export function useGeneration() {
     const checkProgress = useCallback(async () => {
         try {
             const data = await sdAPI.getProgress();
-            dispatch({ type: actions.SET_PROGRESS, payload: Math.round(data.progress * 100) });
+            if (data && typeof data.progress === 'number' && !Number.isNaN(data.progress)) {
+                dispatch({ type: actions.SET_PROGRESS, payload: Math.round(data.progress * 100) });
+            }
+            // If async adapter returns { queued: true }, skip updating progress
         } catch (err) {
             // Ignore progress errors
         }
@@ -186,8 +189,49 @@ export function useGeneration() {
             const loraAdditions = buildLoraPrompt(config, loraSliders, loraToggles, loraStyle);
             const finalPrompt = positivePrompt + loraAdditions;
 
-            // Generate images
+            // Prepare original metadata payload to persist with the queued job
             const dims = config.dimensions[orientation];
+            const jobPayload = {
+                positivePrompt,
+                negativePrompt,
+                model: selectedModel,
+                orientation,
+                width: dims.width,
+                height: dims.height,
+                batchSize,
+                samplerName: config.generation.samplerName,
+                scheduler: config.generation.scheduler,
+                steps: config.generation.steps,
+                cfgScale: config.generation.cfgScale,
+                seed,
+                adetailerEnabled: config.adetailer.enabled,
+                adetailerModel: config.adetailer.model,
+                folder_id: selectedFolder || null,
+                loras: {
+                    sliders: loraSliders,
+                    toggles: loraToggles,
+                    style: loraStyle
+                },
+                generationMode: initImage ? (maskImage ? 'inpaint' : 'img2img') : 'txt2img'
+            };
+
+            // Create a job record to receive a per-job webhook token
+            let webhookToken = null;
+            try {
+                const jobResp = await fetch('/api/jobs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(jobPayload)
+                });
+                if (jobResp.ok) {
+                    const job = await jobResp.json();
+                    webhookToken = job.token;
+                }
+            } catch (_) {
+                // If job creation fails, continue without token (webhook will use global token if configured)
+            }
+
+            // Generate images
             const result = initImage
                 ? (maskImage
                     ? await sdAPI.inpaintImage({
@@ -205,7 +249,8 @@ export function useGeneration() {
                         seed,
                         denoisingStrength: typeof denoisingStrength === 'number' ? denoisingStrength : 0.5,
                         adetailerEnabled: config.adetailer.enabled,
-                        adetailerModel: config.adetailer.model
+                        adetailerModel: config.adetailer.model,
+                        __webhookAuthToken: webhookToken || undefined
                     })
                     : await sdAPI.generateImageFromImage({
                         initImage,
@@ -221,7 +266,8 @@ export function useGeneration() {
                         seed,
                         denoisingStrength: typeof denoisingStrength === 'number' ? denoisingStrength : 0.5,
                         adetailerEnabled: config.adetailer.enabled,
-                        adetailerModel: config.adetailer.model
+                        adetailerModel: config.adetailer.model,
+                        __webhookAuthToken: webhookToken || undefined
                     }))
                 : await sdAPI.generateImage({
                     prompt: finalPrompt,
@@ -235,8 +281,29 @@ export function useGeneration() {
                     cfgScale: config.generation.cfgScale,
                     seed,
                     adetailerEnabled: config.adetailer.enabled,
-                    adetailerModel: config.adetailer.model
+                    adetailerModel: config.adetailer.model,
+                    __webhookAuthToken: webhookToken || undefined
                 });
+
+            // If using async proxy adapter, result will be a queued job
+            if (result && result.queued) {
+                const jobId = result.jobId || result.raw?.id || 'unknown';
+                // Store the job_uuid on the existing job row for traceability
+                if (webhookToken && jobId && jobId !== 'unknown') {
+                    try {
+                        await fetch('/api/jobs', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ token: webhookToken, job_uuid: jobId })
+                        });
+                    } catch (_) {
+                        // non-fatal
+                    }
+                }
+                sendNotification(`Your generation job was queued (ID: ${jobId}). You'll receive results shortly.`, 'info', dispatch, actions, notificationsEnabled);
+                // Exit early; webhook will deliver results when ready
+                return;
+            }
 
             const info = JSON.parse(result.info || '{}');
 
@@ -366,10 +433,8 @@ export function useGeneration() {
 export function useModels() {
     const { dispatch, actions } = useApp();
 
-    const loadModels = useCallback(async (baseUrl) => {
+    const loadModels = useCallback(async () => {
         try {
-            debug.log('Models', 'Setting base URL', { baseUrl });
-            sdAPI.setBaseUrl(baseUrl);
             debug.log('Models', 'Fetching models...');
             const models = await sdAPI.getModels();
             debug.log('Models', 'Received models', { count: models.length });

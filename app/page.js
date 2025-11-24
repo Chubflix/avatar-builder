@@ -90,9 +90,9 @@ function AppContent() {
                 dispatch({ type: actions.SET_SETTINGS_LOADED, payload: true });
 
                 // Load models, folders, and images (continue even if some fail)
-                debug.log('App', 'Loading SD models', { baseUrl: data.api.baseUrl });
+                debug.log('App', 'Loading SD models');
                 try {
-                    await loadModels(data.api.baseUrl);
+                    await loadModels();
                     debug.log('App', 'Models loaded successfully');
                 } catch (err) {
                     debug.error('App', 'Failed to load models', err);

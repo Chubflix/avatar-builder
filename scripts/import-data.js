@@ -1,5 +1,16 @@
 #!/usr/bin/env node
 
+// Ensure environment variables from .env/.env.local are available when this
+// script is run directly (outside of npm scripts). When run via
+// `yarn import`, we also preload dotenv using `-r dotenv/config` for safety.
+try {
+  // Load .env first, then override with .env.local if present
+  require('dotenv').config();
+  require('dotenv').config({ path: '.env.local' });
+} catch (_) {
+  // no-op if dotenv isn't available; the script will rely on the environment
+}
+
 /**
  * Import data from SQLite to Supabase
  *

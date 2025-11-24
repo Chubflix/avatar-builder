@@ -1,177 +1,239 @@
--- Avatar Builder Supabase Schema
--- New structure: characters -> folders -> images
--- All tables use RLS (Row Level Security)
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
 
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+COMMENT ON SCHEMA "public" IS 'standard public schema';
 
--- ============================================
--- CHARACTERS TABLE
--- ============================================
-CREATE TABLE IF NOT EXISTS characters (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name TEXT NOT NULL,
-    description TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
-);
+CREATE EXTENSION IF NOT EXISTS "pg_graphql" WITH SCHEMA "graphql";
 
-CREATE INDEX idx_characters_user_id ON characters(user_id);
+CREATE EXTENSION IF NOT EXISTS "pg_stat_statements" WITH SCHEMA "extensions";
 
-ALTER TABLE characters ENABLE ROW LEVEL SECURITY;
+CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA "extensions";
 
-CREATE POLICY "Users can view their own characters"
-    ON characters FOR SELECT
-    USING (auth.uid() = user_id);
+CREATE EXTENSION IF NOT EXISTS "supabase_vault" WITH SCHEMA "vault";
 
-CREATE POLICY "Users can insert their own characters"
-    ON characters FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 
-CREATE POLICY "Users can update their own characters"
-    ON characters FOR UPDATE
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete their own characters"
-    ON characters FOR DELETE
-    USING (auth.uid() = user_id);
-
--- ============================================
--- FOLDERS TABLE
--- ============================================
-CREATE TABLE IF NOT EXISTS folders (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    character_id UUID NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    description TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
-);
-
--- Index for faster lookups
-CREATE INDEX idx_folders_character_id ON folders(character_id);
-CREATE INDEX idx_folders_user_id ON folders(user_id);
-
--- Enable RLS
-ALTER TABLE folders ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies for folders
-CREATE POLICY "Users can view their own folders"
-    ON folders FOR SELECT
-    USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert their own folders"
-    ON folders FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update their own folders"
-    ON folders FOR UPDATE
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete their own folders"
-    ON folders FOR DELETE
-    USING (auth.uid() = user_id);
-
--- ============================================
--- IMAGES/GENERATIONS TABLE
--- ============================================
-CREATE TABLE IF NOT EXISTS images (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    folder_id UUID REFERENCES folders(id) ON DELETE SET NULL,
-    filename TEXT NOT NULL,
-    storage_path TEXT NOT NULL, -- Path in Supabase Storage
-
-    -- Generation parameters
-    positive_prompt TEXT,
-    negative_prompt TEXT,
-    model TEXT,
-    orientation TEXT,
-    width INTEGER,
-    height INTEGER,
-    batch_size INTEGER,
-    sampler_name TEXT,
-    scheduler TEXT,
-    steps INTEGER,
-    cfg_scale REAL,
-    seed BIGINT,
-    adetailer_enabled BOOLEAN DEFAULT FALSE,
-    adetailer_model TEXT,
-    info_json JSONB,
-    loras JSONB,
-
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
-);
-
--- Indexes for faster lookups
-CREATE INDEX idx_images_folder_id ON images(folder_id);
-CREATE INDEX idx_images_user_id ON images(user_id);
-CREATE INDEX idx_images_created_at ON images(created_at DESC);
-
--- Enable RLS
-ALTER TABLE images ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies for images
-CREATE POLICY "Users can view their own images"
-    ON images FOR SELECT
-    USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert their own images"
-    ON images FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update their own images"
-    ON images FOR UPDATE
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete their own images"
-    ON images FOR DELETE
-    USING (auth.uid() = user_id);
-
-
--- ============================================
--- STORAGE BUCKETS
--- ============================================
--- Create storage bucket for generated images
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('generated-images', 'generated-images', false)
-ON CONFLICT (id) DO NOTHING;
-
--- Storage RLS policies
-CREATE POLICY "Users can view their own images in storage"
-    ON storage.objects FOR SELECT
-    USING (bucket_id = 'generated-images' AND auth.uid()::text = (storage.foldername(name))[1]);
-
-CREATE POLICY "Users can upload their own images to storage"
-    ON storage.objects FOR INSERT
-    WITH CHECK (bucket_id = 'generated-images' AND auth.uid()::text = (storage.foldername(name))[1]);
-
-CREATE POLICY "Users can delete their own images from storage"
-    ON storage.objects FOR DELETE
-    USING (bucket_id = 'generated-images' AND auth.uid()::text = (storage.foldername(name))[1]);
-
--- ============================================
--- FUNCTIONS
--- ============================================
-
--- Function to update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
+CREATE OR REPLACE FUNCTION "public"."update_updated_at_column"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+AS $$
 BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$;
 
--- Trigger for folders
-CREATE TRIGGER update_folders_updated_at BEFORE UPDATE ON folders
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+ALTER FUNCTION "public"."update_updated_at_column"() OWNER TO "postgres";
 
--- Trigger for characters
-CREATE TRIGGER update_characters_updated_at BEFORE UPDATE ON characters
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+SET default_tablespace = '';
+
+SET default_table_access_method = "heap";
+
+CREATE TABLE IF NOT EXISTS "public"."_migrations" (
+                                                      "id" integer NOT NULL,
+                                                      "name" "text" NOT NULL,
+                                                      "executed_at" timestamp with time zone DEFAULT "now"()
+);
+
+ALTER TABLE "public"."_migrations" OWNER TO "postgres";
+
+CREATE SEQUENCE IF NOT EXISTS "public"."_migrations_id_seq"
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE "public"."_migrations_id_seq" OWNER TO "postgres";
+
+ALTER SEQUENCE "public"."_migrations_id_seq" OWNED BY "public"."_migrations"."id";
+
+CREATE TABLE IF NOT EXISTS "public"."characters" (
+                                                     "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+                                                     "name" "text" NOT NULL,
+                                                     "description" "text",
+                                                     "created_at" timestamp with time zone DEFAULT "now"(),
+                                                     "updated_at" timestamp with time zone DEFAULT "now"(),
+                                                     "user_id" "uuid" NOT NULL
+);
+
+ALTER TABLE "public"."characters" OWNER TO "postgres";
+
+CREATE TABLE IF NOT EXISTS "public"."folders" (
+                                                  "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+                                                  "character_id" "uuid" NOT NULL,
+                                                  "name" "text" NOT NULL,
+                                                  "description" "text",
+                                                  "created_at" timestamp with time zone DEFAULT "now"(),
+                                                  "updated_at" timestamp with time zone DEFAULT "now"(),
+                                                  "user_id" "uuid" NOT NULL
+);
+
+ALTER TABLE "public"."folders" OWNER TO "postgres";
+
+CREATE TABLE IF NOT EXISTS "public"."images" (
+                                                 "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+                                                 "folder_id" "uuid",
+                                                 "filename" "text" NOT NULL,
+                                                 "storage_path" "text" NOT NULL,
+                                                 "positive_prompt" "text",
+                                                 "negative_prompt" "text",
+                                                 "model" "text",
+                                                 "orientation" "text",
+                                                 "width" integer,
+                                                 "height" integer,
+                                                 "batch_size" integer,
+                                                 "sampler_name" "text",
+                                                 "scheduler" "text",
+                                                 "steps" integer,
+                                                 "cfg_scale" real,
+                                                 "seed" bigint,
+                                                 "adetailer_enabled" boolean DEFAULT false,
+                                                 "adetailer_model" "text",
+                                                 "info_json" "jsonb",
+                                                 "loras" "jsonb",
+                                                 "created_at" timestamp with time zone DEFAULT "now"(),
+                                                 "user_id" "uuid" NOT NULL,
+                                                 "is_nsfw" boolean DEFAULT false,
+                                                 "is_favorite" boolean DEFAULT false
+);
+
+ALTER TABLE "public"."images" OWNER TO "postgres";
+
+ALTER TABLE ONLY "public"."_migrations" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."_migrations_id_seq"'::"regclass");
+
+ALTER TABLE ONLY "public"."_migrations"
+    ADD CONSTRAINT "_migrations_name_key" UNIQUE ("name");
+
+ALTER TABLE ONLY "public"."_migrations"
+    ADD CONSTRAINT "_migrations_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE ONLY "public"."characters"
+    ADD CONSTRAINT "characters_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE ONLY "public"."folders"
+    ADD CONSTRAINT "folders_pkey" PRIMARY KEY ("id");
+
+ALTER TABLE ONLY "public"."images"
+    ADD CONSTRAINT "images_pkey" PRIMARY KEY ("id");
+
+CREATE INDEX "idx_characters_user_id" ON "public"."characters" USING "btree" ("user_id");
+
+CREATE INDEX "idx_folders_character_id" ON "public"."folders" USING "btree" ("character_id");
+
+CREATE INDEX "idx_folders_user_id" ON "public"."folders" USING "btree" ("user_id");
+
+CREATE INDEX "idx_images_created_at" ON "public"."images" USING "btree" ("created_at" DESC);
+
+CREATE INDEX "idx_images_folder_id" ON "public"."images" USING "btree" ("folder_id");
+
+CREATE INDEX "idx_images_user_id" ON "public"."images" USING "btree" ("user_id");
+
+CREATE INDEX "images_is_favorite_idx" ON "public"."images" USING "btree" ("is_favorite");
+
+CREATE INDEX "images_is_nsfw_idx" ON "public"."images" USING "btree" ("is_nsfw");
+
+CREATE OR REPLACE TRIGGER "update_characters_updated_at" BEFORE UPDATE ON "public"."characters" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+CREATE OR REPLACE TRIGGER "update_folders_updated_at" BEFORE UPDATE ON "public"."folders" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+ALTER TABLE ONLY "public"."characters"
+    ADD CONSTRAINT "characters_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+ALTER TABLE ONLY "public"."folders"
+    ADD CONSTRAINT "folders_character_id_fkey" FOREIGN KEY ("character_id") REFERENCES "public"."characters"("id") ON DELETE CASCADE;
+
+ALTER TABLE ONLY "public"."folders"
+    ADD CONSTRAINT "folders_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+ALTER TABLE ONLY "public"."images"
+    ADD CONSTRAINT "images_folder_id_fkey" FOREIGN KEY ("folder_id") REFERENCES "public"."folders"("id") ON DELETE SET NULL;
+
+ALTER TABLE ONLY "public"."images"
+    ADD CONSTRAINT "images_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+CREATE POLICY "Users can delete their own characters" ON "public"."characters" FOR DELETE USING (("auth"."uid"() = "user_id"));
+
+CREATE POLICY "Users can delete their own folders" ON "public"."folders" FOR DELETE USING (("auth"."uid"() = "user_id"));
+
+CREATE POLICY "Users can delete their own images" ON "public"."images" FOR DELETE USING (("auth"."uid"() = "user_id"));
+
+CREATE POLICY "Users can insert their own characters" ON "public"."characters" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
+
+CREATE POLICY "Users can insert their own folders" ON "public"."folders" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
+
+CREATE POLICY "Users can insert their own images" ON "public"."images" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
+
+CREATE POLICY "Users can update their own characters" ON "public"."characters" FOR UPDATE USING (("auth"."uid"() = "user_id")) WITH CHECK (("auth"."uid"() = "user_id"));
+
+CREATE POLICY "Users can update their own folders" ON "public"."folders" FOR UPDATE USING (("auth"."uid"() = "user_id")) WITH CHECK (("auth"."uid"() = "user_id"));
+
+CREATE POLICY "Users can update their own images" ON "public"."images" FOR UPDATE USING (("auth"."uid"() = "user_id")) WITH CHECK (("auth"."uid"() = "user_id"));
+
+CREATE POLICY "Users can view their own characters" ON "public"."characters" FOR SELECT USING (("auth"."uid"() = "user_id"));
+
+CREATE POLICY "Users can view their own folders" ON "public"."folders" FOR SELECT USING (("auth"."uid"() = "user_id"));
+
+CREATE POLICY "Users can view their own images" ON "public"."images" FOR SELECT USING (("auth"."uid"() = "user_id"));
+
+ALTER TABLE "public"."_migrations" ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE "public"."characters" ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE "public"."folders" ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE "public"."images" ENABLE ROW LEVEL SECURITY;
+
+ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
+
+GRANT USAGE ON SCHEMA "public" TO "postgres";
+GRANT USAGE ON SCHEMA "public" TO "anon";
+GRANT USAGE ON SCHEMA "public" TO "authenticated";
+GRANT USAGE ON SCHEMA "public" TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "anon";
+GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "service_role";
+
+GRANT ALL ON TABLE "public"."_migrations" TO "anon";
+GRANT ALL ON TABLE "public"."_migrations" TO "authenticated";
+GRANT ALL ON TABLE "public"."_migrations" TO "service_role";
+
+GRANT ALL ON SEQUENCE "public"."_migrations_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."_migrations_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."_migrations_id_seq" TO "service_role";
+
+GRANT ALL ON TABLE "public"."characters" TO "anon";
+GRANT ALL ON TABLE "public"."characters" TO "authenticated";
+GRANT ALL ON TABLE "public"."characters" TO "service_role";
+
+GRANT ALL ON TABLE "public"."folders" TO "anon";
+GRANT ALL ON TABLE "public"."folders" TO "authenticated";
+GRANT ALL ON TABLE "public"."folders" TO "service_role";
+
+GRANT ALL ON TABLE "public"."images" TO "anon";
+GRANT ALL ON TABLE "public"."images" TO "authenticated";
+GRANT ALL ON TABLE "public"."images" TO "service_role";
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "service_role";
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "service_role";
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";

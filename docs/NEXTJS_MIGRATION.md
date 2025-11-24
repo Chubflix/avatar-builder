@@ -189,9 +189,8 @@ Ensure `migrations/` directory exists with `.sql` files.
 ### Stable Diffusion API not working
 
 1. Ensure SD WebUI is running with `--api` flag
-2. Check `config.json` has correct `api.baseUrl`
-3. Verify SD API is accessible from browser (not just localhost if using Docker)
-4. Check browser console for CORS errors
+2. Verify SD API is accessible from browser (not just localhost if using Docker)
+3. Check browser console for CORS errors
 
 ## Key Differences from Old Setup
 

@@ -7,6 +7,7 @@
 
 import { createServerClient as createSSRServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Create Supabase client with user session from cookies
@@ -54,6 +55,21 @@ export function createAuthClient() {
  */
 export function createServerClient() {
     return createAuthClient();
+}
+
+/**
+ * Create Supabase service-role client (bypasses RLS)
+ * For backend tasks like webhooks. Do NOT expose this to the client.
+ */
+export function createServiceClient() {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) {
+        throw new Error('Missing Supabase service role configuration');
+    }
+    return createSupabaseClient(url, key, {
+        auth: { autoRefreshToken: false, persistSession: false }
+    });
 }
 
 /**
@@ -112,6 +128,20 @@ export async function uploadImage(file, storagePath) {
             upsert: false
         });
 
+    if (error) throw error;
+}
+
+/**
+ * Upload image using service client (bypasses RLS). For webhooks.
+ */
+export async function uploadImageWithService(file, storagePath) {
+    const supabase = createServiceClient();
+    const { error } = await supabase.storage
+        .from('generated-images')
+        .upload(storagePath, file, {
+            contentType: 'image/png',
+            upsert: false
+        });
     if (error) throw error;
 }
 

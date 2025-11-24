@@ -47,21 +47,12 @@ avatar-builder/
 
 ## Quick Start with Docker
 
-1. Configure the API URL in `config.json` (root level):
-   ```json
-   {
-     "api": {
-       "baseUrl": "https://your-sd-api-url.com"
-     }
-   }
-   ```
-
-2. Build and start the containers:
+1. Build and start the containers:
    ```bash
    docker-compose up -d --build
    ```
 
-3. Access the application at http://localhost:8080
+2. Access the application at http://localhost:8080
 
 ### Docker Commands
 
@@ -112,9 +103,6 @@ Edit `config.json` (root level for Docker, `client/public/config.json` for local
 
 ```json
 {
-  "api": {
-    "baseUrl": "https://ai-sd.svc.cklio.com"
-  },
   "defaults": {
     "positivePrompt": "masterpiece, best quality, highly detailed",
     "negativePrompt": "lowres, bad anatomy, ...",

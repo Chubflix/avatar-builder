@@ -13,13 +13,14 @@
     "supabase:reset": "supabase db reset",
     "migrate:cli": "supabase db push",
     "migrate:new": "supabase migration new",
-    "import": "node scripts/import-data.js"
+    "import": "node -r dotenv/config scripts/import-data.js"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.84.0",
     "archiver": "^7.0.0",
     "better-sqlite3": "^11.8.1",
+    "dotenv": "^16.4.5",
     "next": "^14.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

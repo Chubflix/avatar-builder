@@ -10,13 +10,8 @@ export interface DefaultsConfig {
   batchSize: number;
 }
 
-export interface ApiConfig {
-  baseUrl: string;
-}
-
 export interface Config {
   defaults: DefaultsConfig;
-  api: ApiConfig;
   // Allow extra keys without breaking
   [key: string]: any;
 }
@@ -584,7 +579,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               // eslint-disable-next-line @typescript-eslint/ban-ts-comment
               // @ts-ignore - JS module without types
               import('../utils/sd-api').then(({ default: sdAPI }: any) => {
-                sdAPI.setBaseUrl(config.api.baseUrl);
                 sdAPI.skip().catch((err: any) => {
                   console.warn('Failed to skip SD generation (may not be running):', err?.message ?? err);
                 }).finally(() => {

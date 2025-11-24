@@ -4,10 +4,24 @@
  */
 
 import debug from '../utils/debug';
+import AsyncAdapter from './sd-api-async';
+
+// Important: Next.js only inlines env vars when accessed via static references
+// like process.env.NEXT_PUBLIC_*. Avoid dynamic lookups on the client.
+const SD_API_URL = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SD_API_URL) || '';
+
+
+// Feature flag to optionally use the async proxy adapter
+const USE_ASYNC_PROXY =
+    (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SD_API_USES_ASYNC_PROXY)
+        ? String(process.env.NEXT_PUBLIC_SD_API_USES_ASYNC_PROXY).toLowerCase() === 'true'
+        : false;
+
+const ASYNC_ENABLED = USE_ASYNC_PROXY && !!AsyncAdapter;
 
 class StableDiffusionAPI {
-    constructor(baseUrl) {
-        this.baseUrl = baseUrl;
+    constructor() {
+        this.baseUrl = SD_API_URL;
     }
 
     /**
@@ -334,7 +348,7 @@ class StableDiffusionAPI {
     }
 }
 
-// Create singleton instance
-const sdAPI = new StableDiffusionAPI('');
+// Create singleton instance. If async proxy flag is enabled and adapter is available, use it.
+const sdAPI = ASYNC_ENABLED ? new AsyncAdapter() : new StableDiffusionAPI();
 
 export default sdAPI;
