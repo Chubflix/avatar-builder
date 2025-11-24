@@ -1,6 +1,8 @@
 import {useApp} from "@/app/context/AppContext";
 import {useEffect, useRef} from "react";
 import { getAblyRealtime } from "@/app/lib/ably";
+import debug from "@/app/utils/debug";
+import {imageAPI} from "@/app/utils/backend-api";
 
 /**
  * Hook to subscribe to realtime image_saved events and append matching images
