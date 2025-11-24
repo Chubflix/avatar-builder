@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useApp } from '../context/AppContext';
 import { folderAPI } from '../utils/backend-api';
 
@@ -197,7 +198,7 @@ function FolderSelector({ show, onClose, onSelect, currentFolderId, title = "Sel
 
     if (!show) return null;
 
-    return (
+    const modalContent = (
         <div className="folder-selector-overlay" onClick={handleClose}>
             <div className="folder-selector-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="folder-selector-header">
@@ -418,6 +419,11 @@ function FolderSelector({ show, onClose, onSelect, currentFolderId, title = "Sel
             </div>
         </div>
     );
+
+    // Render to document.body using portal to escape parent stacking contexts
+    return typeof window !== 'undefined'
+        ? createPortal(modalContent, document.body)
+        : null;
 }
 
 export default FolderSelector;
