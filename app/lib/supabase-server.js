@@ -213,7 +213,7 @@ export async function saveGeneratedImage({ supabase, userId, imageBase64, meta =
     try {
         const channelName = 'images';
         const channel = supabase.channel(channelName, {
-            config: { broadcast: { self: true }, private: true }
+            config: { broadcast: { self: true } }
         });
 
         await channel.httpSend('item_save', {

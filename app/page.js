@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { QueueProvider } from './context/QueueContext';
-import { useFolders, useImages, useGeneration, useModels, useImagesRealtime } from './hooks';
+import { useFolders, useImages, useGeneration, useModels } from './hooks';
+import {useImagesRealtime} from "@/app/hooks/realtime";
 import { useQueue } from './hooks/queue';
 import { useGalleryKeyboardShortcuts } from './hooks/keyboard';
 import debug from './utils/debug';
