@@ -9,6 +9,8 @@ export function useGalleryKeyboardShortcuts() {
 
     useEffect(() => {
         const handleKeyPress = (e) => {
+            // If the inpaint tool is open, do not handle gallery shortcuts
+            if (state.showInpaintModal) return;
             // Ignore if user is typing in an input or textarea
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
                 return;
@@ -26,5 +28,5 @@ export function useGalleryKeyboardShortcuts() {
         return () => {
             window.removeEventListener('keydown', handleKeyPress);
         };
-    }, [state.isSelecting, state.images.length, dispatch, actions]);
+    }, [state.isSelecting, state.images.length, state.showInpaintModal, dispatch, actions]);
 }

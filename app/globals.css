@@ -478,6 +478,36 @@ body {
     box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.1);
 }
 
+/*
+  Focus ring removal for buttons and clickable UI controls.
+  Keyboard shortcuts were causing elements to receive focus and show rings.
+  Keep input focus styles intact (see above), but suppress focus outlines
+  on buttons and icon-only controls to avoid distracting rings.
+*/
+button:focus,
+button:focus-visible,
+.btn:focus,
+.btn:focus-visible,
+.btn-primary:focus,
+.btn-secondary:focus,
+.toggle-option:focus,
+.folder-select-display-btn:focus,
+.btn-input-action:focus,
+.mobile-settings-btn:focus,
+.mobile-prompt-btn:focus,
+.mobile-generate-btn:focus,
+.generate-btn:focus,
+.folder-select-btn:focus,
+.batch-select:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* Firefox inner focus fix */
+button::-moz-focus-inner {
+    border: 0;
+}
+
 .form-textarea {
     min-height: 100px;
     resize: vertical;
