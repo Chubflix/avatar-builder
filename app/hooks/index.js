@@ -5,7 +5,6 @@ import { folderAPI, imageAPI } from '../utils/backend-api';
 import debug from '../utils/debug';
 import { sendNotification } from '../utils/notifications';
 import { buildLoraPrompt } from '../utils/lora-builder';
-import { subscribeToCharacters, subscribeToFolders, subscribeToImages, subscribeToJobs } from '../lib/realtime';
 
 /**
  * Hook for managing folders
@@ -67,37 +66,6 @@ export function useFolders() {
         }
     }, [loadFolders, state.currentFolder, state.selectedFolder, state.folders, dispatch, actions]);
 
-    // Realtime subscriptions for characters and folders
-    useEffect(() => {
-        // Only run on client
-        let unsubscribers = [];
-
-        try {
-            const unsubFolders = subscribeToFolders(({ eventType }) => {
-                // For any change on folders, reload list
-                // INSERT/UPDATE/DELETE
-                if (['INSERT', 'UPDATE', 'DELETE'].includes(eventType)) {
-                    loadFolders();
-                }
-            });
-            const unsubCharacters = subscribeToCharacters(({ eventType }) => {
-                // If characters change, folders list may change (character folders)
-                if (['INSERT', 'UPDATE', 'DELETE'].includes(eventType)) {
-                    loadFolders();
-                }
-            });
-            unsubscribers.push(unsubFolders, unsubCharacters);
-        } catch (e) {
-            // no-op
-        }
-
-        return () => {
-            unsubscribers.forEach((u) => {
-                try { u && u(); } catch (_) {}
-            });
-        };
-    }, [loadFolders]);
-
     return { loadFolders, createFolder, updateFolder, deleteFolder };
 }
 
@@ -140,45 +108,6 @@ export function useImages() {
         await loadImages(state.images.length, state.currentFolder);
         dispatch({ type: actions.SET_LOADING_MORE, payload: false });
     }, [state.isLoadingMore, state.hasMore, state.images.length, state.currentFolder, loadImages, dispatch, actions]);
-
-    // Realtime: refresh image list when images change or when jobs complete
-    useEffect(() => {
-        let unsubscribers = [];
-        try {
-            const unsubImages = subscribeToImages(({ eventType, new: newRow, old }) => {
-                // Refresh list on any change that affects this user's view
-                if (['INSERT', 'UPDATE', 'DELETE'].includes(eventType)) {
-                    // If filtering by folder, ensure the changed row is relevant; otherwise just reload
-                    const folderFilter = state.currentFolder;
-                    if (!folderFilter) {
-                        loadImages(0);
-                    } else {
-                        const changedFolder = (newRow?.folder_id ?? old?.folder_id ?? null);
-                        if (changedFolder === folderFilter || folderFilter === 'unfiled' || folderFilter === 'null') {
-                            loadImages(0);
-                        }
-                    }
-                }
-            });
-
-            const unsubJobs = subscribeToJobs(({ eventType, new: newJob }) => {
-                // When a job is completed, webhook inserts images; reload images
-                if (eventType === 'UPDATE' && newJob?.status === 'completed') {
-                    loadImages(0);
-                }
-            });
-
-            unsubscribers.push(unsubImages, unsubJobs);
-        } catch (e) {
-            // ignore
-        }
-
-        return () => {
-            unsubscribers.forEach((u) => {
-                try { u && u(); } catch (_) {}
-            });
-        };
-    }, [state.currentFolder, loadImages]);
 
     const deleteImage = useCallback(async (id) => {
         if (!window.confirm('Are you sure you want to delete this image?')) return;
