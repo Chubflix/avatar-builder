@@ -12,7 +12,8 @@ export default function InpaintModal() {
     const { showInpaintModal, initImage, maskImage } = state;
 
     const imgRef = useRef(null);
-    const canvasRef = useRef(null);
+    const canvasRef = useRef(null); // mask canvas (data: white on black)
+    const displayCanvasRef = useRef(null); // visualization canvas (red strokes on transparent)
     const containerRef = useRef(null);
     const stageRef = useRef(null);
     const [brushSize, setBrushSize] = useState(40);
@@ -24,11 +25,14 @@ export default function InpaintModal() {
     const [cursorPos, setCursorPos] = useState({ x: -1000, y: -1000, visible: false });
     const [isPanning, setIsPanning] = useState(false);
     const panStartRef = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
-    const undoStackRef = useRef([]);
+    // Store paired snapshots for mask and display canvases
+    const undoStackRef = useRef([]); // each entry: { mask: dataUrl, display: dataUrl }
     const MAX_UNDO = 20;
     const [showBrushMenu, setShowBrushMenu] = useState(false);
     const [showZoomMenu, setShowZoomMenu] = useState(false);
     const [showTint, setShowTint] = useState(true); // mask tint overlay toggle
+    // Visual transparency for red overlay in full-brightness mode (CSS-level)
+    const DISPLAY_OPACITY = 0.4;
     // Polygon tool state (points in image coordinate space)
     const [polyPoints, setPolyPoints] = useState([]); // [{x,y}, ...]
     const [imgSize, setImgSize] = useState({ w: 0, h: 0 });
@@ -123,31 +127,40 @@ export default function InpaintModal() {
     const setupCanvas = () => {
         const img = imgRef.current;
         const canvas = canvasRef.current;
-        if (!img || !canvas) return;
+        const dCanvas = displayCanvasRef.current;
+        if (!img || !canvas || !dCanvas) return;
 
         const w = img.naturalWidth;
         const h = img.naturalHeight;
         canvas.width = w;
         canvas.height = h;
+        dCanvas.width = w;
+        dCanvas.height = h;
         setImgSize({ w, h });
 
         const ctx = canvas.getContext('2d');
+        const dctx = dCanvas.getContext('2d');
         // Start with black mask (preserve all)
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, w, h);
+        // Display canvas starts fully transparent
+        dctx.clearRect(0, 0, w, h);
 
         // If there is existing maskImage, draw it onto canvas
         if (maskImage) {
             const maskImg = new Image();
             maskImg.onload = () => {
                 ctx.drawImage(maskImg, 0, 0, w, h);
-                // push initial state to undo stack
-                try { undoStackRef.current = [canvas.toDataURL('image/png')]; } catch(_) {}
+                // We cannot trivially derive red-only display from a preexisting black/white mask
+                // without per-pixel processing; initialize empty display overlay.
+                try {
+                    undoStackRef.current = [{ mask: canvas.toDataURL('image/png'), display: dCanvas.toDataURL('image/png') }];
+                } catch(_) {}
             };
             maskImg.src = maskImage;
         } else {
-            // push initial black state
-            try { undoStackRef.current = [canvas.toDataURL('image/png')]; } catch(_) {}
+            // push initial black/transparent state
+            try { undoStackRef.current = [{ mask: canvas.toDataURL('image/png'), display: dCanvas.toDataURL('image/png') }]; } catch(_) {}
         }
 
         // Compute base scale to fit container width (for pointer coordinate mapping)
@@ -190,11 +203,12 @@ export default function InpaintModal() {
     const startDraw = (clientX, clientY) => {
         if (mode === 'pan') return; // handled separately
         setIsDrawing(true);
-        // push snapshot for undo at stroke start
+        // push snapshot for undo at stroke start (mask + display)
         try {
             const canvas = canvasRef.current;
-            if (canvas) {
-                const snap = canvas.toDataURL('image/png');
+            const dCanvas = displayCanvasRef.current;
+            if (canvas && dCanvas) {
+                const snap = { mask: canvas.toDataURL('image/png'), display: dCanvas.toDataURL('image/png') };
                 const stack = undoStackRef.current || [];
                 stack.push(snap);
                 while (stack.length > MAX_UNDO) stack.shift();
@@ -212,14 +226,33 @@ export default function InpaintModal() {
         if (!isDrawing && !force) return;
         const { x, y } = getPos(clientX, clientY);
         const canvas = canvasRef.current;
-        if (!canvas) return;
+        const dCanvas = displayCanvasRef.current;
+        if (!canvas || !dCanvas) return;
         const ctx = canvas.getContext('2d');
+        const dctx = dCanvas.getContext('2d');
         ctx.globalCompositeOperation = 'source-over';
         ctx.beginPath();
         ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
         ctx.closePath();
         ctx.fillStyle = mode === 'erase' ? '#000' : '#fff';
         ctx.fill();
+
+        // Mirror to display canvas as semi-transparent red for draw, or erase from it
+        if (mode === 'erase') {
+            const prev = dctx.globalCompositeOperation;
+            dctx.globalCompositeOperation = 'destination-out';
+            dctx.beginPath();
+            dctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+            dctx.closePath();
+            dctx.fill();
+            dctx.globalCompositeOperation = prev;
+        } else {
+            dctx.beginPath();
+            dctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+            dctx.closePath();
+            dctx.fillStyle = '#ff0000';
+            dctx.fill();
+        }
     };
 
     const handleMouseDown = (e) => {
@@ -317,9 +350,10 @@ export default function InpaintModal() {
         if (!polyPoints || polyPoints.length < 3) return;
         const canvas = canvasRef.current;
         if (!canvas) return;
-        // push undo snapshot
+        // push undo snapshot (mask + display)
         try {
-            const snap = canvas.toDataURL('image/png');
+            const dCanvas = displayCanvasRef.current;
+            const snap = { mask: canvas.toDataURL('image/png'), display: dCanvas?.toDataURL('image/png') };
             const stack = undoStackRef.current || [];
             stack.push(snap);
             while (stack.length > MAX_UNDO) stack.shift();
@@ -337,6 +371,19 @@ export default function InpaintModal() {
         ctx.closePath();
         ctx.fillStyle = '#fff';
         ctx.fill();
+        // Draw polygon to display overlay as semi-transparent red
+        const dCanvas = displayCanvasRef.current;
+        if (dCanvas) {
+            const dctx = dCanvas.getContext('2d');
+            dctx.save();
+            dctx.beginPath();
+            dctx.moveTo(polyPoints[0].x, polyPoints[0].y);
+            for (let i = 1; i < polyPoints.length; i++) dctx.lineTo(polyPoints[i].x, polyPoints[i].y);
+            dctx.closePath();
+            dctx.fillStyle = '#ff0000';
+            dctx.fill();
+            dctx.restore();
+        }
         ctx.restore();
         setPolyPoints([]);
     }, [polyPoints]);
@@ -507,12 +554,15 @@ export default function InpaintModal() {
     const handleReset = () => {
         if (!window.confirm('Reset the mask to a blank (black) canvas?')) return;
         const canvas = canvasRef.current;
-        if (!canvas) return;
+        const dCanvas = displayCanvasRef.current;
+        if (!canvas || !dCanvas) return;
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const dctx = dCanvas.getContext('2d');
+        dctx.clearRect(0, 0, dCanvas.width, dCanvas.height);
         try {
-            const snap = canvas.toDataURL('image/png');
+            const snap = { mask: canvas.toDataURL('image/png'), display: dCanvas.toDataURL('image/png') };
             undoStackRef.current = [snap];
         } catch(_) {}
         setPolyPoints([]);
@@ -521,19 +571,27 @@ export default function InpaintModal() {
     const handleUndo = () => {
         const stack = undoStackRef.current || [];
         if (stack.length <= 1) return; // keep at least one state
-        // Restore the most recent snapshot (state before the last stroke)
+        // Restore the most recent snapshot pair
         const last = stack.pop();
         if (!last) return;
         try {
-            const img = new Image();
-            img.onload = () => {
-                const canvas = canvasRef.current;
-                if (!canvas) return;
+            const canvas = canvasRef.current;
+            const dCanvas = displayCanvasRef.current;
+            if (!canvas || !dCanvas) return;
+            const maskImg = new Image();
+            maskImg.onload = () => {
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                ctx.drawImage(maskImg, 0, 0, canvas.width, canvas.height);
             };
-            img.src = last;
+            const dispImg = new Image();
+            dispImg.onload = () => {
+                const dctx = dCanvas.getContext('2d');
+                dctx.clearRect(0, 0, dCanvas.width, dCanvas.height);
+                dctx.drawImage(dispImg, 0, 0, dCanvas.width, dCanvas.height);
+            };
+            maskImg.src = last.mask;
+            dispImg.src = last.display;
         } catch(_) {}
     };
 
@@ -949,12 +1007,23 @@ export default function InpaintModal() {
                                 width: '100%',
                                 height: 'auto',
                                 touchAction: 'none',
-                                // When tint is enabled, dim the image via semi-opaque black mask.
-                                // When tint is disabled (full-brightness view), keep the mask canvas visible
-                                // but use blend mode 'screen' so black areas do not darken the image and white
-                                // strokes remain visible to show where you're drawing.
-                                opacity: showTint ? 0.5 : 1,
-                                mixBlendMode: showTint ? 'normal' : 'screen',
+                                // Mask canvas used for data and dim overlay
+                                opacity: showTint ? 0.5 : 0,
+                                mixBlendMode: 'normal',
+                                filter: 'none',
+                            }}
+                        />
+                        <canvas
+                            ref={displayCanvasRef}
+                            style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: 'auto',
+                                touchAction: 'none',
+                                opacity: showTint ? 0 : DISPLAY_OPACITY,
+                                pointerEvents: 'none'
                             }}
                         />
                         {/* Polygon preview overlay */}
