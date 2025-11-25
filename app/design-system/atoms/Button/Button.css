@@ -1,0 +1,64 @@
+.ds-button {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.ds-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Variants */
+.ds-button--primary {
+  background: linear-gradient(135deg, #e50914 0%, #b20710 100%);
+  color: white;
+}
+
+.ds-button--primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #f6121d 0%, #c7080f 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(229, 9, 20, 0.4);
+}
+
+.ds-button--secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.ds-button--secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.ds-button--danger {
+  background: #dc3545;
+  color: white;
+}
+
+.ds-button--danger:hover:not(:disabled) {
+  background: #c82333;
+}
+
+/* Sizes */
+.ds-button--small {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.ds-button--medium {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+}
+
+.ds-button--large {
+  padding: 1rem 2rem;
+  font-size: 1.125rem;
+}

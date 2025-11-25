@@ -28,3 +28,6 @@ npm-debug.log*
 
 # Docker volumes (when running locally)
 avatar-data/
+
+*storybook.log
+storybook-static
