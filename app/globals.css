@@ -1339,6 +1339,11 @@ button::-moz-focus-inner {
     transition: all 0.2s ease;
 }
 
+.lightbox-control-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .lightbox-control-btn.favorite-btn {
     border-radius: 4px 0 0 0;
 }
@@ -1347,7 +1352,8 @@ button::-moz-focus-inner {
     border-radius: 0 0 0 4px;
 }
 
-.lightbox-control-btn:hover {
+/* Clear and visible hover state for control buttons (except when disabled) */
+.lightbox-control-btn:not(:disabled):hover {
     background: rgba(0, 0, 0, 0.8);
 }
 
@@ -1359,6 +1365,17 @@ button::-moz-focus-inner {
 .lightbox-control-btn.nsfw-btn.active,
 .lightbox-control-btn.nsfw-btn:hover {
     color: #ffa500;
+}
+
+.lightbox-control-btn.zoom-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Override generic hover to avoid the inner box-shadow "border" and use accent hover color */
+.lightbox-control-btn.zoom-btn:not(:disabled):hover {
+    background: var(--accent-hover);
+    box-shadow: none;
 }
 
 .lightbox-close {

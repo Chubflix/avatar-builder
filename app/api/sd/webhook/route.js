@@ -47,6 +47,17 @@ export async function POST(request) {
         }
 
         // Persist each image using the same logic as /api/images
+        // Include generation metadata needed for comparison feature
+        const inferredType = job.payload?.type
+            || job.payload?.generationType
+            || (job.payload?.mask || job.payload?.mask_data ? 'inpaint' : undefined)
+            || 'txt2img';
+        const parentImageId = job.payload?.parent_image_id
+            || job.payload?.image_id
+            || body?.parent_image_id
+            || null;
+        const baseMaskData = job.payload?.mask_data || job.payload?.mask || body?.mask || body?.result?.mask || null;
+
         const meta = {
             positivePrompt: job.payload?.positivePrompt,
             negativePrompt: job.payload?.negativePrompt,
@@ -64,15 +75,21 @@ export async function POST(request) {
             adetailerModel: job.payload?.adetailerModel,
             info: body?.info || job.payload?.info || {},
             folderId: job.payload?.folder_id || null,
-            loras: job.payload?.loras || null
+            loras: job.payload?.loras || null,
+            generationType: inferredType,
+            parentImageId,
+            // maskData can be overridden per-image in the loop if present
+            maskData: baseMaskData
         };
 
         for (const img of images) {
+            // Per-image mask data (if the async proxy returns mask per output)
+            const perImageMask = typeof img === 'object' ? (img.mask_data || img.mask || null) : null;
             await saveGeneratedImage({
                 supabase,
                 userId: job.user_id,
                 imageBase64: typeof img === 'string' ? img : img?.data || '',
-                meta
+                meta: { ...meta, maskData: perImageMask ?? meta.maskData }
             });
         }
 

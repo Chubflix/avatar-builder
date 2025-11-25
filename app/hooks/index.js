@@ -202,7 +202,9 @@ export function useGeneration() {
                     toggles: loraToggles,
                     style: loraStyle
                 },
-                generationMode: initImage ? (maskImage ? 'inpaint' : 'img2img') : 'txt2img'
+                generation_type: initImage ? (maskImage ? 'inpaint' : 'img2img') : 'txt2img',
+                parent_image_id: null, // needs parent image id
+                mask_data: maskImage,
             };
 
             // Create a job record to receive a per-job webhook token

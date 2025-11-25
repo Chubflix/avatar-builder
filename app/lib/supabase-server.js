@@ -170,7 +170,7 @@ export async function saveGeneratedImage({ supabase, userId, imageBase64, meta =
     // Upload to S3 via s3-server helpers
     const bucket = process.env.S3_BUCKET;
     if (!bucket) throw new Error('Missing S3_BUCKET');
-    await s3Upload({ bucket, key: storagePath, body: buffer, contentType: 'image/png', cacheControl: '3600' });
+    await s3Upload({ bucket, key: storagePath, body: buffer, contentType: 'image/png', cacheControl: '31536000' });
 
     // Insert DB row
     const { data: image, error } = await supabase

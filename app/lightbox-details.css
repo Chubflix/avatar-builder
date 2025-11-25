@@ -81,6 +81,58 @@
     margin-top: 1rem;
 }
 
+/* Comparison strip */
+.lightbox-compare-strip {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: nowrap;
+}
+
+.compare-image-tile,
+.compare-mask-tile {
+    position: relative;
+    width: 28%;
+    max-width: 280px;
+    aspect-ratio: 1 / 1;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.compare-image-tile.current {
+    outline: 2px solid var(--accent);
+}
+
+.compare-image-tile img,
+.compare-mask-tile img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.mask-placeholder,
+.missing-placeholder {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.compare-more {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+}
+
 /* Mobile adjustments */
 @media (max-width: 1024px) {
     .lightbox-main-content {
@@ -88,6 +140,18 @@
         max-height: calc(100vh - 100px);
         padding: 1rem 0.5rem;
         position: relative;
+    }
+
+    .lightbox-compare-strip {
+        gap: 0.375rem;
+        margin-bottom: 0.5rem;
+        padding: 0 0.25rem;
+    }
+
+    .compare-image-tile,
+    .compare-mask-tile {
+        width: 30%;
+        max-width: none;
     }
 
     .lightbox-image-container {

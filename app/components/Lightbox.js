@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { imageAPI, API_BASE } from '../utils/backend-api';
 import { useFolders } from '../hooks';
@@ -24,10 +24,13 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete, onLoad
     // Zoom state
     const [isZoomed, setIsZoomed] = useState(false);
     const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
-    const [lastTap, setLastTap] = useState(0);
+    // Removed double-tap zoom; state no longer needed
     const [isPanning, setIsPanning] = useState(false);
     const [panStart, setPanStart] = useState({ x: 0, y: 0 });
     const [isMousePanning, setIsMousePanning] = useState(false);
+
+    // Comparison mode state
+    const [showComparison, setShowComparison] = useState(false);
 
     // Load details state from localStorage
     const [showGenerationDetails, setShowGenerationDetails] = useState(() => {
@@ -57,6 +60,58 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete, onLoad
     const currentImage = filteredLightboxIndex !== null && filteredLightboxIndex !== -1
         ? filteredImages[filteredLightboxIndex]
         : null;
+
+    // Build a linear ancestry chain from original -> ... -> current
+    const comparisonChain = useMemo(() => {
+        if (!currentImage) return [];
+        // Map of images by id for quick lookup (from already loaded images in state)
+        const byId = new Map(images.map(img => [img.id, img]));
+
+        const chain = [];
+        let cursor = currentImage;
+        // Walk back to the root/original
+        while (cursor) {
+            chain.unshift(cursor);
+            const parentId = cursor.parent_image_id || cursor.image_id || null;
+            if (!parentId) break;
+            const parent = byId.get(parentId);
+            if (!parent) {
+                // parent not loaded; stop here but mark that there are more
+                chain.unshift({ id: `missing-${parentId}`, __missing: true });
+                break;
+            }
+            cursor = parent;
+        }
+        return chain;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentImage, images]);
+
+    // Select up to 3 items ensuring original and current are present
+    const comparisonSelection = useMemo(() => {
+        const chain = comparisonChain;
+        if (!chain.length) return { items: [], moreCount: 0 };
+        const original = chain[0];
+        const last = chain[chain.length - 1];
+        if (chain.length <= 3) {
+            return { items: chain, moreCount: 0 };
+        }
+        // Include original and current, pick one representative from the middle
+        const midIndex = Math.floor((chain.length - 1) / 2);
+        const mid = chain[midIndex];
+        // If mid equals original or current, pick another near-middle
+        const items = [original];
+        if (mid.id !== original.id && mid.id !== last.id) items.push(mid);
+        if (items.length < 2 && chain.length > 2) items.push(chain[1]);
+        items.push(last);
+        // Ensure items are unique and keep order original -> ... -> current
+        const unique = [];
+        const seen = new Set();
+        for (const it of items) {
+            if (!seen.has(it.id)) { seen.add(it.id); unique.push(it); }
+        }
+        const moreCount = Math.max(0, chain.length - unique.length);
+        return { items: unique.slice(0, 3), moreCount };
+    }, [comparisonChain]);
 
     // Helper function to navigate to next/previous image in filtered array
     const navigateToFilteredIndex = (newFilteredIndex) => {
@@ -272,43 +327,18 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete, onLoad
         }
     };
 
-    // Handle double tap on image to zoom (mobile)
-    const handleImageTouchEnd = (e) => {
-        // Only allow zoom when details are closed
-        if (showGenerationDetails) return;
-
-        const now = Date.now();
-        const DOUBLE_TAP_DELAY = 500; // Half a second for two separate taps
-
-        if (now - lastTap < DOUBLE_TAP_DELAY) {
-            // Double tap detected
-            e.stopPropagation();
-            if (isZoomed) {
-                // Zoom out
-                setIsZoomed(false);
+    // Zoom toggle via button (double-tap/click removed)
+    const handleToggleZoom = (e) => {
+        if (e) e.stopPropagation();
+        if (showGenerationDetails) return; // Disabled when details are shown
+        setIsZoomed(prev => {
+            const next = !prev;
+            if (!next) {
+                // Reset pan when zooming out
                 setPanPosition({ x: 0, y: 0 });
-            } else {
-                // Zoom in
-                setIsZoomed(true);
             }
-        }
-        setLastTap(now);
-    };
-
-    // Handle double click on image to zoom (desktop)
-    const handleImageDoubleClick = (e) => {
-        // Only allow zoom when details are closed
-        if (showGenerationDetails) return;
-
-        e.stopPropagation();
-        if (isZoomed) {
-            // Zoom out
-            setIsZoomed(false);
-            setPanPosition({ x: 0, y: 0 });
-        } else {
-            // Zoom in
-            setIsZoomed(true);
-        }
+            return next;
+        });
     };
 
     // Mouse handlers for panning when zoomed (desktop)
@@ -445,6 +475,27 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete, onLoad
                         <i className="fa fa-times"></i>
                     </button>
 
+                    {currentImage && (currentImage.parent_image_id || currentImage.image_id) && (
+                        <button
+                            className="lightbox-control-btn"
+                            onClick={(e) => { e.stopPropagation(); setShowComparison(v => !v); }}
+                            title={showComparison ? 'Hide comparison' : 'Show comparison with original'}
+                            aria-label="Toggle comparison"
+                        >
+                            <i className={`fa ${showComparison ? 'fa-columns' : 'fa-columns'}`}></i>
+                        </button>
+                    )}
+
+                    <button
+                        className="lightbox-control-btn zoom-btn"
+                        onClick={handleToggleZoom}
+                        disabled={showGenerationDetails}
+                        title={showGenerationDetails ? 'Close details to enable zoom' : (isZoomed ? 'Zoom out' : 'Zoom in')}
+                        aria-label={isZoomed ? 'Zoom out' : 'Zoom in'}
+                    >
+                        <i className={`fa ${isZoomed ? 'fa-search-minus' : 'fa-search-plus'}`}></i>
+                    </button>
+
                     <button
                         className="lightbox-info-toggle"
                         onClick={() => setShowGenerationDetails(!showGenerationDetails)}
@@ -472,12 +523,62 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete, onLoad
                 )}
 
                 <div className="lightbox-main-content">
+                    {showComparison && comparisonSelection.items.length > 0 && (
+                        <div className="lightbox-compare-strip">
+                            {/* Render from original to current, inserting mask tiles between inpaint transitions */}
+                            {comparisonSelection.items.map((img, idx) => {
+                                const tiles = [];
+                                const isMissing = img.__missing;
+                                const prev = idx > 0 ? comparisonSelection.items[idx - 1] : null;
+                                const isInpaintStep = prev && !prev.__missing && img && !img.__missing && img.generation_type === 'inpaint';
+                                // Mask tile between prev and current if inpaint
+                                if (prev && isInpaintStep) {
+                                    const maskSrc = img.mask_data
+                                        ? (img.mask_data.startsWith('data:') ? img.mask_data : `data:image/png;base64,${img.mask_data}`)
+                                        : null;
+                                    tiles.push(
+                                        <div key={`mask-${prev.id}-${img.id}`} className="compare-mask-tile" title="Inpaint mask">
+                                            {maskSrc ? (
+                                                <img src={maskSrc} alt="Mask" />
+                                            ) : (
+                                                <div className="mask-placeholder">Mask</div>
+                                            )}
+                                        </div>
+                                    );
+                                }
+                                tiles.push(
+                                    <div
+                                        key={`img-${img.id}-${idx}`}
+                                        className={`compare-image-tile ${isMissing ? 'missing' : ''} ${img.id === currentImage.id ? 'current' : ''}`}
+                                        onClick={() => {
+                                            if (isMissing) return;
+                                            const originalIndex = images.findIndex(i => i.id === img.id);
+                                            if (originalIndex !== -1) {
+                                                dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: originalIndex });
+                                            }
+                                        }}
+                                    >
+                                        {isMissing ? (
+                                            <div className="missing-placeholder">...</div>
+                                        ) : (
+                                            <img
+                                                src={`${API_BASE}${img.url || `/generated/${img.filename}`}`}
+                                                alt={`Image ${img.id}`}
+                                            />
+                                        )}
+                                    </div>
+                                );
+                                return <React.Fragment key={`frag-${img.id}-${idx}`}>{tiles}</React.Fragment>;
+                            })}
+                            {comparisonSelection.moreCount > 0 && (
+                                <div className="compare-more">+{comparisonSelection.moreCount} more</div>
+                            )}
+                        </div>
+                    )}
                     <div className="lightbox-image-container">
                         <img
                             src={`${API_BASE}${currentImage.url || `/generated/${currentImage.filename}`}`}
                             alt={`Generated ${currentImage.id}`}
-                            onTouchEnd={handleImageTouchEnd}
-                            onDoubleClick={handleImageDoubleClick}
                             onMouseDown={handleMouseDown}
                             onMouseMove={handleMouseMove}
                             onMouseUp={handleMouseUp}
