@@ -99,7 +99,7 @@ export type SaveImageMeta = {
   info?: any;
   folderId?: string | null;
   loras?: any;
-  generationType?: 'txt2img' | 'img2img' | 'inpaint';
+  generationType?: 'txt2img' | 'img2img' | 'inpaint' | 'uploaded';
   parentImageId?: string | null;
   maskId?: string | null;
   tags?: string[];
