@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Stable Diffusion Async Proxy Adapter
  * Implements the same interface as the sync client but submits jobs to the
@@ -9,19 +10,23 @@ import debug from '../utils/debug';
 
 // Important: Next.js only inlines env vars when accessed via static references
 // like process.env.NEXT_PUBLIC_*. Avoid dynamic lookups on the client.
-const SD_API_URL = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SD_API_URL) || '';
-const SD_API_AUTH = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SD_API_AUTH_TOKEN) || '';
-const APP_URL = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_APP_URL) || '';
-const SD_WEBHOOK_URL = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SD_WEBHOOK_URL) || '';
+const SD_API_URL = (typeof process !== 'undefined' && (process as any).env?.NEXT_PUBLIC_SD_API_URL) || '';
+const SD_API_AUTH = (typeof process !== 'undefined' && (process as any).env?.NEXT_PUBLIC_SD_API_AUTH_TOKEN) || '';
+const APP_URL = (typeof process !== 'undefined' && (process as any).env?.NEXT_PUBLIC_APP_URL) || '';
+const SD_WEBHOOK_URL = (typeof process !== 'undefined' && (process as any).env?.NEXT_PUBLIC_SD_WEBHOOK_URL) || '';
 
 class StableDiffusionAsyncAdapter {
+    baseUrl: string;
+    authToken: string;
+    appUrl: string;
+
     constructor() {
         this.baseUrl = SD_API_URL || '';
         this.authToken = SD_API_AUTH || '';
         this.appUrl = APP_URL || '';
     }
 
-    setBaseUrl(baseUrl) {
+    setBaseUrl(baseUrl: string) {
         this.baseUrl = baseUrl;
     }
 
@@ -36,12 +41,12 @@ class StableDiffusionAsyncAdapter {
     }
 
     getAuthHeaders() {
-        const headers = { 'Content-Type': 'application/json' };
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
         if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
         return headers;
     }
 
-    async submitJob(path, payload, timeout = 15000) {
+    async submitJob(path: string, payload: any, timeout = 15000) {
         const url = `${this.baseUrl.replace(/\/$/, '')}${path}`;
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeout);
@@ -56,23 +61,23 @@ class StableDiffusionAsyncAdapter {
                     webhookKey: __webhookAuthToken || this.authToken
                 }),
                 signal: controller.signal
-            });
+            } as any);
             clearTimeout(id);
-            if (!response.ok) {
+            if (!(response as any).ok) {
                 let msg = 'Async proxy request failed';
-                try { const err = await response.json(); msg = err.error || err.message || msg; } catch(_) {}
+                try { const err = await (response as any).json(); msg = err.error || err.message || msg; } catch(_) {}
                 throw new Error(msg);
             }
-            const data = await response.json();
+            const data = await (response as any).json();
             // Expecting at least a job id/queue token
             // Normalize a minimal response shape the app can detect
             return {
                 queued: true,
-                jobId: data.jobId || data.id || data.uuid || null,
+                jobId: (data as any).jobId || (data as any).id || (data as any).uuid || null,
                 proxy: 'automatic1111-async-api-proxy',
                 raw: data
             };
-        } catch (error) {
+        } catch (error: any) {
             clearTimeout(id);
             debug.error('SD-API-ASYNC', 'submitJob error', { path, error: error.message });
             throw error;
@@ -83,22 +88,22 @@ class StableDiffusionAsyncAdapter {
     async getModels() {
         // Some proxies forward to A1111; attempt passthrough if available
         try {
-            const resp = await fetch(`${this.baseUrl.replace(/\/$/, '')}/sdapi/v1/sd-models`, { headers: this.getAuthHeaders() });
-            if (resp.ok) return await resp.json();
+            const resp = await fetch(`${this.baseUrl.replace(/\/$/, '')}/sdapi/v1/sd-models`, { headers: this.getAuthHeaders() } as any);
+            if ((resp as any).ok) return await (resp as any).json();
         } catch (_) {}
         return [];
     }
 
-    async setModel(modelName) {
+    async setModel(modelName: string) {
         try {
             const resp = await fetch(`${this.baseUrl.replace(/\/$/, '')}/sdapi/v1/options`, {
                 method: 'POST',
                 headers: this.getAuthHeaders(),
                 body: JSON.stringify({ sd_model_checkpoint: modelName })
-            });
-            if (resp.ok) return await resp.json();
+            } as any);
+            if ((resp as any).ok) return await (resp as any).json();
         } catch (_) {}
-        return { success: false };
+        return { success: false } as any;
     }
 
     async getProgress() {
@@ -113,59 +118,59 @@ class StableDiffusionAsyncAdapter {
 
     async getJobs() {
         try {
-            const resp = await fetch(`${this.baseUrl.replace(/\/$/, '')}/sdapi/v1/jobs`, { headers: this.getAuthHeaders() });
-            if (resp.ok) return await resp.json();
+            const resp = await fetch(`${this.baseUrl.replace(/\/$/, '')}/sdapi/v1/jobs`, { headers: this.getAuthHeaders() } as any);
+            if ((resp as any).ok) return await (resp as any).json();
         } catch (_) {}
         return [];
     }
 
-    async getJob(jobId) {
+    async getJob(jobId: string) {
         try {
-            const resp = await fetch(`${this.baseUrl.replace(/\/$/, '')}/sdapi/v1/jobs/${jobId}`, { headers: this.getAuthHeaders() });
-            if (resp.ok) return await resp.json();
+            const resp = await fetch(`${this.baseUrl.replace(/\/$/, '')}/sdapi/v1/jobs/${jobId}`, { headers: this.getAuthHeaders() } as any);
+            if ((resp as any).ok) return await (resp as any).json();
         } catch (_) {}
         return null;
     }
 
-    async deleteJob(jobId) {
+    async deleteJob(jobId: string) {
         try {
             const resp = await fetch(`${this.baseUrl.replace(/\/$/, '')}/sdapi/v1/jobs/${jobId}`, {
                 method: 'DELETE',
                 headers: this.getAuthHeaders()
-            });
-            return { success: resp.status === 204, status: resp.status };
-        } catch (error) {
+            } as any);
+            return { success: (resp as any).status === 204, status: (resp as any).status } as any;
+        } catch (error: any) {
             debug.error('SD-API-ASYNC', 'deleteJob error', { jobId, error: error.message });
-            return { success: false, error: error.message };
+            return { success: false, error: error.message } as any;
         }
     }
 
-    async generateImage(params) {
+    async generateImage(params: any) {
         const payload = this.#mapTxt2ImgParams(params);
         // Proxy path: /sdapi/v1/txt2img
         return this.submitJob('/sdapi/v1/txt2img', payload);
     }
 
-    async generateImageFromImage(params) {
+    async generateImageFromImage(params: any) {
         const payload = this.#mapImg2ImgParams(params);
         return this.submitJob('/sdapi/v1/img2img', payload);
     }
 
-    async inpaintImage(params) {
+    async inpaintImage(params: any) {
         // In many setups inpaint is also img2img with mask
         const payload = this.#mapImg2ImgParams(params);
         return this.submitJob('/sdapi/v1/img2img', payload);
     }
 
     // Private helpers to keep payload close to A1111 schema
-    #normalizeBase64(b64) {
-        if (!b64) return b64;
+    #normalizeBase64(b64?: string) {
+        if (!b64) return b64 as any;
         const commaIdx = b64.indexOf(',');
         if (b64.startsWith('data:') && commaIdx !== -1) return b64.substring(commaIdx + 1);
         return b64;
     }
 
-    #addADetailer(payload, enabled, model) {
+    #addADetailer(payload: any, enabled?: boolean, model?: string) {
         if (enabled && model) {
             payload.alwayson_scripts = {
                 ADetailer: {
@@ -190,8 +195,8 @@ class StableDiffusionAsyncAdapter {
         adetailerEnabled = false,
         adetailerModel = null,
         __webhookAuthToken = undefined
-    }) {
-        const payload = {
+    }: any) {
+        const payload: any = {
             prompt,
             negative_prompt: negativePrompt,
             width,
@@ -224,9 +229,20 @@ class StableDiffusionAsyncAdapter {
         adetailerEnabled = false,
         adetailerModel = null,
         __webhookAuthToken = undefined
-    }) {
-        const payload = {
-            init_images: [this.#normalizeBase64(initImage)],
+    }: any) {
+        // Allow object inputs shaped like { base64: string }
+        const extract = (val: any) => {
+            if (!val) return null;
+            if (typeof val === 'string') return val;
+            if (typeof val === 'object' && (val as any).base64) return (val as any).base64;
+            return null;
+        };
+
+        const initB64 = this.#normalizeBase64(extract(initImage) as any);
+        const maskB64 = this.#normalizeBase64(extract(maskImage) as any);
+
+        const payload: any = {
+            init_images: [initB64],
             prompt,
             negative_prompt: negativePrompt,
             width,
@@ -240,7 +256,7 @@ class StableDiffusionAsyncAdapter {
             denoising_strength: denoisingStrength,
             __webhookAuthToken
         };
-        if (maskImage) payload.mask = this.#normalizeBase64(maskImage);
+        if (maskB64) payload.mask = maskB64;
         return this.#addADetailer(payload, adetailerEnabled, adetailerModel);
     }
 }

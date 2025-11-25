@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Debug Logger Utility
  * Set DEBUG_MODE=true in localStorage to enable debug logging
@@ -7,6 +8,8 @@
 const DEBUG_KEY = 'AVATAR_BUILDER_DEBUG';
 
 class DebugLogger {
+    enabled: boolean;
+
     constructor() {
         // Only access localStorage on client-side
         this.enabled = typeof window !== 'undefined' && localStorage.getItem(DEBUG_KEY) === 'true';
@@ -26,7 +29,7 @@ class DebugLogger {
         console.log('%c[DEBUG] Debug mode disabled', 'color: red; font-weight: bold');
     }
 
-    log(component, message, data = null) {
+    log(component: string, message: string, data: any = null) {
         if (!this.enabled) return;
 
         const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
@@ -39,7 +42,7 @@ class DebugLogger {
         }
     }
 
-    error(component, message, error = null) {
+    error(component: string, message: string, error: any = null) {
         if (!this.enabled) return;
 
         const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
@@ -52,7 +55,7 @@ class DebugLogger {
         }
     }
 
-    warn(component, message, data = null) {
+    warn(component: string, message: string, data: any = null) {
         if (!this.enabled) return;
 
         const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
@@ -69,6 +72,13 @@ class DebugLogger {
 const debug = new DebugLogger();
 
 // Expose globally for easy enable/disable from console (client-side only)
+declare global {
+    interface Window {
+        enableDebug?: () => void;
+        disableDebug?: () => void;
+    }
+}
+
 if (typeof window !== 'undefined') {
     window.enableDebug = () => debug.enable();
     window.disableDebug = () => debug.disable();

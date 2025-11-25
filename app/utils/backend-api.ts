@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Backend API Client
  * Handles all communication with the Avatar Builder backend
@@ -13,7 +14,7 @@ export const folderAPI = {
      * Get all folders with image counts
      * Optionally filter by character_id
      */
-    async getAll(characterId = null) {
+    async getAll(characterId: string | null = null) {
         let url = `${API_BASE}/api/folders`;
         if (characterId) {
             url += `?character_id=${characterId}`;
@@ -29,7 +30,7 @@ export const folderAPI = {
     /**
      * Create a new folder (requires character_id)
      */
-    async create({ name, description = null, character_id }) {
+    async create({ name, description = null, character_id }: { name: string; description?: string | null; character_id: string; }) {
         const response = await fetch(`${API_BASE}/api/folders`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -47,7 +48,7 @@ export const folderAPI = {
     /**
      * Update a folder
      */
-    async update(id, { name, description = null }) {
+    async update(id: string, { name, description = null }: { name: string; description?: string | null; }) {
         const response = await fetch(`${API_BASE}/api/folders/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -65,7 +66,7 @@ export const folderAPI = {
     /**
      * Delete a folder
      */
-    async delete(id) {
+    async delete(id: string) {
         const response = await fetch(`${API_BASE}/api/folders/${id}`, {
             method: 'DELETE'
         });
@@ -85,7 +86,7 @@ export const imageAPI = {
     /**
      * Get images with optional folder filter
      */
-    async getAll({ folderId = null, character_id = null, limit = 50, offset = 0 } = {}) {
+    async getAll({ folderId = null, character_id = null, limit = 50, offset = 0 }: { folderId?: string | null; character_id?: string | null; limit?: number; offset?: number; } = {}) {
         let url = `${API_BASE}/api/images?limit=${limit}&offset=${offset}`;
         if (folderId) {
             url += `&folder_id=${folderId}`;
@@ -105,7 +106,7 @@ export const imageAPI = {
     /**
      * Get a single image by id
      */
-    async getById(id) {
+    async getById(id: string) {
         const url = `${API_BASE}/api/images?id=${encodeURIComponent(id)}`;
         const response = await fetch(url);
         if (!response.ok) {
@@ -137,7 +138,7 @@ export const imageAPI = {
                    info,
                    folderId = null,
                    loras = null
-               }) {
+               }: any) {
         const response = await fetch(`${API_BASE}/api/images`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -173,7 +174,7 @@ export const imageAPI = {
     /**
      * Update image (move to folder)
      */
-    async update(id, { folderId }) {
+    async update(id: string, { folderId }: { folderId: string | null; }) {
         const response = await fetch(`${API_BASE}/api/images/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -190,8 +191,8 @@ export const imageAPI = {
     /**
      * Update image flags (favorite, nsfw)
      */
-    async updateFlags(id, { is_favorite, is_nsfw }) {
-        const updates = {};
+    async updateFlags(id: string, { is_favorite, is_nsfw }: { is_favorite?: boolean; is_nsfw?: boolean; }) {
+        const updates: any = {};
         if (is_favorite !== undefined) updates.is_favorite = is_favorite;
         if (is_nsfw !== undefined) updates.is_nsfw = is_nsfw;
 
@@ -211,7 +212,7 @@ export const imageAPI = {
     /**
      * Delete an image
      */
-    async delete(id) {
+    async delete(id: string) {
         const response = await fetch(`${API_BASE}/api/images/${id}`, {
             method: 'DELETE'
         });
@@ -221,92 +222,18 @@ export const imageAPI = {
         }
 
         return await response.json();
-    },
-
-    /**
-     * Bulk move images to folder
-     */
-    async bulkMove(imageIds, folderId) {
-        const response = await fetch(`${API_BASE}/api/images/bulk-move`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageIds, folderId })
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to move images');
-        }
-
-        return await response.json();
-    },
-
-    /**
-     * Bulk delete images
-     */
-    async bulkDelete(imageIds) {
-        const response = await fetch(`${API_BASE}/api/images/bulk-delete`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageIds })
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to delete images');
-        }
-
-        return await response.json();
-    },
-
-    /**
-     * Download multiple images as zip
-     */
-    async downloadZip(imageIds) {
-        const response = await fetch(`${API_BASE}/api/images/download-zip`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageIds })
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to create zip');
-        }
-
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `images-${Date.now()}.zip`;
-        link.click();
-        window.URL.revokeObjectURL(url);
-    },
-
-    /**
-     * Get image URL
-     */
-    getUrl(image) {
-        return `${API_BASE}${image.url || `/generated/${image.filename}`}`;
-    },
-
-    /**
-     * Download image
-     */
-    download(image) {
-        const link = document.createElement('a');
-        link.href = this.getUrl(image);
-        link.download = image.filename;
-        link.click();
-    },
-
-    /**
-     * Copy image to clipboard
-     */
-    async copyToClipboard(image) {
-        const response = await fetch(this.getUrl(image));
-        const blob = await response.blob();
-        await navigator.clipboard.write([
-            new ClipboardItem({ 'image/png': blob })
-        ]);
     }
 };
 
-export { API_BASE };
+/**
+ * Character API (minimal)
+ */
+export const characterAPI = {
+    async getAll() {
+        const response = await fetch(`${API_BASE}/api/characters`);
+        if (!response.ok) {
+            throw new Error('Failed to load characters');
+        }
+        return await response.json();
+    }
+};

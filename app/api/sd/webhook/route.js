@@ -46,17 +46,11 @@ export async function POST(request) {
             return NextResponse.json({ ok: true });
         }
 
-        // Persist each image using the same logic as /api/images
-        // Include generation metadata needed for comparison feature
-        const inferredType = job.payload?.type
-            || job.payload?.generationType
-            || (job.payload?.mask || job.payload?.mask_data ? 'inpaint' : undefined)
-            || 'txt2img';
-        const parentImageId = job.payload?.parent_image_id
-            || job.payload?.image_id
-            || body?.parent_image_id
-            || null;
-        const baseMaskData = job.payload?.mask_data || job.payload?.mask || body?.mask || body?.result?.mask || null;
+        // Derive generation metadata from job payload
+        const inferredType = job.payload?.generation_type
+            || (job.payload?.mask_id ? 'inpaint' : (job.payload?.initImage ? 'img2img' : 'txt2img'));
+        const parentImageId = job.payload?.parent_image_id || null;
+        const resolvedMaskId = job.payload?.mask_id || null;
 
         const meta = {
             positivePrompt: job.payload?.positivePrompt,
@@ -78,18 +72,16 @@ export async function POST(request) {
             loras: job.payload?.loras || null,
             generationType: inferredType,
             parentImageId,
-            // maskData can be overridden per-image in the loop if present
-            maskData: baseMaskData
+            maskId: resolvedMaskId
         };
 
         for (const img of images) {
-            // Per-image mask data (if the async proxy returns mask per output)
-            const perImageMask = typeof img === 'object' ? (img.mask_data || img.mask || null) : null;
+            let perMaskId = meta.maskId || null;
             await saveGeneratedImage({
                 supabase,
                 userId: job.user_id,
                 imageBase64: typeof img === 'string' ? img : img?.data || '',
-                meta: { ...meta, maskData: perImageMask ?? meta.maskData }
+                meta: { ...meta, maskId: perMaskId }
             });
         }
 

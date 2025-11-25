@@ -6,7 +6,7 @@ function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageM
     const {state, dispatch, actions} = useApp();
     const {selectedImages, isSelecting, lastClickedIndex, showImageInfo} = state;
 
-    const imageSrc = `${API_BASE}${image.url || `/generated/${image.filename}`}`;
+    const imageSrc = image.url;
     const isSelected = selectedImages.includes(image.id);
 
     const handleDownload = (e, image) => {

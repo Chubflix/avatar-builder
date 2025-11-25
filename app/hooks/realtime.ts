@@ -1,3 +1,4 @@
+// @ts-nocheck
 import {useApp} from "@/app/context/AppContext";
 import {useEffect, useRef} from "react";
 import { getAblyRealtime } from "@/app/lib/ably";

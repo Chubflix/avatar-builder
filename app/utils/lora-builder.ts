@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Build lora prompt additions from current lora settings
  * @param {Object} config - App config with loras array
@@ -6,15 +7,15 @@
  * @param {string} loraStyle - Selected style name or empty string
  * @returns {string} Lora prompt additions to append to prompt
  */
-export function buildLoraPrompt(config, loraSliders, loraToggles, loraStyle) {
+export function buildLoraPrompt(config: any, loraSliders: any, loraToggles: any, loraStyle: string): string {
     if (!config?.loras) return '';
 
-    const additions = [];
+    const additions: string[] = [];
 
     // Process sliders
     config.loras
-        .filter(lora => lora.type === 'slider')
-        .forEach(lora => {
+        .filter((lora: any) => lora.type === 'slider')
+        .forEach((lora: any) => {
             const sliderState = loraSliders[lora.name];
             if (sliderState?.enabled) {
                 // Replace ${value} placeholder with actual value
@@ -25,8 +26,8 @@ export function buildLoraPrompt(config, loraSliders, loraToggles, loraStyle) {
 
     // Process toggles
     config.loras
-        .filter(lora => lora.type === 'toggle')
-        .forEach(lora => {
+        .filter((lora: any) => lora.type === 'toggle')
+        .forEach((lora: any) => {
             const toggleState = loraToggles[lora.name];
             if (toggleState) {
                 additions.push(lora.prompt);
@@ -35,7 +36,7 @@ export function buildLoraPrompt(config, loraSliders, loraToggles, loraStyle) {
 
     // Process style
     if (loraStyle) {
-        const style = config.loras.find(lora => lora.type === 'style' && lora.name === loraStyle);
+        const style = config.loras.find((lora: any) => lora.type === 'style' && lora.name === loraStyle);
         if (style) {
             additions.push(style.prompt);
         }

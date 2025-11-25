@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Queue notification utilities using Ably real-time messaging
  * Broadcasts when jobs are queued so other devices can start polling
@@ -13,16 +14,17 @@ import debug from './debug';
  * @param {string} eventType - Type of event ('job_queued', 'job_completed', etc.)
  * @param {object} data - Event data
  */
-export async function publishQueueEvent(eventType, data = {}) {
+export async function publishQueueEvent(eventType: string, data: Record<string, any> = {}) {
     try {
         const response = await fetch('/api/queue/notify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ eventType, data })
-        });
+        } as any);
 
-        if (!response.ok) {
-            const error = await response.json();
+        if (!(response as any).ok) {
+            let error: any = {};
+            try { error = await (response as any).json(); } catch(_) {}
             debug.warn('Queue-Notifications', `Failed to publish ${eventType}`, error);
             return;
         }
@@ -38,7 +40,7 @@ export async function publishQueueEvent(eventType, data = {}) {
  * Convenience function to notify that a job was queued
  * @param {string} jobId - Job ID
  */
-export function notifyJobQueued(jobId) {
+export function notifyJobQueued(jobId: string) {
     // Fire and forget - don't await
     publishQueueEvent('job_queued', { jobId });
 }

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useCallback, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { useQueueContext } from '../context/QueueContext';

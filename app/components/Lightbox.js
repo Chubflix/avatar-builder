@@ -533,9 +533,7 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete, onLoad
                                 const isInpaintStep = prev && !prev.__missing && img && !img.__missing && img.generation_type === 'inpaint';
                                 // Mask tile between prev and current if inpaint
                                 if (prev && isInpaintStep) {
-                                    const maskSrc = img.mask_data
-                                        ? (img.mask_data.startsWith('data:') ? img.mask_data : `data:image/png;base64,${img.mask_data}`)
-                                        : null;
+                                    const maskSrc = img.mask_url || null;
                                     tiles.push(
                                         <div key={`mask-${prev.id}-${img.id}`} className="compare-mask-tile" title="Inpaint mask">
                                             {maskSrc ? (
@@ -562,7 +560,7 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete, onLoad
                                             <div className="missing-placeholder">...</div>
                                         ) : (
                                             <img
-                                                src={`${API_BASE}${img.url || `/generated/${img.filename}`}`}
+                                                src={img.url}
                                                 alt={`Image ${img.id}`}
                                             />
                                         )}
@@ -577,7 +575,7 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete, onLoad
                     )}
                     <div className="lightbox-image-container">
                         <img
-                            src={`${API_BASE}${currentImage.url || `/generated/${currentImage.filename}`}`}
+                            src={currentImage.url}
                             alt={`Generated ${currentImage.id}`}
                             onMouseDown={handleMouseDown}
                             onMouseMove={handleMouseMove}
@@ -713,8 +711,7 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete, onLoad
                                 className="image-btn secondary"
                                 onClick={async () => {
                                     try {
-                                        const imgUrl = `${API_BASE}${currentImage.url || `/generated/${currentImage.filename}`}`;
-                                        const res = await fetch(imgUrl);
+                                        const res = await fetch(currentImage.url);
                                         const blob = await res.blob();
                                         const reader = new FileReader();
                                         reader.onloadend = () => {
@@ -745,8 +742,7 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete, onLoad
                                 className="image-btn secondary"
                                 onClick={async () => {
                                     try {
-                                        const imgUrl = `${API_BASE}${currentImage.url || `/generated/${currentImage.filename}`}`;
-                                        const res = await fetch(imgUrl);
+                                        const res = await fetch(currentImage.url);
                                         const blob = await res.blob();
                                         const reader = new FileReader();
                                         reader.onloadend = () => {

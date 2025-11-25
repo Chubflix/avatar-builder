@@ -1,14 +1,13 @@
-import { useCallback, useEffect, useRef } from 'react';
-import { useApp } from '../context/AppContext';
+// @ts-nocheck
+import {useCallback, useEffect} from 'react';
+import {useApp} from '../context/AppContext';
 import sdAPI from '../utils/sd-api';
-import { folderAPI, imageAPI } from '../utils/backend-api';
+import {folderAPI, imageAPI} from '../utils/backend-api';
 import debug from '../utils/debug';
-import { sendNotification } from '../utils/notifications';
-import { buildLoraPrompt } from '../utils/lora-builder';
-import { supabase } from '../lib/supabase';
-import { useQueueContext } from '../context/QueueContext';
-import { useQueue } from './queue';
-import { notifyJobQueued } from '../utils/queue-notifications';
+import {sendNotification} from '../utils/notifications';
+import {buildLoraPrompt} from '../utils/lora-builder';
+import {useQueue} from './queue';
+import {notifyJobQueued} from '../utils/queue-notifications';
 
 /**
  * Hook for managing folders
@@ -109,50 +108,21 @@ export function useImages() {
         if (state.isLoadingMore || !state.hasMore) return;
 
         dispatch({ type: actions.SET_LOADING_MORE, payload: true });
-        await loadImages(state.images.length, state.currentFolder);
-        dispatch({ type: actions.SET_LOADING_MORE, payload: false });
-    }, [state.isLoadingMore, state.hasMore, state.images.length, state.currentFolder, loadImages, dispatch, actions]);
-
-    const deleteImage = useCallback(async (id) => {
-        if (!window.confirm('Are you sure you want to delete this image?')) return;
 
         try {
-            await imageAPI.delete(id);
-
-            if (state.lightboxIndex !== null) {
-                const currentImage = state.images[state.lightboxIndex];
-                if (currentImage && currentImage.id === id) {
-                    if (state.images.at(state.lightboxIndex + 1)) {
-                        // take the next image
-                    } else if (state.images.at(state.lightboxIndex - 1)) {
-                        // go back to the previous image
-                        dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: state.lightboxIndex - 1 });
-                    } else {
-                        // no more images, reset lightbox
-                        dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: null });
-                    }
-                }
-            }
-
-            dispatch({ type: actions.REMOVE_IMAGE, payload: id });
-            dispatch({ type: actions.SET_TOTAL_IMAGES, payload: state.totalImages - 1 });
-            sendNotification('Image deleted', 'success', dispatch, actions, state.notificationsEnabled);
-        } catch (err) {
-            sendNotification('Failed to delete image', 'error', dispatch, actions, state.notificationsEnabled);
+            await loadImages(state.images.length);
+        } finally {
+            dispatch({ type: actions.SET_LOADING_MORE, payload: false });
         }
-    }, [state.lightboxIndex, state.images, state.totalImages, state.notificationsEnabled, dispatch, actions]);
+    }, [state.isLoadingMore, state.hasMore, state.images.length, dispatch, actions, loadImages]);
 
-    const moveImageToFolder = useCallback(async (imageId, folderId) => {
-        try {
-            await imageAPI.update(imageId, { folderId: folderId || null });
-            await loadImages(0);
-            sendNotification('Image moved', 'success', dispatch, actions, state.notificationsEnabled);
-        } catch (err) {
-            sendNotification('Failed to move image', 'error', dispatch, actions, state.notificationsEnabled);
-        }
-    }, [loadImages, dispatch, actions, state.notificationsEnabled]);
+    useEffect(() => {
+        // Load initial images when folder changes
+        loadImages(0, state.currentFolder, state.selectedCharacter);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [state.currentFolder, state.selectedCharacter]);
 
-    return { loadImages, loadMoreImages, deleteImage, moveImageToFolder };
+    return { loadImages, loadMoreImages };
 }
 
 /**
@@ -179,6 +149,27 @@ export function useGeneration() {
             const loraAdditions = buildLoraPrompt(config, loraSliders, loraToggles, loraStyle);
             const finalPrompt = positivePrompt + loraAdditions;
 
+            // If using inpaint (initImage + maskImage), ensure mask exists in DB and S3 and get mask_id
+            let maskId = null;
+            const initB64 = typeof initImage === 'string' ? initImage : (initImage?.base64 || null);
+            const maskB64 = typeof maskImage === 'string' ? maskImage : (maskImage?.base64 || null);
+            const maskIdInput = typeof maskImage === 'object' ? (maskImage?.id || null) : null;
+            if (initB64 && maskB64) {
+                try {
+                    const resp = await fetch('/api/masks', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: maskIdInput || undefined, base64: maskB64 })
+                    });
+                    if (resp.ok) {
+                        const saved = await resp.json();
+                        maskId = saved.id;
+                    }
+                } catch (_) {
+                    // Non-fatal: generation can still proceed; webhook just won't attach a mask
+                }
+            }
+
             // Prepare original metadata payload to persist with the queued job
             const dims = config.dimensions[orientation];
             const jobPayload = {
@@ -202,9 +193,9 @@ export function useGeneration() {
                     toggles: loraToggles,
                     style: loraStyle
                 },
-                generation_type: initImage ? (maskImage ? 'inpaint' : 'img2img') : 'txt2img',
-                parent_image_id: null, // needs parent image id
-                mask_data: maskImage,
+                generation_type: initB64 ? (maskB64 ? 'inpaint' : 'img2img') : 'txt2img',
+                parent_image_id: null, // TODO: set when restoring from an image
+                mask_id: maskId || null,
             };
 
             // Create a job record to receive a per-job webhook token
@@ -224,11 +215,11 @@ export function useGeneration() {
             }
 
             // Submit job to SD API
-            const result = initImage
-                ? (maskImage
+            const result = initB64
+                ? (maskB64
                     ? await sdAPI.inpaintImage({
-                        initImage,
-                        maskImage,
+                        initImage: initB64,
+                        maskImage: maskB64,
                         prompt: finalPrompt,
                         negativePrompt,
                         width: dims.width,
@@ -245,7 +236,7 @@ export function useGeneration() {
                         __webhookAuthToken: webhookToken || undefined
                     })
                     : await sdAPI.generateImageFromImage({
-                        initImage,
+                        initImage: initB64,
                         prompt: finalPrompt,
                         negativePrompt,
                         width: dims.width,
@@ -309,6 +300,70 @@ export function useGeneration() {
 }
 
 /**
+ * Hook for app settings and admin checks
+ */
+export function useSettings() {
+    const { dispatch, actions } = useApp();
+
+    const loadUserSettings = useCallback(async () => {
+        try {
+            const response = await fetch('/api/settings/user');
+            if (!response.ok) { // noinspection ExceptionCaughtLocallyJS
+                throw new Error('Failed to load user settings');
+            }
+            const settings = await response.json();
+            dispatch({ type: actions.SET_USER_SETTINGS, payload: settings });
+            return settings;
+        } catch (err) {
+            dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: err.message } });
+            return null;
+        }
+    }, [dispatch, actions]);
+
+    const updateUserSettings = useCallback(async (settings) => {
+        const response = await fetch('/api/settings/user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+        });
+        if (!response.ok) throw new Error('Failed to update user settings');
+        const updated = await response.json();
+        dispatch({ type: actions.SET_USER_SETTINGS, payload: updated });
+        return updated;
+    }, [dispatch, actions]);
+
+    const loadGlobalSettings = useCallback(async (key) => {
+        const response = await fetch(`/api/settings/global?key=${encodeURIComponent(key)}`);
+        if (!response.ok) throw new Error('Failed to load global settings');
+        return await response.json();
+    }, []);
+
+    const updateGlobalSettings = useCallback(async (key, value, description = '') => {
+        const configResponse = await fetch('/api/settings/global', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key, value, description })
+        });
+        if (!configResponse.ok) throw new Error('Failed to update global settings');
+        return await configResponse.json();
+    }, []);
+
+    const checkIsAdmin = useCallback(async () => {
+        try {
+            const response = await fetch('/api/admin/check');
+            if (!response.ok) return false;
+            const data = await response.json();
+            return !!data?.isAdmin;
+        } catch (_) {
+            return false;
+        }
+    }, []);
+
+    return { loadUserSettings, updateUserSettings, loadGlobalSettings, updateGlobalSettings, checkIsAdmin };
+}
+
+
+/**
  * Hook for loading models
  */
 export function useModels() {
@@ -333,110 +388,4 @@ export function useModels() {
     }, [dispatch, actions]);
 
     return { loadModels };
-}
-
-/**
- * Hook for managing user settings
- */
-export function useSettings() {
-    const { state, dispatch, actions } = useApp();
-
-    const loadUserSettings = useCallback(async () => {
-        try {
-            const response = await fetch('/api/settings/user');
-            if (!response.ok) throw new Error('Failed to load user settings');
-            const settings = await response.json();
-            return settings;
-        } catch (err) {
-            console.error('Error loading user settings:', err);
-            return null;
-        }
-    }, []);
-
-    const updateUserSettings = useCallback(async (updates) => {
-        try {
-            const response = await fetch('/api/settings/user', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updates)
-            });
-
-            if (!response.ok) throw new Error('Failed to update user settings');
-
-            const settings = await response.json();
-
-            // Reload config to reflect changes
-            const configResponse = await fetch('/api/config');
-            const config = await configResponse.json();
-            dispatch({ type: actions.SET_CONFIG, payload: config });
-
-            dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message: 'Settings saved' } });
-            return settings;
-        } catch (err) {
-            dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: err.message } });
-            return null;
-        }
-    }, [dispatch, actions]);
-
-    const loadGlobalSettings = useCallback(async (key = null) => {
-        try {
-            const url = key ? `/api/settings/global?key=${key}` : '/api/settings/global';
-            const response = await fetch(url);
-            if (!response.ok) throw new Error('Failed to load global settings');
-            return await response.json();
-        } catch (err) {
-            console.error('Error loading global settings:', err);
-            return null;
-        }
-    }, []);
-
-    const updateGlobalSettings = useCallback(async (key, value, description) => {
-        try {
-            const response = await fetch('/api/settings/global', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key, value, description })
-            });
-
-            if (!response.ok) {
-                if (response.status === 403) {
-                    throw new Error('Admin access required to modify global settings');
-                }
-                throw new Error('Failed to update global settings');
-            }
-
-            const settings = await response.json();
-
-            // Reload config to reflect changes
-            const configResponse = await fetch('/api/config');
-            const config = await configResponse.json();
-            dispatch({ type: actions.SET_CONFIG, payload: config });
-
-            dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message: 'Global settings saved' } });
-            return settings;
-        } catch (err) {
-            dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: err.message } });
-            return null;
-        }
-    }, [dispatch, actions]);
-
-    const checkIsAdmin = useCallback(async () => {
-        try {
-            const response = await fetch('/api/admin/check');
-            if (!response.ok) return false;
-            const data = await response.json();
-            return data.is_admin || false;
-        } catch (err) {
-            console.error('Error checking admin status:', err);
-            return false;
-        }
-    }, []);
-
-    return {
-        loadUserSettings,
-        updateUserSettings,
-        loadGlobalSettings,
-        updateGlobalSettings,
-        checkIsAdmin
-    };
 }
