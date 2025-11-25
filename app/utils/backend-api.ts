@@ -222,6 +222,74 @@ export const imageAPI = {
         }
 
         return await response.json();
+    },
+
+    /**
+     * Bulk delete images
+     */
+    async bulkDelete(imageIds) {
+        const response = await fetch(`${API_BASE}/api/images/bulk-delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageIds })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to delete images');
+        }
+
+        return await response.json();
+    },
+
+    /**
+     * Download multiple images as zip
+     */
+    async downloadZip(imageIds) {
+        const response = await fetch(`${API_BASE}/api/images/download-zip`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageIds })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to create zip');
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `images-${Date.now()}.zip`;
+        link.click();
+        window.URL.revokeObjectURL(url);
+    },
+
+    /**
+     * Get image URL
+     */
+    getUrl(image) {
+        return `${API_BASE}${image.url || `/generated/${image.filename}`}`;
+    },
+
+    /**
+     * Download image
+     */
+    download(image) {
+        const link = document.createElement('a');
+        link.href = this.getUrl(image);
+        link.download = image.filename;
+        link.click();
+    },
+
+    /**
+     * Copy image to clipboard
+     */
+    async copyToClipboard(image) {
+        const response = await fetch(this.getUrl(image));
+        const blob = await response.blob();
+        await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+        ]);
     }
 };
 
