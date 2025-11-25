@@ -23,6 +23,7 @@ import PromptModal from './components/PromptModal';
 import CharacterModal from './components/CharacterModal';
 import CharacterFolderSelector from './components/CharacterFolderSelector';
 import QueueManagerModal from './components/QueueManagerModal';
+import ConfigModal from './components/ConfigModal';
 
 // Import CSS
 import './folder-picker.css';
@@ -439,6 +440,11 @@ function AppContent() {
             <QueueManagerModal
                 show={state.showQueueManager}
                 onClose={() => dispatch({ type: actions.SET_SHOW_QUEUE_MANAGER, payload: false })}
+            />
+
+            <ConfigModal
+                show={state.showConfigModal}
+                onClose={() => dispatch({ type: actions.SET_SHOW_CONFIG_MODAL, payload: false })}
             />
 
             <Lightbox

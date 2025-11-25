@@ -1,0 +1,267 @@
+/* Fullscreen Config Modal */
+.config-modal-overlay {
+    /* Override generic modal overlay padding/centering to allow fullscreen content */
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+}
+
+.config-modal {
+    /* Make the modal fullscreen while preserving modal styling */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Hard override any generic modal-content constraints for this modal only */
+.modal-content.config-modal {
+    width: 100vw !important;
+    max-width: none !important;
+    height: 100vh !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+}
+
+.config-modal-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color, #333);
+    background: var(--bg-secondary, #1a1a1a);
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+
+.config-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 1.5rem;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-secondary, #999);
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.config-tab:hover {
+    color: var(--text-primary, #fff);
+    background: var(--bg-tertiary, #222);
+}
+
+.config-tab.active {
+    color: var(--primary, #007aff);
+    border-bottom-color: var(--primary, #007aff);
+}
+
+.config-tab i {
+    font-size: 1rem;
+}
+
+.config-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+    min-height: 0; /* allow flex child to shrink for proper scrolling */
+}
+
+.config-loading,
+.config-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 3rem 1rem;
+    color: var(--text-secondary, #999);
+}
+
+.config-loading i {
+    font-size: 3rem;
+    opacity: 0.5;
+}
+
+.config-error {
+    color: var(--danger, #e74c3c);
+}
+
+.config-error i {
+    font-size: 2.5rem;
+    opacity: 1;
+}
+
+.config-section {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.config-section h5 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary, #fff);
+    margin: 0 0 0.5rem 0;
+}
+
+.config-description {
+    font-size: 0.9rem;
+    color: var(--text-secondary, #999);
+    margin: 0 0 1.5rem 0;
+}
+
+.config-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: rgba(0, 122, 255, 0.1);
+    border: 1px solid rgba(0, 122, 255, 0.3);
+    border-radius: 8px;
+    color: var(--primary, #007aff);
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+}
+
+.config-info i {
+    font-size: 1.25rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-primary, #fff);
+    margin-bottom: 0.5rem;
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.75rem;
+    background: var(--bg-tertiary, #222);
+    border: 1px solid var(--border-color, #333);
+    border-radius: 6px;
+    color: var(--text-primary, #fff);
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: border-color 0.2s ease;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary, #007aff);
+}
+
+.form-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.form-input.code-input {
+    font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+textarea.form-input {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.form-hint {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-tertiary, #666);
+}
+
+.config-modal-footer {
+    display: flex;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-color, #333);
+    justify-content: flex-end;
+}
+
+.config-modal-footer button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Dark theme adjustments */
+@media (prefers-color-scheme: dark) {
+    .config-modal {
+        background: var(--bg-primary, #000);
+    }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .config-modal-tabs {
+        padding: 0;
+    }
+
+    .config-tab {
+        padding: 0.875rem 1rem;
+        font-size: 0.875rem;
+    }
+
+    .config-tab i {
+        font-size: 0.9rem;
+    }
+
+    .config-tab span {
+        display: none;
+    }
+
+    /* Show only icons on mobile */
+    .config-tab {
+        flex-direction: column;
+        gap: 0.25rem;
+        min-width: 60px;
+    }
+
+    .config-modal-body {
+        padding: 1rem;
+    }
+
+    .config-section h5 {
+        font-size: 1.125rem;
+    }
+
+    .config-description {
+        font-size: 0.85rem;
+    }
+
+    .form-label {
+        font-size: 0.85rem;
+    }
+
+    .form-input {
+        padding: 0.625rem;
+        font-size: 0.9rem;
+    }
+
+    .config-modal-footer {
+        padding: 1rem;
+    }
+}
+
+/* Tablet adjustments */
+/* No tablet-specific width: stays fullscreen */

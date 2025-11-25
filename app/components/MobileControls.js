@@ -307,6 +307,13 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                         <i className={`fa fa-${showMobileSettings ? 'times' : 'sliders'}`}></i>
                     </button>
                     <button
+                        className="mobile-config-btn"
+                        onClick={() => dispatch({ type: actions.SET_SHOW_CONFIG_MODAL, payload: true })}
+                        title="Configuration"
+                    >
+                        <i className="fa fa-cog"></i>
+                    </button>
+                    <button
                         className="mobile-prompt-btn"
                         onClick={() => {
                             if (!state.showMobilePrompt && showMobileSettings) {

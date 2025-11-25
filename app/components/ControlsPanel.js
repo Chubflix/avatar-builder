@@ -39,6 +39,13 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
         <div className="controls-panel desktop-only">
             <div className="controls-header">
                 <h2>Generation Settings</h2>
+                <button
+                    className="icon-button config-button"
+                    onClick={() => dispatch({ type: actions.SET_SHOW_CONFIG_MODAL, payload: true })}
+                    title="Configuration"
+                >
+                    <i className="fa fa-cog"></i>
+                </button>
             </div>
 
             {/* Positive Prompt */}

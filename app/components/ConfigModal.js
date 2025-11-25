@@ -1,0 +1,474 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { useApp } from '../context/AppContext';
+import { useSettings } from '../hooks';
+import { ModalHeader } from '@/app/design-system/molecules/ModalHeader';
+import { IconButton } from '@/app/design-system/atoms/IconButton';
+import './ConfigModal.css';
+
+function ConfigModal({ show, onClose }) {
+    const [mounted, setMounted] = useState(false);
+    const { state, dispatch, actions } = useApp();
+    const { loadUserSettings, updateUserSettings, loadGlobalSettings, updateGlobalSettings, checkIsAdmin } = useSettings();
+
+    const [activeTab, setActiveTab] = useState('defaults');
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [error, setError] = useState(null);
+
+    // Form state
+    const [userSettings, setUserSettings] = useState({
+        default_positive_prompt: '',
+        default_negative_prompt: '',
+        default_dimension: 'portrait',
+        default_batch_size: 1,
+        generation_settings: {
+            samplerName: 'DPM++ 2M',
+            scheduler: 'Karras',
+            steps: 25,
+            cfgScale: 7
+        },
+        adetailer_settings: {
+            enabled: true,
+            model: 'face_yolov8n.pt'
+        }
+    });
+
+    const [globalSettings, setGlobalSettings] = useState({
+        loras: [],
+        dimensions: {
+            portrait: { width: 832, height: 1216 },
+            landscape: { width: 1216, height: 832 },
+            square: { width: 1024, height: 1024 }
+        }
+    });
+
+    useEffect(() => {
+        setMounted(true);
+        return () => setMounted(false);
+    }, []);
+
+    // Load settings when modal opens
+    useEffect(() => {
+        if (show) {
+            loadSettings();
+            checkAdminStatus();
+        }
+    }, [show]);
+
+    const loadSettings = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            // Load user settings
+            const userData = await loadUserSettings();
+            if (userData) {
+                setUserSettings(prev => ({
+                    ...prev,
+                    ...userData
+                }));
+            }
+
+            // Load global settings
+            const lorasData = await loadGlobalSettings('loras');
+            const dimensionsData = await loadGlobalSettings('dimensions');
+
+            if (lorasData?.value) {
+                setGlobalSettings(prev => ({ ...prev, loras: lorasData.value }));
+            }
+            if (dimensionsData?.value) {
+                setGlobalSettings(prev => ({ ...prev, dimensions: dimensionsData.value }));
+            }
+        } catch (err) {
+            console.error('Failed to load settings:', err);
+            setError('Failed to load settings');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const checkAdminStatus = async () => {
+        try {
+            const adminStatus = await checkIsAdmin();
+            setIsAdmin(adminStatus);
+        } catch (err) {
+            console.error('Failed to check admin status:', err);
+            setIsAdmin(false);
+        }
+    };
+
+    const handleSaveUserSettings = async () => {
+        setSaving(true);
+        setError(null);
+        try {
+            await updateUserSettings(userSettings);
+            onClose();
+        } catch (err) {
+            console.error('Failed to save user settings:', err);
+            setError('Failed to save settings');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSaveGlobalSettings = async () => {
+        if (!isAdmin) {
+            setError('Admin access required to modify global settings');
+            return;
+        }
+
+        setSaving(true);
+        setError(null);
+        try {
+            await updateGlobalSettings('loras', globalSettings.loras, 'Available LoRA models and configurations');
+            await updateGlobalSettings('dimensions', globalSettings.dimensions, 'Available dimension presets');
+            onClose();
+        } catch (err) {
+            console.error('Failed to save global settings:', err);
+            setError(err.message || 'Failed to save global settings');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSave = () => {
+        if (activeTab === 'global') {
+            handleSaveGlobalSettings();
+        } else {
+            handleSaveUserSettings();
+        }
+    };
+
+    if (!show || !mounted) return null;
+
+    const tabs = [
+        { id: 'defaults', label: 'Defaults', icon: 'fa-sliders' },
+        { id: 'generation', label: 'Generation', icon: 'fa-cog' },
+        { id: 'adetailer', label: 'ADetailer', icon: 'fa-magic' },
+        { id: 'global', label: 'Global Settings', icon: 'fa-globe', adminOnly: true }
+    ];
+
+    const modalContent = (
+        <div className="modal-overlay config-modal-overlay" onClick={onClose}>
+            <div className="modal-content config-modal" onClick={(e) => e.stopPropagation()}>
+                <ModalHeader title="Configuration" onClose={onClose} />
+
+                <div className="config-modal-tabs">
+                    {tabs.map(tab => {
+                        if (tab.adminOnly && !isAdmin) return null;
+                        return (
+                            <button
+                                key={tab.id}
+                                className={`config-tab ${activeTab === tab.id ? 'active' : ''}`}
+                                onClick={() => setActiveTab(tab.id)}
+                            >
+                                <i className={`fa ${tab.icon}`}></i>
+                                <span>{tab.label}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+
+                <div className="config-modal-body">
+                    {loading && (
+                        <div className="config-loading">
+                            <i className="fa fa-spinner fa-spin"></i>
+                            <span>Loading settings...</span>
+                        </div>
+                    )}
+
+                    {error && (
+                        <div className="config-error">
+                            <i className="fa fa-exclamation-circle"></i>
+                            <span>{error}</span>
+                        </div>
+                    )}
+
+                    {!loading && (
+                        <>
+                            {activeTab === 'defaults' && (
+                                <div className="config-section">
+                                    <h5>Default Settings</h5>
+                                    <p className="config-description">Set your default values for new generations</p>
+
+                                    <div className="form-group">
+                                        <label className="form-label">Default Positive Prompt</label>
+                                        <textarea
+                                            className="form-input"
+                                            value={userSettings.default_positive_prompt || ''}
+                                            onChange={(e) => setUserSettings(prev => ({
+                                                ...prev,
+                                                default_positive_prompt: e.target.value
+                                            }))}
+                                            rows={3}
+                                            placeholder="e.g., masterpiece, best quality..."
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label">Default Negative Prompt</label>
+                                        <textarea
+                                            className="form-input"
+                                            value={userSettings.default_negative_prompt || ''}
+                                            onChange={(e) => setUserSettings(prev => ({
+                                                ...prev,
+                                                default_negative_prompt: e.target.value
+                                            }))}
+                                            rows={3}
+                                            placeholder="e.g., lazyneg, lazyhand..."
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label">Default Orientation</label>
+                                        <select
+                                            className="form-input"
+                                            value={userSettings.default_dimension || 'portrait'}
+                                            onChange={(e) => setUserSettings(prev => ({
+                                                ...prev,
+                                                default_dimension: e.target.value
+                                            }))}
+                                        >
+                                            <option value="portrait">Portrait</option>
+                                            <option value="landscape">Landscape</option>
+                                            <option value="square">Square</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label">Default Batch Size</label>
+                                        <input
+                                            type="number"
+                                            className="form-input"
+                                            value={userSettings.default_batch_size || 1}
+                                            onChange={(e) => setUserSettings(prev => ({
+                                                ...prev,
+                                                default_batch_size: parseInt(e.target.value) || 1
+                                            }))}
+                                            min="1"
+                                            max="10"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'generation' && (
+                                <div className="config-section">
+                                    <h5>Generation Settings</h5>
+                                    <p className="config-description">Configure Stable Diffusion generation parameters</p>
+
+                                    <div className="form-group">
+                                        <label className="form-label">Sampler</label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={userSettings.generation_settings?.samplerName || ''}
+                                            onChange={(e) => setUserSettings(prev => ({
+                                                ...prev,
+                                                generation_settings: {
+                                                    ...prev.generation_settings,
+                                                    samplerName: e.target.value
+                                                }
+                                            }))}
+                                            placeholder="e.g., DPM++ 2M, Euler a"
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label">Scheduler</label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={userSettings.generation_settings?.scheduler || ''}
+                                            onChange={(e) => setUserSettings(prev => ({
+                                                ...prev,
+                                                generation_settings: {
+                                                    ...prev.generation_settings,
+                                                    scheduler: e.target.value
+                                                }
+                                            }))}
+                                            placeholder="e.g., Karras, Automatic"
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label">Steps</label>
+                                        <input
+                                            type="number"
+                                            className="form-input"
+                                            value={userSettings.generation_settings?.steps || 25}
+                                            onChange={(e) => setUserSettings(prev => ({
+                                                ...prev,
+                                                generation_settings: {
+                                                    ...prev.generation_settings,
+                                                    steps: parseInt(e.target.value) || 25
+                                                }
+                                            }))}
+                                            min="1"
+                                            max="150"
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label">CFG Scale</label>
+                                        <input
+                                            type="number"
+                                            className="form-input"
+                                            value={userSettings.generation_settings?.cfgScale || 7}
+                                            onChange={(e) => setUserSettings(prev => ({
+                                                ...prev,
+                                                generation_settings: {
+                                                    ...prev.generation_settings,
+                                                    cfgScale: parseFloat(e.target.value) || 7
+                                                }
+                                            }))}
+                                            min="1"
+                                            max="30"
+                                            step="0.5"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'adetailer' && (
+                                <div className="config-section">
+                                    <h5>ADetailer Settings</h5>
+                                    <p className="config-description">Configure face detail enhancement</p>
+
+                                    <div className="form-group">
+                                        <label className="form-label">
+                                            <input
+                                                type="checkbox"
+                                                checked={userSettings.adetailer_settings?.enabled || false}
+                                                onChange={(e) => setUserSettings(prev => ({
+                                                    ...prev,
+                                                    adetailer_settings: {
+                                                        ...prev.adetailer_settings,
+                                                        enabled: e.target.checked
+                                                    }
+                                                }))}
+                                            />
+                                            <span style={{ marginLeft: '0.5rem' }}>Enable ADetailer</span>
+                                        </label>
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label">Model</label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={userSettings.adetailer_settings?.model || ''}
+                                            onChange={(e) => setUserSettings(prev => ({
+                                                ...prev,
+                                                adetailer_settings: {
+                                                    ...prev.adetailer_settings,
+                                                    model: e.target.value
+                                                }
+                                            }))}
+                                            placeholder="e.g., face_yolov8n.pt"
+                                            disabled={!userSettings.adetailer_settings?.enabled}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'global' && (
+                                <div className="config-section">
+                                    <h5>Global Settings</h5>
+                                    <p className="config-description">
+                                        {isAdmin ?
+                                            'Manage system-wide LoRAs and dimension presets' :
+                                            'Admin access required to modify global settings'
+                                        }
+                                    </p>
+
+                                    {!isAdmin && (
+                                        <div className="config-info">
+                                            <i className="fa fa-info-circle"></i>
+                                            <span>Contact an administrator to make changes to global settings.</span>
+                                        </div>
+                                    )}
+
+                                    {isAdmin && (
+                                        <>
+                                            <div className="form-group">
+                                                <label className="form-label">LoRAs (JSON)</label>
+                                                <textarea
+                                                    className="form-input code-input"
+                                                    value={JSON.stringify(globalSettings.loras, null, 2)}
+                                                    onChange={(e) => {
+                                                        try {
+                                                            const parsed = JSON.parse(e.target.value);
+                                                            setGlobalSettings(prev => ({ ...prev, loras: parsed }));
+                                                            setError(null);
+                                                        } catch (err) {
+                                                            // Keep the text but show error
+                                                            setError('Invalid JSON format');
+                                                        }
+                                                    }}
+                                                    rows={12}
+                                                    placeholder='[{"name": "...", "prompt": "...", "type": "..."}]'
+                                                />
+                                                <small className="form-hint">Array of LoRA configurations with name, prompt, type, etc.</small>
+                                            </div>
+
+                                            <div className="form-group">
+                                                <label className="form-label">Dimensions (JSON)</label>
+                                                <textarea
+                                                    className="form-input code-input"
+                                                    value={JSON.stringify(globalSettings.dimensions, null, 2)}
+                                                    onChange={(e) => {
+                                                        try {
+                                                            const parsed = JSON.parse(e.target.value);
+                                                            setGlobalSettings(prev => ({ ...prev, dimensions: parsed }));
+                                                            setError(null);
+                                                        } catch (err) {
+                                                            setError('Invalid JSON format');
+                                                        }
+                                                    }}
+                                                    rows={8}
+                                                    placeholder='{"portrait": {"width": 832, "height": 1216}}'
+                                                />
+                                                <small className="form-hint">Dimension presets (portrait, landscape, square)</small>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+
+                <div className="config-modal-footer">
+                    <button className="btn-secondary" onClick={onClose} disabled={saving}>
+                        Cancel
+                    </button>
+                    <button
+                        className="btn-generate"
+                        onClick={handleSave}
+                        disabled={loading || saving || (activeTab === 'global' && !isAdmin)}
+                    >
+                        {saving ? (
+                            <>
+                                <i className="fa fa-spinner fa-spin"></i>
+                                Saving...
+                            </>
+                        ) : (
+                            <>
+                                <i className="fa fa-save"></i>
+                                Save Changes
+                            </>
+                        )}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+
+    return createPortal(modalContent, document.body);
+}
+
+export default ConfigModal;

@@ -105,6 +105,7 @@ export interface AppState {
   showAppSettings: boolean;
   showPromptModal: boolean;
   showQueueManager: boolean;
+  showConfigModal: boolean;
 
   // App settings
   notificationsEnabled: boolean;
@@ -214,6 +215,7 @@ const ActionTypes = {
   SET_SHOW_APP_SETTINGS: 'SET_SHOW_APP_SETTINGS',
   SET_SHOW_PROMPT_MODAL: 'SET_SHOW_PROMPT_MODAL',
   SET_SHOW_QUEUE_MANAGER: 'SET_SHOW_QUEUE_MANAGER',
+  SET_SHOW_CONFIG_MODAL: 'SET_SHOW_CONFIG_MODAL',
 
   // App settings
   SET_NOTIFICATIONS_ENABLED: 'SET_NOTIFICATIONS_ENABLED',
@@ -307,6 +309,7 @@ const initialState: AppState = {
   showAppSettings: false,
   showPromptModal: false,
   showQueueManager: false,
+  showConfigModal: false,
 
   // App settings
   notificationsEnabled: true,
@@ -444,6 +447,8 @@ function appReducer(state: AppState, action: Action): AppState {
       return { ...state, showPromptModal: Boolean(action.payload) };
     case 'SET_SHOW_QUEUE_MANAGER':
       return { ...state, showQueueManager: Boolean(action.payload) };
+    case 'SET_SHOW_CONFIG_MODAL':
+      return { ...state, showConfigModal: Boolean(action.payload) };
     case 'SET_NOTIFICATIONS_ENABLED':
       return { ...state, notificationsEnabled: Boolean(action.payload) };
     case 'SET_SHOW_IMAGE_INFO':

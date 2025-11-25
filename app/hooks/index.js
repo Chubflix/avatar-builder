@@ -332,3 +332,109 @@ export function useModels() {
 
     return { loadModels };
 }
+
+/**
+ * Hook for managing user settings
+ */
+export function useSettings() {
+    const { state, dispatch, actions } = useApp();
+
+    const loadUserSettings = useCallback(async () => {
+        try {
+            const response = await fetch('/api/settings/user');
+            if (!response.ok) throw new Error('Failed to load user settings');
+            const settings = await response.json();
+            return settings;
+        } catch (err) {
+            console.error('Error loading user settings:', err);
+            return null;
+        }
+    }, []);
+
+    const updateUserSettings = useCallback(async (updates) => {
+        try {
+            const response = await fetch('/api/settings/user', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates)
+            });
+
+            if (!response.ok) throw new Error('Failed to update user settings');
+
+            const settings = await response.json();
+
+            // Reload config to reflect changes
+            const configResponse = await fetch('/api/config');
+            const config = await configResponse.json();
+            dispatch({ type: actions.SET_CONFIG, payload: config });
+
+            dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message: 'Settings saved' } });
+            return settings;
+        } catch (err) {
+            dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: err.message } });
+            return null;
+        }
+    }, [dispatch, actions]);
+
+    const loadGlobalSettings = useCallback(async (key = null) => {
+        try {
+            const url = key ? `/api/settings/global?key=${key}` : '/api/settings/global';
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Failed to load global settings');
+            return await response.json();
+        } catch (err) {
+            console.error('Error loading global settings:', err);
+            return null;
+        }
+    }, []);
+
+    const updateGlobalSettings = useCallback(async (key, value, description) => {
+        try {
+            const response = await fetch('/api/settings/global', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key, value, description })
+            });
+
+            if (!response.ok) {
+                if (response.status === 403) {
+                    throw new Error('Admin access required to modify global settings');
+                }
+                throw new Error('Failed to update global settings');
+            }
+
+            const settings = await response.json();
+
+            // Reload config to reflect changes
+            const configResponse = await fetch('/api/config');
+            const config = await configResponse.json();
+            dispatch({ type: actions.SET_CONFIG, payload: config });
+
+            dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message: 'Global settings saved' } });
+            return settings;
+        } catch (err) {
+            dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: err.message } });
+            return null;
+        }
+    }, [dispatch, actions]);
+
+    const checkIsAdmin = useCallback(async () => {
+        try {
+            const response = await fetch('/api/admin/check');
+            if (!response.ok) return false;
+            const data = await response.json();
+            return data.is_admin || false;
+        } catch (err) {
+            console.error('Error checking admin status:', err);
+            return false;
+        }
+    }, []);
+
+    return {
+        loadUserSettings,
+        updateUserSettings,
+        loadGlobalSettings,
+        updateGlobalSettings,
+        checkIsAdmin
+    };
+}

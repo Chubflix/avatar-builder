@@ -221,12 +221,41 @@ body {
 }
 
 .controls-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     margin-bottom: 1rem;
 }
 
 .controls-header h2 {
     font-size: 1.25rem;
     font-weight: 700;
+    margin: 0;
+}
+
+.controls-header .config-button {
+    padding: 0.5rem;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary, #222);
+    border: 1px solid var(--border-color, #333);
+    border-radius: 6px;
+    color: var(--text-secondary, #999);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.controls-header .config-button:hover {
+    background: var(--bg-secondary, #1a1a1a);
+    border-color: var(--primary, #007aff);
+    color: var(--primary, #007aff);
+}
+
+.controls-header .config-button i {
+    font-size: 1rem;
 }
 
 /* Mobile Bottom Controls */
@@ -293,9 +322,30 @@ body {
     color: var(--text-primary);
 }
 
+.mobile-config-btn {
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 8px;
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 1.25rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
 /* Only apply hover effects on devices with hover capability */
 @media (hover: hover) {
     .mobile-settings-btn:hover {
+        background: var(--accent);
+        color: var(--text-primary);
+    }
+
+    .mobile-config-btn:hover {
         background: var(--accent);
         color: var(--text-primary);
     }
