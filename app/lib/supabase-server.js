@@ -120,7 +120,11 @@ export async function requireAuth() {
  * - imageBase64: base64 string, may include data URL prefix
  * - meta: { positivePrompt, negativePrompt, model, orientation, width, height, batchSize,
  *           samplerName, scheduler, steps, cfgScale, seed, adetailerEnabled, adetailerModel,
- *           info, folderId, loras }
+ *           info, folderId, loras, generationType, parentImageId, maskData, tags }
+ *   - generationType: 'txt2img' (default), 'img2img', or 'inpaint'
+ *   - parentImageId: UUID of source image for img2img/inpaint (optional)
+ *   - maskData: Base64 mask data for inpaint operations (optional)
+ *   - tags: Array of tag strings (optional, defaults to [])
  *
  * Returns: the inserted image row with folder joined, same shape as /api/images POST
  */
@@ -146,7 +150,11 @@ export async function saveGeneratedImage({ supabase, userId, imageBase64, meta =
         adetailerModel,
         info,
         folderId,
-        loras
+        loras,
+        generationType = 'txt2img',
+        parentImageId = null,
+        maskData = null,
+        tags = []
     } = meta;
 
     // Normalize base64 (strip data URL if present)
@@ -188,6 +196,10 @@ export async function saveGeneratedImage({ supabase, userId, imageBase64, meta =
             info_json: info || {},
             folder_id: folderId || null,
             loras: loras || null,
+            generation_type: generationType,
+            parent_image_id: parentImageId,
+            mask_data: maskData,
+            tags: tags || [],
             user_id: userId
         })
         .select(`
