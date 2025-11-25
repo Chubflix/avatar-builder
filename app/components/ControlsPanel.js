@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useQueueContext } from '../context/QueueContext';
-import FolderSelector from './FolderSelector';
+import LocationPicker from './LocationPicker';
 import LoraSettings from './LoraSettings';
 import './LoraSettings.css';
 import InpaintModal from './InpaintModal';
@@ -358,8 +358,8 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
                 </div>
             )}
 
-            {/* Folder Selector Modal */}
-            <FolderSelector
+            {/* Location Picker Modal */}
+            <LocationPicker
                 show={showFolderSelector}
                 onClose={() => setShowFolderSelector(false)}
                 onSelect={(folderId) => {
@@ -367,7 +367,13 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
                     setShowFolderSelector(false);
                 }}
                 currentFolderId={selectedFolder}
+                currentCharacterId={
+                    selectedFolder
+                        ? folders.find(f => f.id === selectedFolder)?.character_id
+                        : null
+                }
                 title="Save to Folder"
+                mode="save"
             />
         </div>
     );

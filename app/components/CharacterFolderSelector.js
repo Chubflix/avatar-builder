@@ -2,17 +2,37 @@
 
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
+import LocationPicker from './LocationPicker';
 
 export default function CharacterFolderSelector() {
     const { state, dispatch, actions } = useApp();
     const [showPicker, setShowPicker] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [expandedCharacters, setExpandedCharacters] = useState(new Set());
+    const [viewMode, setViewMode] = useState('all'); // 'all' | 'unfiled' | 'character' | 'folder'
+    const [includeAllFolders, setIncludeAllFolders] = useState(false);
 
     // Load characters on mount
     useEffect(() => {
         loadCharacters();
     }, []);
+
+    // Update viewMode when global state changes (e.g., from Save to Folder modal)
+    useEffect(() => {
+        if (state.currentFolder) {
+            setViewMode('folder');
+            setIncludeAllFolders(false);
+        } else if (state.selectedCharacter) {
+            setViewMode('character');
+            // Check if we should show "All Folders" - this happens when character is selected but no specific folder
+            // We can't easily detect this, so default to false
+            setIncludeAllFolders(false);
+        } else {
+            // No character and no folder - could be "all" or "unfiled"
+            // Default to "all" unless we know it should be unfiled
+            setViewMode('all');
+            setIncludeAllFolders(false);
+        }
+    }, [state.currentFolder, state.selectedCharacter]); // Watch for changes
 
     // Reload character images when changes
     useEffect(() => {
@@ -82,7 +102,7 @@ export default function CharacterFolderSelector() {
         dispatch({ type: actions.SET_SELECTED_CHARACTER, payload: null });
         dispatch({ type: actions.SET_CURRENT_FOLDER, payload: null });
         dispatch({ type: actions.SET_SELECTED_FOLDER, payload: '' });
-        setShowPicker(false);
+        setViewMode('all');
 
         // Load all images from all characters/folders
         loadAllImages();
@@ -107,14 +127,48 @@ export default function CharacterFolderSelector() {
         }
     };
 
-    const handleSelectCharacter = async (character) => {
-        dispatch({ type: actions.SET_SELECTED_CHARACTER, payload: character });
+    const handleSelectUnfiled = () => {
+        dispatch({ type: actions.SET_SELECTED_CHARACTER, payload: null });
         dispatch({ type: actions.SET_CURRENT_FOLDER, payload: null });
         dispatch({ type: actions.SET_SELECTED_FOLDER, payload: '' });
-        setShowPicker(false);
+        setViewMode('unfiled');
 
-        // Load images for this character (no specific folder)
-        loadCharacterImages(character.id);
+        // Load only unfiled images
+        loadUnfiledImages();
+    };
+
+    const loadUnfiledImages = async () => {
+        try {
+            dispatch({ type: actions.SET_IMAGES, payload: [] });
+            dispatch({ type: actions.SET_LOADING_IMAGES, payload: true });
+
+            // Use folder_id=unfiled to get only images without folder_id
+            const response = await fetch('/api/images?folder_id=unfiled&limit=50');
+            if (response.ok) {
+                const data = await response.json();
+                dispatch({ type: actions.SET_IMAGES, payload: data.images || [] });
+                dispatch({ type: actions.SET_TOTAL_IMAGES, payload: data.total || 0 });
+                dispatch({ type: actions.SET_HAS_MORE, payload: data.hasMore || false });
+            }
+        } catch (error) {
+            console.error('Error loading unfiled images:', error);
+        } finally {
+            dispatch({ type: actions.SET_LOADING_IMAGES, payload: false });
+        }
+    };
+
+    const handleSelectCharacter = async (characterId, includeSubfolders = false) => {
+        const character = state.characters.find(c => c.id === characterId);
+        if (character) {
+            dispatch({ type: actions.SET_SELECTED_CHARACTER, payload: character });
+            dispatch({ type: actions.SET_CURRENT_FOLDER, payload: null });
+            dispatch({ type: actions.SET_SELECTED_FOLDER, payload: '' });
+            setViewMode('character');
+            setIncludeAllFolders(includeSubfolders);
+
+            // Load all images from all folders of this character
+            loadCharacterImages(characterId);
+        }
     };
 
     const loadCharacterImages = async (characterId) => {
@@ -122,22 +176,13 @@ export default function CharacterFolderSelector() {
             dispatch({ type: actions.SET_IMAGES, payload: [] });
             dispatch({ type: actions.SET_LOADING_IMAGES, payload: true });
 
-            // Otherwise, only load unfiled images for this character
-            let url;
-            // Load unfiled images - we need a different approach
-            // For now, just load character images without folders
-            url = `/api/images?character_id=${characterId}&limit=50`;
-
-            const response = await fetch(url);
+            // Load images from all folders belonging to this character
+            const response = await fetch(`/api/images?character_id=${characterId}&limit=50`);
             if (response.ok) {
                 const data = await response.json();
 
-                // If not including subfolders, filter to only unfiled images
-                let images = data.images || [];
-                let totalCount = data.total || 0;
-
-                dispatch({ type: actions.SET_IMAGES, payload: images });
-                dispatch({ type: actions.SET_TOTAL_IMAGES, payload: totalCount });
+                dispatch({ type: actions.SET_IMAGES, payload: data.images || [] });
+                dispatch({ type: actions.SET_TOTAL_IMAGES, payload: data.total || 0 });
                 dispatch({ type: actions.SET_HAS_MORE, payload: data.hasMore || false });
             }
         } catch (error) {
@@ -147,14 +192,21 @@ export default function CharacterFolderSelector() {
         }
     };
 
-    const handleSelectFolder = async (folder, character) => {
-        dispatch({ type: actions.SET_SELECTED_CHARACTER, payload: character });
-        dispatch({ type: actions.SET_CURRENT_FOLDER, payload: folder.id });
-        dispatch({ type: actions.SET_SELECTED_FOLDER, payload: folder.id });
-        setShowPicker(false);
+    const handleSelectFolder = async (folderId, characterId) => {
+        const folder = state.folders.find(f => f.id === folderId);
+        const character = state.characters.find(c => c.id === characterId);
 
-        // Load images for this folder
-        loadFolderImages(folder.id);
+        if (character) {
+            dispatch({ type: actions.SET_SELECTED_CHARACTER, payload: character });
+        }
+        if (folder) {
+            dispatch({ type: actions.SET_CURRENT_FOLDER, payload: folder.id });
+            dispatch({ type: actions.SET_SELECTED_FOLDER, payload: folder.id });
+            setViewMode('folder');
+
+            // Load images for this folder
+            loadFolderImages(folder.id);
+        }
     };
 
     const loadFolderImages = async (folderId) => {
@@ -174,49 +226,12 @@ export default function CharacterFolderSelector() {
         }
     };
 
-    const toggleCharacterExpand = (characterId, e) => {
-        e.stopPropagation();
-        const newExpanded = new Set(expandedCharacters);
-        if (newExpanded.has(characterId)) {
-            newExpanded.delete(characterId);
-        } else {
-            newExpanded.add(characterId);
-        }
-        setExpandedCharacters(newExpanded);
-    };
-
-    const handleCreateCharacter = () => {
-        setShowPicker(false);
-        dispatch({ type: actions.SET_EDITING_CHARACTER, payload: null });
-        dispatch({ type: actions.SET_SHOW_CHARACTER_MODAL, payload: true });
-    };
-
-    const handleEditCharacter = (character, e) => {
-        e.stopPropagation();
-        setShowPicker(false);
-        dispatch({ type: actions.SET_EDITING_CHARACTER, payload: character });
-        dispatch({ type: actions.SET_SHOW_CHARACTER_MODAL, payload: true });
-    };
-
-    const handleCreateFolder = (character, e) => {
-        e.stopPropagation();
-        setShowPicker(false);
-        dispatch({ type: actions.SET_SELECTED_CHARACTER, payload: character });
-        dispatch({ type: actions.SET_EDITING_FOLDER, payload: null });
-        dispatch({ type: actions.SET_SHOW_FOLDER_MODAL, payload: true });
-    };
-
-    const handleEditFolder = (folder, character, e) => {
-        e.stopPropagation();
-        setShowPicker(false);
-        dispatch({ type: actions.SET_SELECTED_CHARACTER, payload: character });
-        dispatch({ type: actions.SET_EDITING_FOLDER, payload: folder });
-        dispatch({ type: actions.SET_SHOW_FOLDER_MODAL, payload: true });
-    };
-
     // Get display text for current selection
     const getDisplayText = () => {
-        if (!state.selectedCharacter && !state.currentFolder) {
+        if (viewMode === 'unfiled') {
+            return 'Unfiled';
+        }
+        if (viewMode === 'all') {
             return 'All Images';
         }
         if (state.currentFolder) {
@@ -229,14 +244,11 @@ export default function CharacterFolderSelector() {
             return 'Folder';
         }
         if (state.selectedCharacter) {
-            return state.selectedCharacter.name;
+            return includeAllFolders
+                ? `${state.selectedCharacter.name} (All Folders)`
+                : state.selectedCharacter.name;
         }
         return 'Select...';
-    };
-
-    // Get folders for a specific character
-    const getFoldersForCharacter = (characterId) => {
-        return state.folders.filter(f => f.character_id === characterId);
     };
 
     return (
@@ -244,7 +256,7 @@ export default function CharacterFolderSelector() {
             <div className="folder-nav">
                 <div className="folder-picker-row">
                     <button
-                        className={`btn-all-images ${!state.selectedCharacter && !state.currentFolder ? 'active' : ''}`}
+                        className={`btn-all-images ${viewMode === 'all' ? 'active' : ''}`}
                         onClick={handleSelectAllImages}
                         title="View all images from all characters"
                     >
@@ -262,144 +274,31 @@ export default function CharacterFolderSelector() {
                 </div>
             </div>
 
-            {showPicker && (
-                <div className="folder-selector-overlay" onClick={() => setShowPicker(false)}>
-                    <div className="folder-selector-modal" onClick={(e) => e.stopPropagation()}>
-                        <div className="folder-selector-header">
-                            <h4>Select Location</h4>
-                            <button onClick={() => setShowPicker(false)} className="close-btn">
-                                <i className="fa fa-times"></i>
-                            </button>
-                        </div>
-
-                        <div className="folder-selector-list">
-                            {/* All Images Option */}
-                            <button
-                                className={`folder-selector-item ${
-                                    !state.selectedCharacter && !state.currentFolder ? 'active' : ''
-                                }`}
-                                style={{ marginBottom: '10px' }}
-                                onClick={handleSelectAllImages}
-                            >
-                                <i className="fa fa-th"></i>
-                                <span>All Images</span>
-                                {!state.selectedCharacter && !state.currentFolder && <i className="fa fa-check"></i>}
-                            </button>
-
-                            {/* Character List */}
-                            {state.characters.length === 0 ? (
-                                <div className="folder-selector-empty">
-                                    <p>No characters yet</p>
-                                    <button
-                                        className="folder-selector-item folder-add-btn"
-                                        onClick={handleCreateCharacter}
-                                    >
-                                        <i className="fa fa-plus-circle"></i>
-                                        <span>Create Character</span>
-                                    </button>
-                                </div>
-                            ) : (
-                                state.characters.map((character) => {
-                                    const folders = getFoldersForCharacter(character.id);
-                                    const isExpanded = expandedCharacters.has(character.id);
-                                    const isSelected = state.selectedCharacter?.id === character.id && !state.currentFolder;
-
-                                    return (
-                                        <div key={character.id} className="folder-selector-character-group">
-                                            <div className="folder-selector-item-with-edit">
-                                                <div className={`folder-selector-item character split ${isSelected ? 'active' : ''}`}>
-                                                    {/* Left part: Expand/collapse - always visible for alignment */}
-                                                    <button
-                                                        className="character-expand-part"
-                                                        onClick={(e) => {
-                                                            if (folders.length > 0) {
-                                                                e.stopPropagation();
-                                                                toggleCharacterExpand(character.id, e);
-                                                            }
-                                                        }}
-                                                        title={folders.length > 0 ? (isExpanded ? 'Collapse' : 'Expand') : ''}
-                                                        style={{ cursor: folders.length > 0 ? 'pointer' : 'default' }}
-                                                    >
-                                                        {folders.length > 0 && (
-                                                            <i className={`fa fa-caret-${isExpanded ? 'down' : 'right'}`}></i>
-                                                        )}
-                                                    </button>
-                                                    {/* Right part: Select character */}
-                                                    <button
-                                                        className="character-select-part"
-                                                        onClick={() => handleSelectCharacter(character)}
-                                                    >
-                                                        <i className="fa fa-user"></i>
-                                                        <span>{character.name}</span>
-                                                        {isSelected && <i className="fa fa-check"></i>}
-                                                    </button>
-                                                </div>
-                                                <button
-                                                    className="folder-add-btn-inline"
-                                                    onClick={(e) => handleCreateFolder(character, e)}
-                                                    title="Add folder to this character"
-                                                >
-                                                    <i className="fa fa-plus"></i>
-                                                </button>
-                                                <button
-                                                    className="folder-edit-btn"
-                                                    onClick={(e) => handleEditCharacter(character, e)}
-                                                    title="Edit character"
-                                                >
-                                                    <i className="fa fa-pencil"></i>
-                                                </button>
-                                            </div>
-
-                                            {/* Folders under this character */}
-                                            {isExpanded && folders.length > 0 && (
-                                                <div className="folder-selector-folders">
-                                                    {folders.map((folder) => {
-                                                        const isFolderSelected = state.currentFolder === folder.id;
-                                                        return (
-                                                            <div key={folder.id} className="folder-selector-item-with-edit">
-                                                                <button
-                                                                    className={`folder-selector-item folder ${isFolderSelected ? 'active' : ''}`}
-                                                                    onClick={() => handleSelectFolder(folder, character)}
-                                                                >
-                                                                    <i className="fa fa-folder"></i>
-                                                                    <span>{folder.name}</span>
-                                                                    <span className="folder-count">{folder.image_count || 0}</span>
-                                                                    {isFolderSelected && <i className="fa fa-check"></i>}
-                                                                </button>
-                                                                <button
-                                                                    className="folder-edit-btn"
-                                                                    onClick={(e) => handleEditFolder(folder, character, e)}
-                                                                    title="Edit folder"
-                                                                >
-                                                                    <i className="fa fa-pencil"></i>
-                                                                </button>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })
-                            )}
-
-                            {/* Create Character Button */}
-                            {state.characters.length > 0 && (
-                                <>
-                                    <div className="folder-selector-divider"></div>
-                                    <button
-                                        className="folder-selector-item folder-add-btn"
-                                        onClick={handleCreateCharacter}
-                                    >
-                                        <i className="fa fa-plus-circle"></i>
-                                        <span>Create New Character</span>
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
+            <LocationPicker
+                show={showPicker}
+                onClose={() => setShowPicker(false)}
+                onSelect={(folderId, characterId, includeSubfolders) => {
+                    if (folderId === 'all') {
+                        // All Images selected
+                        handleSelectAllImages();
+                    } else if (folderId === null && characterId && includeSubfolders) {
+                        // Character selected with all folders (clicked character header in folders view)
+                        handleSelectCharacter(characterId, true);
+                    } else if (folderId && characterId) {
+                        // Folder selected
+                        handleSelectFolder(folderId, characterId);
+                    } else if (folderId === null && !characterId) {
+                        // Unfiled selected - only show images without folders
+                        handleSelectUnfiled();
+                    }
+                    setShowPicker(false);
+                }}
+                currentFolderId={state.currentFolder}
+                currentCharacterId={state.selectedCharacter?.id}
+                title="Select Location"
+                mode="navigate"
+                allowCharacterSelect={false}
+            />
         </>
     );
 }

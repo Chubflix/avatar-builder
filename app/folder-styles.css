@@ -479,7 +479,7 @@
     font-family: inherit;
     background: transparent;
     color: var(--text-secondary);
-    border: none;
+    border: 1px solid transparent; /* Transparent border prevents size shift */
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -597,6 +597,10 @@
     border-color: var(--accent);
 }
 
+.folder-edit-btn:hover > i:first-child {
+    color: var(--text-primary) !important;
+}
+
 .folder-edit-btn i {
     font-size: 0.875rem;
 }
@@ -622,7 +626,7 @@
     display: flex;
     gap: 0.5rem;
     align-items: center;
-    padding: 0.5rem;
+    padding: 0.875rem 1rem;
     margin-bottom: 0.5rem;
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -634,7 +638,8 @@
     background: var(--bg-input);
     border: 1px solid var(--border);
     border-radius: 4px;
-    padding: 0.5rem 0.75rem;
+    padding: 0;
+    height: auto;
     color: var(--text-primary);
     font-size: 0.875rem;
     font-family: inherit;
@@ -708,11 +713,11 @@
     }
 
     .folder-add-input-row {
-        padding: 0.5rem;
+        padding: 1rem 1.125rem;
     }
 
     .folder-add-input {
-        padding: 0.5rem 0.75rem;
+        padding: 0;
         font-size: 0.875rem;
     }
 
@@ -830,26 +835,289 @@
     .lightbox-details {
         margin-top: 0.75rem;
     }
-    
+
     .lightbox-details-toggle {
         padding: 0.625rem 0.875rem;
         font-size: 0.8rem;
     }
-    
+
     .lightbox-details-content {
         padding: 0.875rem;
     }
-    
+
     .detail-group label {
         font-size: 0.7rem;
     }
-    
+
     .detail-group p {
         font-size: 0.8rem;
     }
-    
+
     .detail-row {
         grid-template-columns: 1fr;
         gap: 0.75rem;
+    }
+}
+
+/* LocationPicker Specific Styles */
+
+/* Divider for visual separation */
+.location-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 0.5rem 0;
+}
+
+/* Special items (All Images, Unfiled) */
+.location-special {
+    font-weight: 600;
+}
+
+.location-special i:first-child {
+    color: var(--accent) !important;
+}
+
+/* Items with inline edit/delete actions */
+.location-item-with-actions {
+    position: relative;
+    padding-right: 0.5rem !important; /* Make space for action buttons */
+}
+
+.location-item-actions {
+    display: flex; /* Always visible */
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: auto;
+}
+
+.location-edit-btn,
+.location-delete-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    padding: 0;
+    font-size: 0.875rem;
+}
+
+.location-edit-btn {
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+}
+
+.location-edit-btn:hover:not(:disabled) {
+    background: var(--bg-input);
+}
+
+.location-delete-btn {
+    background: var(--accent);
+
+    color: var(--text-primary);
+}
+
+.location-delete-btn:hover:not(:disabled) {
+    background: #c82333;
+}
+
+/* Character header wrapper (for navigate mode with separate edit button) */
+.location-character-header-wrapper {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.location-character-header-wrapper .location-character-header {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.location-character-header-wrapper .location-header-edit-btn {
+    width: 36px;
+    height: auto;
+    flex-shrink: 0;
+}
+
+/* Character header in folders view */
+.location-character-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    background: var(--bg-card);
+    border: 1px solid transparent;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-weight: 600;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+}
+
+.location-character-header-clickable {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.location-character-header-clickable:hover {
+    background: var(--bg-hover);
+    border-color: var(--border);
+}
+
+.location-character-header i:first-child {
+    font-size: 1.125rem;
+    color: var(--accent);
+}
+
+.location-character-header span {
+    flex: 1;
+}
+
+.location-header-edit-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    padding: 0;
+    font-size: 0.75rem;
+}
+
+.location-header-edit-btn:hover {
+    background: var(--accent);
+    color: var(--text-primary);
+    border-color: var(--accent);
+}
+
+/* Back to characters button */
+.location-back-btn {
+    color: var(--accent) !important;
+    font-weight: 600;
+}
+
+.location-back-btn:hover {
+    background: var(--bg-card) !important;
+}
+
+.location-back-btn i {
+    color: var(--accent) !important;
+}
+
+/* Inline edit header (when editing character name from folders view) */
+.location-edit-header {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.875rem 1rem;
+    background: var(--bg-card);
+    border: 1px solid transparent;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+}
+
+.location-edit-input {
+    flex: 1;
+    background: var(--bg-input);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    padding: 0;
+    height: auto;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+
+.location-edit-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+.location-edit-save-btn,
+.location-edit-cancel-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+}
+
+.location-edit-save-btn {
+    background: var(--accent);
+    color: var(--text-primary);
+}
+
+.location-edit-save-btn:hover:not(:disabled) {
+    background: var(--accent-hover);
+}
+
+.location-edit-save-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.location-edit-cancel-btn {
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+}
+
+.location-edit-cancel-btn:hover {
+    background: var(--bg-input);
+    color: var(--text-primary);
+}
+
+/* Ensure check icon appears correctly */
+.folder-selector-item .check-icon {
+    margin-left: auto;
+}
+
+@media (max-width: 768px) {
+    .location-edit-btn,
+    .location-delete-btn,
+    .location-header-edit-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 0.9rem;
+    }
+
+    .location-character-header {
+        padding: 1rem 1.125rem;
+        font-size: 0.875rem;
+    }
+
+    .location-edit-header {
+        padding: 1rem 1.125rem;
+    }
+
+    .location-edit-input {
+        padding: 0;
+        font-size: 0.875rem;
+    }
+
+    .location-edit-save-btn,
+    .location-edit-cancel-btn {
+        width: 40px;
+        height: 40px;
     }
 }

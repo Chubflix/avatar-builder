@@ -70,12 +70,12 @@ export async function GET(request) {
         // Filter by folder
         if (folderId === 'null' || folderId === 'unfiled') {
             query = query.is('folder_id', null);
+            // Don't process character filter if we're looking for unfiled images
+            // Unfiled images don't have character associations
         } else if (folderId) {
             query = query.eq('folder_id', folderId);
-        }
-
-        // Filter by character (get images from all folders under this character)
-        if (characterId && !folderId) {
+        } else if (characterId) {
+            // Filter by character (get images from all folders under this character)
             // Get all folders for this character
             const { data: characterFolders } = await supabase
                 .from('folders')

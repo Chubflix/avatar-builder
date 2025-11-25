@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 import {useApp} from '../context/AppContext';
 import {imageAPI} from '../utils/backend-api';
-import FolderSelector from './FolderSelector';
+import LocationPicker from './LocationPicker';
 import ImageCard from './ImageCard';
 
 function ImageGallery({onOpenLightbox, onRestoreSettings, onDelete, onLoadMore}) {
@@ -213,7 +213,7 @@ function ImageGallery({onOpenLightbox, onRestoreSettings, onDelete, onLoadMore})
                 </div>
             )}
 
-            <FolderSelector
+            <LocationPicker
                 show={showFolderSelector}
                 onClose={() => {
                     setShowFolderSelector(false);
@@ -245,7 +245,9 @@ function ImageGallery({onOpenLightbox, onRestoreSettings, onDelete, onLoadMore})
                     setBulkMoveMode(false);
                 }}
                 currentFolderId={bulkMoveMode ? null : selectedImageForMove?.folder_id}
+                currentCharacterId={bulkMoveMode ? null : selectedImageForMove?.character_id}
                 title={bulkMoveMode ? `Move ${selectedImages.length} Images` : "Move to Folder"}
+                mode="move"
             />
         </>
     );

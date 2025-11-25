@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { imageAPI, API_BASE } from '../utils/backend-api';
 import { useFolders } from '../hooks';
-import FolderSelector from './FolderSelector';
+import LocationPicker from './LocationPicker';
 
 function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete, onLoadMore }) {
     const { state, dispatch, actions } = useApp();
@@ -702,12 +702,14 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete, onLoad
                 </div>
             </div>
 
-            <FolderSelector
+            <LocationPicker
                 show={showFolderSelector}
                 onClose={() => setShowFolderSelector(false)}
                 onSelect={handleMoveToFolder}
                 currentFolderId={currentImage?.folder_id}
+                currentCharacterId={currentImage?.character_id}
                 title="Move to Folder"
+                mode="move"
             />
         </div>
     );

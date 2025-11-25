@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useQueueContext } from '../context/QueueContext';
 import { useQueue } from "@/app/hooks/queue";
-import FolderSelector from './FolderSelector';
+import LocationPicker from './LocationPicker';
 import MobileSlideout from './MobileSlideout';
 import './MobilePromptSlideout.css';
 
@@ -104,8 +104,8 @@ function MobilePromptSlideout({ show, onClose, onGenerate }) {
                 </div>
             </MobileSlideout>
 
-            {/* Folder Selector Modal */}
-            <FolderSelector
+            {/* Location Picker Modal */}
+            <LocationPicker
                 show={showFolderSelector}
                 onClose={() => setShowFolderSelector(false)}
                 onSelect={(folderId) => {
@@ -113,7 +113,13 @@ function MobilePromptSlideout({ show, onClose, onGenerate }) {
                     setShowFolderSelector(false);
                 }}
                 currentFolderId={selectedFolder}
+                currentCharacterId={
+                    selectedFolder
+                        ? folders.find(f => f.id === selectedFolder)?.character_id
+                        : null
+                }
                 title="Save to Folder"
+                mode="save"
             />
         </>
     );
