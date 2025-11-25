@@ -1,0 +1,12 @@
+/* ListItemWithActions Styles */
+.ds-list-item-with-actions {
+  position: relative;
+  padding-right: 0.5rem !important;
+}
+
+.ds-list-item-with-actions__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+}

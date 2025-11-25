@@ -1,0 +1,45 @@
+/* EditableListItem Styles */
+.ds-editable-list-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.875rem 1rem;
+  margin-bottom: 0.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.ds-editable-list-item__input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  height: auto;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.ds-editable-list-item__input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.ds-editable-list-item__input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+  .ds-editable-list-item {
+    padding: 1rem 1.125rem;
+  }
+
+  .ds-editable-list-item__input {
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+  }
+}

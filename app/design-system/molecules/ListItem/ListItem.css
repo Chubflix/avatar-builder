@@ -1,0 +1,81 @@
+/* ListItem Styles */
+.ds-list-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.ds-list-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* Active State */
+.ds-list-item--active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--accent);
+}
+
+/* Special Items (All Images, Unfiled, etc.) */
+.ds-list-item--special {
+  font-weight: 600;
+}
+
+.ds-list-item--special .ds-list-item__icon {
+  color: var(--accent) !important;
+}
+
+/* Icon */
+.ds-list-item__icon {
+  font-size: 1.125rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.ds-list-item--active .ds-list-item__icon {
+  color: var(--accent);
+}
+
+/* Label */
+.ds-list-item__label {
+  flex: 1;
+}
+
+/* Count Badge */
+.ds-list-item__count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* Check Icon */
+.ds-list-item__check {
+  font-size: 0.875rem;
+  color: var(--accent);
+  margin-left: auto;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+  .ds-list-item {
+    padding: 1rem 1.125rem;
+    font-size: 0.875rem;
+  }
+
+  .ds-list-item__icon {
+    font-size: 1.5rem;
+  }
+}

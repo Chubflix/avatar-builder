@@ -1,0 +1,30 @@
+/* ModalHeader Styles */
+.ds-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.ds-modal-header__title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.ds-modal-header__close {
+  font-size: 1.25rem;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+  .ds-modal-header {
+    padding: 1rem;
+  }
+
+  .ds-modal-header__title {
+    font-size: 1rem;
+  }
+}

@@ -342,7 +342,7 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
             )}
 
             {queueCount > 0 && (
-                <div className="queue-status">
+                <div className="queue-status" onClick={() => dispatch({ type: actions.SET_SHOW_QUEUE_MANAGER, payload: true })}>
                     {queueCount} {queueCount === 1 ? 'job' : 'jobs'} in queue
                 </div>
             )}

@@ -127,6 +127,19 @@ class StableDiffusionAsyncAdapter {
         return null;
     }
 
+    async deleteJob(jobId) {
+        try {
+            const resp = await fetch(`${this.baseUrl.replace(/\/$/, '')}/sdapi/v1/jobs/${jobId}`, {
+                method: 'DELETE',
+                headers: this.getAuthHeaders()
+            });
+            return { success: resp.status === 204, status: resp.status };
+        } catch (error) {
+            debug.error('SD-API-ASYNC', 'deleteJob error', { jobId, error: error.message });
+            return { success: false, error: error.message };
+        }
+    }
+
     async generateImage(params) {
         const payload = this.#mapTxt2ImgParams(params);
         // Proxy path: /sdapi/v1/txt2img

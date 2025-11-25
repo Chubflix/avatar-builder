@@ -332,7 +332,15 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                             <i className="fa fa-magic"></i>
                         )}
                         {queueCount > 0 && (
-                            <span className="queue-count">{queueCount}</span>
+                            <span
+                                className="queue-count"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    dispatch({ type: actions.SET_SHOW_QUEUE_MANAGER, payload: true });
+                                }}
+                            >
+                                {queueCount}
+                            </span>
                         )}
                     </button>
                 </div>

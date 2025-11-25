@@ -22,6 +22,7 @@ import AppSettings from './components/AppSettings';
 import PromptModal from './components/PromptModal';
 import CharacterModal from './components/CharacterModal';
 import CharacterFolderSelector from './components/CharacterFolderSelector';
+import QueueManagerModal from './components/QueueManagerModal';
 
 // Import CSS
 import './folder-picker.css';
@@ -433,6 +434,11 @@ function AppContent() {
 
             <PromptModal
                 onGenerate={generate}
+            />
+
+            <QueueManagerModal
+                show={state.showQueueManager}
+                onClose={() => dispatch({ type: actions.SET_SHOW_QUEUE_MANAGER, payload: false })}
             />
 
             <Lightbox

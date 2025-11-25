@@ -104,6 +104,7 @@ export interface AppState {
   parentFolderId: string | number | null;
   showAppSettings: boolean;
   showPromptModal: boolean;
+  showQueueManager: boolean;
 
   // App settings
   notificationsEnabled: boolean;
@@ -212,6 +213,7 @@ const ActionTypes = {
   SET_PARENT_FOLDER_ID: 'SET_PARENT_FOLDER_ID',
   SET_SHOW_APP_SETTINGS: 'SET_SHOW_APP_SETTINGS',
   SET_SHOW_PROMPT_MODAL: 'SET_SHOW_PROMPT_MODAL',
+  SET_SHOW_QUEUE_MANAGER: 'SET_SHOW_QUEUE_MANAGER',
 
   // App settings
   SET_NOTIFICATIONS_ENABLED: 'SET_NOTIFICATIONS_ENABLED',
@@ -304,6 +306,7 @@ const initialState: AppState = {
   parentFolderId: null,
   showAppSettings: false,
   showPromptModal: false,
+  showQueueManager: false,
 
   // App settings
   notificationsEnabled: true,
@@ -439,6 +442,8 @@ function appReducer(state: AppState, action: Action): AppState {
       return { ...state, showAppSettings: Boolean(action.payload) };
     case 'SET_SHOW_PROMPT_MODAL':
       return { ...state, showPromptModal: Boolean(action.payload) };
+    case 'SET_SHOW_QUEUE_MANAGER':
+      return { ...state, showQueueManager: Boolean(action.payload) };
     case 'SET_NOTIFICATIONS_ENABLED':
       return { ...state, notificationsEnabled: Boolean(action.payload) };
     case 'SET_SHOW_IMAGE_INFO':
