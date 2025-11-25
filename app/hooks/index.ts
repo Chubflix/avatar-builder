@@ -1,5 +1,5 @@
 // @ts-nocheck
-import {useCallback, useEffect} from 'react';
+import {useCallback} from 'react';
 import {useApp} from '../context/AppContext';
 import sdAPI from '../utils/sd-api';
 import {folderAPI, imageAPI} from '../utils/backend-api';

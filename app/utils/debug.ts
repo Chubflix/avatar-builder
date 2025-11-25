@@ -73,6 +73,7 @@ const debug = new DebugLogger();
 
 // Expose globally for easy enable/disable from console (client-side only)
 declare global {
+    // noinspection JSUnusedGlobalSymbols
     interface Window {
         enableDebug?: () => void;
         disableDebug?: () => void;

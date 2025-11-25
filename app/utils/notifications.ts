@@ -69,33 +69,3 @@ export async function sendNotification(message: string, type: 'success' | 'error
     }
   }
 }
-
-/**
- * Request notification permission from the user
- * @returns {Promise<string>} The permission status
- */
-export async function requestNotificationPermission(): Promise<string> {
-  if (typeof window === 'undefined' || !('Notification' in window)) {
-    return 'denied';
-  }
-
-  if (Notification.permission === 'granted') {
-    return 'granted';
-  }
-
-  if (Notification.permission !== 'denied') {
-    const permission = await Notification.requestPermission();
-    return permission;
-  }
-
-  return Notification.permission;
-}
-
-/**
- * Check if notifications are supported and enabled
- * @returns {boolean}
- */
-export function areNotificationsEnabled(): boolean {
-  if (typeof window === 'undefined') return false;
-  return 'Notification' in window && Notification.permission === 'granted';
-}

@@ -124,14 +124,6 @@ class StableDiffusionAsyncAdapter {
         return [];
     }
 
-    async getJob(jobId: string) {
-        try {
-            const resp = await fetch(`${this.baseUrl.replace(/\/$/, '')}/sdapi/v1/jobs/${jobId}`, { headers: this.getAuthHeaders() } as any);
-            if ((resp as any).ok) return await (resp as any).json();
-        } catch (_) {}
-        return null;
-    }
-
     async deleteJob(jobId: string) {
         try {
             const resp = await fetch(`${this.baseUrl.replace(/\/$/, '')}/sdapi/v1/jobs/${jobId}`, {
