@@ -26,13 +26,16 @@ export default function CharacterFolderSelector() {
             // Check if we should show "All Folders" - this happens when character is selected but no specific folder
             // We can't easily detect this, so default to false
             setIncludeAllFolders(false);
+        } else if (state.selectedFolder === 'unfiled') {
+            // Viewing unfiled images
+            setViewMode('unfiled');
+            setIncludeAllFolders(false);
         } else {
-            // No character and no folder - could be "all" or "unfiled"
-            // Default to "all" unless we know it should be unfiled
+            // No character and no folder - viewing all images
             setViewMode('all');
             setIncludeAllFolders(false);
         }
-    }, [state.currentFolder, state.selectedCharacter]); // Watch for changes
+    }, [state.currentFolder, state.selectedCharacter, state.selectedFolder]); // Watch for changes
 
     // Reload character images when changes
     useEffect(() => {
@@ -130,7 +133,7 @@ export default function CharacterFolderSelector() {
     const handleSelectUnfiled = () => {
         dispatch({ type: actions.SET_SELECTED_CHARACTER, payload: null });
         dispatch({ type: actions.SET_CURRENT_FOLDER, payload: null });
-        dispatch({ type: actions.SET_SELECTED_FOLDER, payload: '' });
+        dispatch({ type: actions.SET_SELECTED_FOLDER, payload: 'unfiled' });
         setViewMode('unfiled');
 
         // Load only unfiled images
@@ -241,7 +244,7 @@ export default function CharacterFolderSelector() {
                 const character = state.characters.find(c => c.id === folder.character_id);
                 return character ? `${character.name} / ${folder.name}` : folder.name;
             }
-            return 'Folder';
+            return 'Unfiled';
         }
         if (state.selectedCharacter) {
             return includeAllFolders
@@ -293,7 +296,7 @@ export default function CharacterFolderSelector() {
                     }
                     setShowPicker(false);
                 }}
-                currentFolderId={state.currentFolder}
+                currentFolderId={state.selectedFolder === 'unfiled' ? 'unfiled' : state.currentFolder}
                 currentCharacterId={state.selectedCharacter?.id}
                 title="Select Location"
                 mode="navigate"

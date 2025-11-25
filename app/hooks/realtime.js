@@ -44,23 +44,39 @@ export function useImagesRealtime() {
                 const selectedFolder = selectedFolderRef.current; // '' | 'unfiled' | <id>
 
                 if (selectedCharId) {
-                    // Character must match current view
+                    // Viewing a character - character must match
                     if (character_id !== selectedCharId) {
                         return;
                     }
 
-                    // Folder matching rules
+                    // Check folder matching
                     let folderMatches = false;
                     if (!selectedFolder || selectedFolder === '') {
-                        // When no folder selected, push if character matches
+                        // When no folder selected, show all images for this character
                         folderMatches = true;
                     } else if (selectedFolder === 'unfiled') {
+                        // Should not normally happen when character is selected, but handle it
                         folderMatches = folder_id == null;
                     } else {
+                        // Specific folder selected
                         folderMatches = String(folder_id || '') === String(selectedFolder);
                     }
 
                     if (!folderMatches) return;
+                } else {
+                    // No character selected - check view mode
+                    if (selectedFolder === 'unfiled') {
+                        // Viewing "Unfiled" - only add images with no folder AND no character
+                        if (folder_id != null || character_id != null) {
+                            return;
+                        }
+                    } else if (selectedFolder && selectedFolder !== '') {
+                        // Viewing a specific folder (without character context)
+                        if (String(folder_id || '') !== String(selectedFolder)) {
+                            return;
+                        }
+                    }
+                    // else: viewing "All Images" - add everything
                 }
 
                 // Prevent duplicates

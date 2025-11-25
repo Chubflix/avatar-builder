@@ -50,13 +50,10 @@ function LocationPicker({
     // Update view and selected character when modal opens or selection changes
     useEffect(() => {
         if (show && characters.length > 0) {
-            console.log('LocationPicker: show=true, currentCharacterId=', currentCharacterId, 'currentFolderId=', currentFolderId);
             // Start in folders view if a character is selected (with or without a folder)
             if (currentCharacterId) {
                 const char = characters.find(c => c.id === currentCharacterId);
-                console.log('LocationPicker: Found character=', char);
                 if (char) {
-                    console.log('LocationPicker: Setting view to folders with character', char.name);
                     setSelectedCharacter(char);
                     setView('folders');
                     setSearchQuery('');
@@ -66,7 +63,6 @@ function LocationPicker({
                 }
             }
             // Default: start in characters view
-            console.log('LocationPicker: Setting view to characters');
             setView('characters');
             setSelectedCharacter(null);
             setSearchQuery('');
@@ -80,17 +76,6 @@ function LocationPicker({
     const [isAdding, setIsAdding] = useState(false);
     const [newItemName, setNewItemName] = useState('');
     const [editingItem, setEditingItem] = useState(null); // {type: 'character'|'folder', id, name}
-
-    // Reset state when modal opens
-    useEffect(() => {
-        if (show) {
-            setView('characters');
-            setSelectedCharacter(null);
-            setSearchQuery('');
-            setIsAdding(false);
-            setEditingItem(null);
-        }
-    }, [show]);
 
     // Filtered characters for search
     const filteredCharacters = useMemo(() => {
@@ -318,7 +303,6 @@ function LocationPicker({
 
     if (!show) return null;
 
-    console.log('LocationPicker render: view=', view, 'selectedCharacter=', selectedCharacter?.name);
 
     const modalContent = (
         <div className="folder-selector-overlay" onClick={handleClose}>
@@ -367,7 +351,7 @@ function LocationPicker({
                             )}
 
                             <button
-                                className="folder-selector-item location-special"
+                                className={`folder-selector-item location-special ${currentFolderId === 'unfiled' && !currentCharacterId ? 'active' : ''}`}
                                 onClick={() => handleSelect(null)}
                             >
                                 <i className="fa fa-folder-o"></i>
