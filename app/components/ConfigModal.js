@@ -6,6 +6,7 @@ import { useApp } from '../context/AppContext';
 import { useSettings } from '../hooks';
 import { ModalHeader } from '@/app/design-system/molecules/ModalHeader';
 import { IconButton } from '@/app/design-system/atoms/IconButton';
+import { ToggleSwitch } from '@/app/design-system/atoms/ToggleSwitch';
 import './ConfigModal.css';
 
 function ConfigModal({ show, onClose }) {
@@ -355,18 +356,19 @@ function ConfigModal({ show, onClose }) {
                                     {(userSettings.adetailer_settings || []).map((item, idx) => (
                                         <div key={idx} className="form-group" style={{ border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: 6, marginBottom: '0.75rem' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                    <input
-                                                        type="checkbox"
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <ToggleSwitch
                                                         checked={!!item.enabled}
                                                         onChange={(e) => setUserSettings(prev => {
                                                             const list = [...(prev.adetailer_settings || [])];
                                                             list[idx] = { ...list[idx], enabled: e.target.checked };
                                                             return { ...prev, adetailer_settings: list };
                                                         })}
+                                                        title="Enable detector"
+                                                        ariaLabel="Enable detector"
                                                     />
                                                     <span>Enable</span>
-                                                </label>
+                                                </div>
 
                                                 <input
                                                     type="text"

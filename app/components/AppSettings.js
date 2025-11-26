@@ -5,6 +5,7 @@ import { useApp } from '../context/AppContext';
 import HelpModal from './HelpModal';
 import MobileSlideout from './MobileSlideout';
 import './AppSettings.css';
+import { ToggleSwitch } from '@/app/design-system/atoms/ToggleSwitch';
 
 export default function AppSettings() {
     const { state, dispatch, actions } = useApp();
@@ -47,14 +48,12 @@ export default function AppSettings() {
                     <i className="fa fa-bell-o"></i>
                     <span>Push Notifications</span>
                 </div>
-                <label className="toggle-switch">
-                    <input
-                        type="checkbox"
-                        checked={state.notificationsEnabled}
-                        onChange={handleToggleNotifications}
-                    />
-                    <span className="toggle-slider"></span>
-                </label>
+                <ToggleSwitch
+                    checked={state.notificationsEnabled}
+                    onChange={handleToggleNotifications}
+                    title="Toggle push notifications"
+                    ariaLabel="Toggle push notifications"
+                />
             </div>
 
             <div className="setting-item">
@@ -62,14 +61,12 @@ export default function AppSettings() {
                     <i className="fa fa-info-circle"></i>
                     <span>Show Image Info</span>
                 </div>
-                <label className="toggle-switch">
-                    <input
-                        type="checkbox"
-                        checked={state.showImageInfo}
-                        onChange={handleToggleImageInfo}
-                    />
-                    <span className="toggle-slider"></span>
-                </label>
+                <ToggleSwitch
+                    checked={state.showImageInfo}
+                    onChange={handleToggleImageInfo}
+                    title="Toggle image info"
+                    ariaLabel="Toggle image info"
+                />
             </div>
 
             <div className="setting-item">
@@ -77,14 +74,12 @@ export default function AppSettings() {
                     <i className="fa fa-eye-slash"></i>
                     <span>Hide NSFW Images</span>
                 </div>
-                <label className="toggle-switch">
-                    <input
-                        type="checkbox"
-                        checked={state.hideNsfw}
-                        onChange={handleToggleHideNsfw}
-                    />
-                    <span className="toggle-slider"></span>
-                </label>
+                <ToggleSwitch
+                    checked={state.hideNsfw}
+                    onChange={handleToggleHideNsfw}
+                    title="Toggle hide NSFW"
+                    ariaLabel="Toggle hide NSFW"
+                />
             </div>
 
             <div className="setting-item">
@@ -92,14 +87,12 @@ export default function AppSettings() {
                     <i className="fa fa-tags"></i>
                     <span>Tag Autocomplete</span>
                 </div>
-                <label className="toggle-switch">
-                    <input
-                        type="checkbox"
-                        checked={state.tagAutocompleteEnabled}
-                        onChange={handleToggleTagAutocomplete}
-                    />
-                    <span className="toggle-slider"></span>
-                </label>
+                <ToggleSwitch
+                    checked={state.tagAutocompleteEnabled}
+                    onChange={handleToggleTagAutocomplete}
+                    title="Toggle tag autocomplete"
+                    ariaLabel="Toggle tag autocomplete"
+                />
             </div>
 
             <div className="settings-footer">
