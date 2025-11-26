@@ -112,6 +112,29 @@ export default function PromptAutocomplete({ textareaRef, value, onSelect }) {
 
   const caretPos = useCaretPosition(textareaRef, value);
 
+  // Compute keyboard offset on iOS Safari using VisualViewport API
+  const [kbOffset, setKbOffset] = useState(0);
+  useEffect(() => {
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+    if (!isIOS || !vv) return;
+    const update = () => {
+      const innerH = window.innerHeight || 0;
+      const keyboard = Math.max(0, innerH - vv.height - vv.offsetTop);
+      setKbOffset(Math.round(keyboard));
+    };
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    window.addEventListener('orientationchange', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+      window.removeEventListener('orientationchange', update);
+    };
+  }, []);
+
   useEffect(() => {
     // mark as mounted to safely use document for portals
     setMounted(true);
@@ -235,8 +258,10 @@ export default function PromptAutocomplete({ textareaRef, value, onSelect }) {
     wrapClass += ' above';
   }
 
+  // Pass CSS var for keyboard offset on mobile; ignored on desktop
+  const extraStyle = isMobile ? { ['--kb-offset']: `${kbOffset}px` } : {};
   const content = (
-    <div className={wrapClass} style={style} ref={wrapRef}>
+    <div className={wrapClass} style={{ ...style, ...extraStyle }} ref={wrapRef}>
       <div className="prompt-ac-list">
         {items.map((it, idx) => (
           <div
