@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useQueueContext } from '../context/QueueContext';
 import LocationPicker from './LocationPicker';
@@ -7,6 +7,7 @@ import './LoraSettings.css';
 import InpaintModal from './InpaintModal';
 import GenerateButton from "./GenerateButton";
 import FormLabelInfo from "./FormLabelInfo";
+import PromptAutocomplete from './PromptAutocomplete';
 
 function ControlsPanel({ onGenerate, onResetDefaults }) {
     const { state, dispatch, actions } = useApp();
@@ -33,6 +34,9 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
     } = state;
     const { count: queueCount } = useQueueContext();
 
+    const posRef = useRef(null);
+    const negRef = useRef(null);
+
     if (!config) return null;
 
     return (
@@ -57,9 +61,15 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
                 />
                 <textarea
                     className="form-textarea"
+                    ref={posRef}
                     value={positivePrompt}
                     onChange={(e) => dispatch({ type: actions.SET_POSITIVE_PROMPT, payload: e.target.value })}
                     placeholder="masterpiece, best quality, 1girl, portrait..."
+                />
+                <PromptAutocomplete
+                    textareaRef={posRef}
+                    value={positivePrompt}
+                    onSelect={(text) => dispatch({ type: actions.SET_POSITIVE_PROMPT, payload: text })}
                 />
             </div>
 
@@ -253,9 +263,15 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
                     <label className="form-label">Negative Prompt</label>
                     <textarea
                         className="form-textarea"
+                        ref={negRef}
                         value={negativePrompt}
                         onChange={(e) => dispatch({ type: actions.SET_NEGATIVE_PROMPT, payload: e.target.value })}
                         placeholder="lowres, bad anatomy, watermark..."
+                    />
+                    <PromptAutocomplete
+                        textareaRef={negRef}
+                        value={negativePrompt}
+                        onSelect={(text) => dispatch({ type: actions.SET_NEGATIVE_PROMPT, payload: text })}
                     />
                 </div>
 

@@ -1,9 +1,12 @@
 import {useApp} from "../context/AppContext";
 import GenerateButton from "./GenerateButton";
+import React, { useRef } from 'react';
+import PromptAutocomplete from './PromptAutocomplete';
 
 function PromptModal({ onGenerate }) {
     const { state, actions, dispatch } = useApp();
     const { showPromptModal, positivePrompt } = state;
+    const posRef = useRef(null);
 
     if (!showPromptModal) return null;
 
@@ -17,9 +20,15 @@ function PromptModal({ onGenerate }) {
                 <h2>Positive Prompt</h2>
                 <textarea
                     className="form-textarea form-textarea-static"
+                    ref={posRef}
                     value={positivePrompt}
                     onChange={(e) => dispatch({ type: actions.SET_POSITIVE_PROMPT, payload: e.target.value })}
                     placeholder="masterpiece, best quality, 1girl, portrait..."
+                />
+                <PromptAutocomplete
+                    textareaRef={posRef}
+                    value={positivePrompt}
+                    onSelect={(text) => dispatch({ type: actions.SET_POSITIVE_PROMPT, payload: text })}
                 />
                 <GenerateButton onGenerate={onGenerate} />
             </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useQueueContext } from '../context/QueueContext';
 import LocationPicker from './LocationPicker';
@@ -7,6 +7,7 @@ import InpaintModal from './InpaintModal';
 import './LoraSettings.css';
 import MobileToast from './MobileToast';
 import MobileSlideout from './MobileSlideout';
+import PromptAutocomplete from './PromptAutocomplete';
 
 function MobileControls({ onGenerate, onResetDefaults }) {
     const { state, dispatch, actions } = useApp();
@@ -15,6 +16,7 @@ function MobileControls({ onGenerate, onResetDefaults }) {
     const [showGeneralSettings, setShowGeneralSettings] = useState(true);
     const [showImg2ImgSettings, setShowImg2ImgSettings] = useState(false);
     const [showLoraSettings, setShowLoraSettings] = useState(false);
+    const negRef = useRef(null);
     const {
         config,
         positivePrompt,
@@ -82,8 +84,14 @@ function MobileControls({ onGenerate, onResetDefaults }) {
 
                             <div className="form-group">
                                 <label className="form-label">Negative Prompt</label>
+                                <PromptAutocomplete
+                                    textareaRef={negRef}
+                                    value={negativePrompt}
+                                    onSelect={(text) => dispatch({ type: actions.SET_NEGATIVE_PROMPT, payload: text })}
+                                />
                                 <textarea
                                     className="form-textarea"
+                                    ref={negRef}
                                     value={negativePrompt}
                                     onChange={(e) => dispatch({ type: actions.SET_NEGATIVE_PROMPT, payload: e.target.value })}
                                     placeholder="lowres, bad anatomy, watermark..."

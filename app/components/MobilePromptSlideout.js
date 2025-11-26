@@ -1,16 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useQueueContext } from '../context/QueueContext';
 import { useQueue } from "@/app/hooks/queue";
 import LocationPicker from './LocationPicker';
 import MobileSlideout from './MobileSlideout';
 import './MobilePromptSlideout.css';
+import PromptAutocomplete from './PromptAutocomplete';
 
 function MobilePromptSlideout({ show, onClose, onGenerate }) {
     const { state, dispatch, actions } = useApp();
     const [showFolderSelector, setShowFolderSelector] = useState(false);
+    const posRef = useRef(null);
 
     const {
         positivePrompt,
@@ -43,10 +45,16 @@ function MobilePromptSlideout({ show, onClose, onGenerate }) {
 
             <MobileSlideout show={show} onClose={onClose} title="Generate Image">
                 <div className="prompt-slideout-content">
-                    {/* Positive Prompt - takes remaining space */}
+                    {/* Positive Prompt - on mobile show Tag Bar above the prompt textarea */}
                     <div className="prompt-row">
+                        <PromptAutocomplete
+                            textareaRef={posRef}
+                            value={positivePrompt}
+                            onSelect={(text) => dispatch({ type: actions.SET_POSITIVE_PROMPT, payload: text })}
+                        />
                         <textarea
                             className="prompt-textarea"
+                            ref={posRef}
                             value={positivePrompt}
                             onChange={(e) => dispatch({ type: actions.SET_POSITIVE_PROMPT, payload: e.target.value })}
                             placeholder="Enter your prompt..."

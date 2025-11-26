@@ -1,0 +1,22 @@
+.prompt-ac-wrap{position:fixed;z-index:1000000;}
+.prompt-ac-wrap.above{transform:translateY(calc(-100% - 8px));}
+.prompt-ac-list{background:var(--panel-bg, #1f1f1f);border:1px solid var(--border-color, #333);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.25);overflow:hidden;min-width:220px;max-width:340px}
+.prompt-ac-item{display:flex;justify-content:space-between;gap:8px;padding:8px 12px;cursor:pointer;color:var(--text-primary,#eaeaea);font-size:0.95rem}
+.prompt-ac-item:hover,.prompt-ac-item.active{background:var(--hover-bg,#2a2a2a)}
+.prompt-ac-item small{color:var(--text-secondary,#9aa0a6)}
+.prompt-ac-footer{display:flex;align-items:center;justify-content:center;border-top:1px solid var(--border-color,#333);padding:6px 8px}
+.prompt-ac-more{background:none;border:none;color:var(--accent,#8ab4f8);cursor:pointer;font-weight:600}
+.prompt-ac-more:disabled{color:var(--text-secondary,#9aa0a6);cursor:not-allowed;opacity:0.6}
+
+/* Mobile: render above the prompt textarea, full-width, horizontal items */
+@media (max-width: 768px){
+  /* Render at root level with fixed positioning and safe bottom offset */
+  .prompt-ac-wrap{position:fixed;left:0;right:0;bottom:72px;padding:0 12px;display:block;z-index:1000000}
+  .prompt-ac-list{width:100%;max-width:none;min-width:0;border-radius:10px;border:1px solid var(--border-color,#333);padding:8px;display:flex;gap:8px;align-items:center;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none}
+  .prompt-ac-list::-webkit-scrollbar{width:0;height:0}
+  /* Make each tag grow by content and keep consistent gaps; prevent overlap */
+  .prompt-ac-item{flex:0 0 auto;min-width:auto;white-space:nowrap;padding:8px 12px;justify-content:center;border-radius:8px;background:var(--panel-bg,#1f1f1f);} 
+  .prompt-ac-item small{display:none}
+  .prompt-ac-footer{border-top:none;padding:0;margin-left:auto;align-items:center;display:flex;flex:0 0 auto}
+  .prompt-ac-more{font-size:1.25rem;padding:0 6px}
+}
