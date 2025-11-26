@@ -411,7 +411,7 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete, onLoad
     const handleToggleFavorite = async (e) => {
         e.stopPropagation();
         try {
-            const updatedImage = await imageAPI.updateFlags(currentImage.id, {
+            const updatedImage = await imageAPI.updateFlags(currentImage, {
                 is_favorite: !currentImage.is_favorite
             });
             dispatch({ type: actions.UPDATE_IMAGE, payload: updatedImage });
@@ -427,7 +427,7 @@ function Lightbox({ onClose, onMoveToFolder, onRestoreSettings, onDelete, onLoad
     const handleToggleNsfw = async (e) => {
         e.stopPropagation();
         try {
-            const updatedImage = await imageAPI.updateFlags(currentImage.id, {
+            const updatedImage = await imageAPI.updateFlags(currentImage, {
                 is_nsfw: !currentImage.is_nsfw
             });
             dispatch({ type: actions.UPDATE_IMAGE, payload: updatedImage });

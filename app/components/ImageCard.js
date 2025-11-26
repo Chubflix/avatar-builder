@@ -6,7 +6,6 @@ function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageM
     const {state, dispatch, actions} = useApp();
     const {selectedImages, isSelecting, lastClickedIndex, showImageInfo} = state;
 
-    const imageSrc = image.url;
     const isSelected = selectedImages.includes(image.id);
 
     const handleDownload = (e, image) => {
@@ -51,7 +50,7 @@ function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageM
     const handleToggleFavorite = async (e) => {
         e.stopPropagation();
         try {
-            const updatedImage = await imageAPI.updateFlags(image.id, {
+            const updatedImage = await imageAPI.updateFlags(image, {
                 is_favorite: !image.is_favorite
             });
             dispatch({ type: actions.UPDATE_IMAGE, payload: updatedImage });
@@ -67,7 +66,7 @@ function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageM
     const handleToggleNsfw = async (e) => {
         e.stopPropagation();
         try {
-            const updatedImage = await imageAPI.updateFlags(image.id, {
+            const updatedImage = await imageAPI.updateFlags(image, {
                 is_nsfw: !image.is_nsfw
             });
             dispatch({ type: actions.UPDATE_IMAGE, payload: updatedImage });
@@ -84,7 +83,7 @@ function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageM
         <div className={`image-card ${isSelected ? 'selected' : ''}`}>
             <div
                 className="image-wrapper"
-                style={{'--bg-image': `url(${imageSrc})`}}
+                style={{'--bg-image': `url(${image.url})`}}
                 onClick={(e) => isSelecting ? handleToggleSelection(e, image.id, index) : onOpenLightbox(index)}
             >
                 {isSelecting && (
@@ -117,7 +116,7 @@ function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageM
                     </div>
                 )}
                 <img
-                    src={imageSrc}
+                    src={image.url}
                     alt={`Generated ${image.id}`}
                     loading="lazy"
                 />

@@ -1,8 +1,9 @@
-// @ts-nocheck
 /**
  * Backend API Client
  * Handles all communication with the Avatar Builder backend
  */
+import {Image} from "@/types/image";
+import debug from "@/app/utils/debug";
 
 const API_BASE = process.env.REACT_APP_API_BASE || '';
 
@@ -106,13 +107,14 @@ export const imageAPI = {
     /**
      * Get a single image by id
      */
-    async getById(id: string) {
+    async getById(id: string): Promise<Image[] | null> {
         const url = `${API_BASE}/api/images?id=${encodeURIComponent(id)}`;
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error('Failed to load image');
         }
         const data = await response.json();
+
         return Array.isArray(data.images) ? data.images[0] : null;
     },
 
@@ -191,12 +193,14 @@ export const imageAPI = {
     /**
      * Update image flags (favorite, nsfw)
      */
-    async updateFlags(id: string, { is_favorite, is_nsfw }: { is_favorite?: boolean; is_nsfw?: boolean; }) {
+    async updateFlags(image: Image, { is_favorite, is_nsfw }: { is_favorite?: boolean; is_nsfw?: boolean; }) {
+        debug.log('imageAPI', 'received image for flag update:', image);
+
         const updates: any = {};
         if (is_favorite !== undefined) updates.is_favorite = is_favorite;
         if (is_nsfw !== undefined) updates.is_nsfw = is_nsfw;
 
-        const response = await fetch(`${API_BASE}/api/images/${id}`, {
+        const response = await fetch(`${API_BASE}/api/images/${image.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updates)
@@ -206,7 +210,11 @@ export const imageAPI = {
             throw new Error('Failed to update image flags');
         }
 
-        return await response.json();
+        const updatedImage = {...image, ...updates};
+        debug.log('imageAPI', 'updated image:', updatedImage);
+
+        return updatedImage;
+
     },
 
     /**
@@ -227,7 +235,7 @@ export const imageAPI = {
     /**
      * Bulk delete images
      */
-    async bulkDelete(imageIds) {
+    async bulkDelete(imageIds: string[]) {
         const response = await fetch(`${API_BASE}/api/images/bulk-delete`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -244,7 +252,7 @@ export const imageAPI = {
     /**
      * Download multiple images as zip
      */
-    async downloadZip(imageIds) {
+    async downloadZip(imageIds: string[]) {
         const response = await fetch(`${API_BASE}/api/images/download-zip`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -267,14 +275,19 @@ export const imageAPI = {
     /**
      * Get image URL
      */
-    getUrl(image) {
-        return `${API_BASE}${image.url || `/generated/${image.filename}`}`;
+    getUrl(image: Image | null): string {
+        const raw = image?.url || `/generated/${image?.filename}`;
+        // If the URL is already absolute (e.g., returned from PATCH/PUT APIs), don't prefix API_BASE
+        if (typeof raw === 'string' && /^(https?:)?\/\//i.test(raw)) {
+            return raw;
+        }
+        return `${API_BASE}${raw}`;
     },
 
     /**
      * Download image
      */
-    download(image) {
+    download(image: Image) {
         const link = document.createElement('a');
         link.href = this.getUrl(image);
         link.download = image.filename;
@@ -284,7 +297,7 @@ export const imageAPI = {
     /**
      * Copy image to clipboard
      */
-    async copyToClipboard(image) {
+    async copyToClipboard(image: Image) {
         const response = await fetch(this.getUrl(image));
         const blob = await response.blob();
         await navigator.clipboard.write([

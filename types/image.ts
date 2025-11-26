@@ -5,4 +5,5 @@ export type Image = {
   width?: number | null;
   height?: number | null;
   info_json?: Record<string, any> | null;
+  url?: string | null; // transient, not stored in DB
 };
