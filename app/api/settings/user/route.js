@@ -30,7 +30,8 @@ export async function GET(request) {
                 .insert({
                     user_id: user.id,
                     generation_settings: {},
-                    adetailer_settings: {}
+                    // Store as an array of items (model + enabled)
+                    adetailer_settings: []
                 })
                 .select()
                 .single();
@@ -124,11 +125,11 @@ export async function PATCH(request) {
             };
         }
 
-        if (updates.adetailer_settings && existing?.adetailer_settings) {
-            mergedSettings.adetailer_settings = {
-                ...existing.adetailer_settings,
-                ...updates.adetailer_settings
-            };
+        // ADetailer settings are an array; prefer full replacement when provided
+        if (Object.prototype.hasOwnProperty.call(updates, 'adetailer_settings')) {
+            mergedSettings.adetailer_settings = Array.isArray(updates.adetailer_settings)
+                ? updates.adetailer_settings
+                : (Array.isArray(existing?.adetailer_settings) ? existing.adetailer_settings : []);
         }
 
         // Upsert with merged settings
@@ -153,4 +154,9 @@ export async function PATCH(request) {
             { status: 500 }
         );
     }
+}
+
+// Some clients use POST to update user settings; alias to PUT for upsert semantics
+export async function POST(request) {
+    return PUT(request);
 }

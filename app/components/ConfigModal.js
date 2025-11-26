@@ -31,10 +31,8 @@ function ConfigModal({ show, onClose }) {
             steps: 25,
             cfgScale: 7
         },
-        adetailer_settings: {
-            enabled: true,
-            model: 'face_yolov8n.pt'
-        }
+        // Support multiple ADetailer items (array of { enabled, model })
+        adetailer_settings: []
     });
 
     const [globalSettings, setGlobalSettings] = useState({
@@ -66,9 +64,18 @@ function ConfigModal({ show, onClose }) {
             // Load user settings
             const userData = await loadUserSettings();
             if (userData) {
+                // Normalize ADetailer: accept object or array from DB
+                const rawAD = userData.adetailer_settings;
+                const adetailerList = Array.isArray(rawAD)
+                    ? rawAD
+                    : (rawAD && typeof rawAD === 'object')
+                        ? [rawAD]
+                        : [];
+
                 setUserSettings(prev => ({
                     ...prev,
-                    ...userData
+                    ...userData,
+                    adetailer_settings: adetailerList
                 }));
             }
 
@@ -336,41 +343,72 @@ function ConfigModal({ show, onClose }) {
                             {activeTab === 'adetailer' && (
                                 <div className="config-section">
                                     <h5>ADetailer Settings</h5>
-                                    <p className="config-description">Configure face detail enhancement</p>
+                                    <p className="config-description">Manage one or more ADetailer detectors</p>
+
+                                    {(userSettings.adetailer_settings?.length === 0) && (
+                                        <div className="config-info">
+                                            <i className="fa fa-info-circle"></i>
+                                            <span>No ADetailer items yet. Add one below.</span>
+                                        </div>
+                                    )}
+
+                                    {(userSettings.adetailer_settings || []).map((item, idx) => (
+                                        <div key={idx} className="form-group" style={{ border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: 6, marginBottom: '0.75rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={!!item.enabled}
+                                                        onChange={(e) => setUserSettings(prev => {
+                                                            const list = [...(prev.adetailer_settings || [])];
+                                                            list[idx] = { ...list[idx], enabled: e.target.checked };
+                                                            return { ...prev, adetailer_settings: list };
+                                                        })}
+                                                    />
+                                                    <span>Enable</span>
+                                                </label>
+
+                                                <input
+                                                    type="text"
+                                                    className="form-input"
+                                                    style={{ flex: 1, minWidth: 220 }}
+                                                    value={item.model || ''}
+                                                    onChange={(e) => setUserSettings(prev => {
+                                                        const list = [...(prev.adetailer_settings || [])];
+                                                        list[idx] = { ...list[idx], model: e.target.value };
+                                                        return { ...prev, adetailer_settings: list };
+                                                    })}
+                                                    placeholder="e.g., face_yolov8n.pt"
+                                                />
+
+                                                <IconButton
+                                                    icon="fa-trash"
+                                                    variant="danger"
+                                                    title="Remove item"
+                                                    onClick={() => setUserSettings(prev => {
+                                                        const list = [...(prev.adetailer_settings || [])];
+                                                        list.splice(idx, 1);
+                                                        return { ...prev, adetailer_settings: list };
+                                                    })}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
 
                                     <div className="form-group">
-                                        <label className="form-label">
-                                            <input
-                                                type="checkbox"
-                                                checked={userSettings.adetailer_settings?.enabled || false}
-                                                onChange={(e) => setUserSettings(prev => ({
-                                                    ...prev,
-                                                    adetailer_settings: {
-                                                        ...prev.adetailer_settings,
-                                                        enabled: e.target.checked
-                                                    }
-                                                }))}
-                                            />
-                                            <span style={{ marginLeft: '0.5rem' }}>Enable ADetailer</span>
-                                        </label>
-                                    </div>
-
-                                    <div className="form-group">
-                                        <label className="form-label">Model</label>
-                                        <input
-                                            type="text"
-                                            className="form-input"
-                                            value={userSettings.adetailer_settings?.model || ''}
-                                            onChange={(e) => setUserSettings(prev => ({
+                                        <button
+                                            type="button"
+                                            className="btn btn-secondary"
+                                            onClick={() => setUserSettings(prev => ({
                                                 ...prev,
-                                                adetailer_settings: {
-                                                    ...prev.adetailer_settings,
-                                                    model: e.target.value
-                                                }
+                                                adetailer_settings: [
+                                                    ...(prev.adetailer_settings || []),
+                                                    { model: '', enabled: false }
+                                                ]
                                             }))}
-                                            placeholder="e.g., face_yolov8n.pt"
-                                            disabled={!userSettings.adetailer_settings?.enabled}
-                                        />
+                                        >
+                                            <i className="fa fa-plus"></i> Add ADetailer Item
+                                        </button>
                                     </div>
                                 </div>
                             )}

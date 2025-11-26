@@ -44,6 +44,12 @@ export async function GET() {
             square: { width: 1024, height: 1024 }
         };
 
+        // Normalize ADetailer: support array in DB, but keep legacy single-object in config
+        const adetailerArray = Array.isArray(userSettings?.adetailer_settings)
+            ? userSettings.adetailer_settings
+            : (userSettings?.adetailer_settings ? [userSettings.adetailer_settings] : []);
+        const firstEnabled = adetailerArray.find(i => i && i.enabled) || adetailerArray[0] || null;
+
         // Build config object matching existing format
         const config = {
             defaults: {
@@ -58,10 +64,12 @@ export async function GET() {
                 steps: 25,
                 cfgScale: 7
             },
-            adetailer: userSettings?.adetailer_settings || {
-                enabled: true,
-                model: 'face_yolov8n.pt'
-            },
+            adetailer: firstEnabled ? {
+                enabled: Boolean(firstEnabled.enabled),
+                model: firstEnabled.model || null,
+            } : { enabled: false, model: null },
+            // Expose full list for UI that supports multiple items
+            adetailer_list: adetailerArray,
             dimensions,
             loras: Array.isArray(loras) ? loras : []
         };
