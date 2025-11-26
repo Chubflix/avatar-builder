@@ -28,6 +28,13 @@ function ConfigModal({ show, onClose }) {
     const [dlError, setDlError] = useState(null);
     const [downloading, setDownloading] = useState(false);
 
+    // Assets state (for Downloads tab)
+    const [assets, setAssets] = useState([]);
+    const [assetsLoading, setAssetsLoading] = useState(false);
+    const [assetsError, setAssetsError] = useState(null);
+    const [assetEdits, setAssetEdits] = useState({}); // id -> { min, max, example_prompt }
+    const [assetSaving, setAssetSaving] = useState({}); // id -> boolean
+
     // Form state
     const [userSettings, setUserSettings] = useState({
         default_positive_prompt: '',
@@ -115,6 +122,38 @@ function ConfigModal({ show, onClose }) {
             setIsAdmin(false);
         }
     };
+
+    // Fetch assets for downloads tab
+    const loadAssets = async () => {
+        setAssetsError(null);
+        setAssetsLoading(true);
+        try {
+            const list = await sdAPI.getAssets();
+            setAssets(Array.isArray(list) ? list : []);
+            // Initialize edits with current values
+            const edits = {};
+            (Array.isArray(list) ? list : []).forEach(a => {
+                if (!a || !a.id) return;
+                edits[a.id] = {
+                    min: a.min ?? '',
+                    max: a.max ?? '',
+                    example_prompt: a.example_prompt ?? ''
+                };
+            });
+            setAssetEdits(edits);
+        } catch (e) {
+            console.error('Failed to load assets', e);
+            setAssetsError(e?.message || 'Failed to load assets');
+        } finally {
+            setAssetsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (show && activeTab === 'downloads') {
+            loadAssets();
+        }
+    }, [show, activeTab]);
 
     const handleSaveUserSettings = async () => {
         setSaving(true);
@@ -288,6 +327,104 @@ function ConfigModal({ show, onClose }) {
                                             >
                                                 {downloading ? (<><i className="fa fa-spinner fa-spin"></i> Downloading...</>) : (<><i className="fa fa-download"></i> Download</>)}
                                             </button>
+                                        </div>
+                                    </div>
+                                    {/* Assets List */}
+                                    <div style={{ marginTop: 20, borderTop: '1px solid var(--border-color, #333)', paddingTop: 12 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+                                            <h6 style={{ margin: 0 }}>Available LoRAs</h6>
+                                            <div>
+                                                <button type="button" className="btn btn-secondary" onClick={loadAssets} disabled={assetsLoading}>
+                                                    {assetsLoading ? (<><i className="fa fa-spinner fa-spin"></i> Refreshing...</>) : (<><i className="fa fa-refresh"></i> Refresh</>)}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {assetsError && (
+                                            <div className="config-error" style={{ marginBottom: 12 }}>
+                                                <i className="fa fa-exclamation-circle"></i>
+                                                <span>{assetsError}</span>
+                                            </div>
+                                        )}
+                                        {!assetsLoading && (assets?.filter?.(a => a?.kind === 'lora') || []).length === 0 && (
+                                            <div className="config-empty">No LoRAs available.</div>
+                                        )}
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
+                                            {(assets || []).filter(a => a?.kind === 'lora').map((a) => {
+                                                const id = a.id;
+                                                const edit = assetEdits[id] || { min: a.min ?? '', max: a.max ?? '', example_prompt: a.example_prompt ?? '' };
+                                                const imageUrl = a.image_url || (Array.isArray(a.images) && a.images[0]?.url) || '';
+                                                const isNSFW = Array.isArray(a.images) ? a.images.some(img => !!img?.is_nsfw) : false;
+                                                const saving = !!assetSaving[id];
+                                                return (
+                                                    <div key={id} style={{ border: '1px solid var(--border-color, #333)', borderRadius: 8, padding: 10, background: 'var(--panel-bg, #111)' }}>
+                                                        <div style={{ position: 'relative', marginBottom: 8 }}>
+                                                            {imageUrl ? (
+                                                                <img src={imageUrl} alt={a.name || 'LoRA'} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 6 }} />
+                                                            ) : (
+                                                                <div style={{ width: '100%', height: 140, background: '#222', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#777' }}>
+                                                                    <i className="fa fa-image"></i>
+                                                                </div>
+                                                            )}
+                                                            {isNSFW && (
+                                                                <span title="NSFW" style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(220, 20, 60, 0.9)', color: '#fff', fontSize: 10, padding: '3px 6px', borderRadius: 4 }}>
+                                                                    <i className="fa fa-exclamation-triangle" style={{ marginRight: 4 }}></i>NSFW
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div style={{ fontWeight: 600, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                            <i className="fa fa-puzzle-piece"></i>
+                                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name || 'Unnamed LoRA'}</span>
+                                                        </div>
+                                                        <div className="form-group" style={{ marginBottom: 6 }}>
+                                                            <label className="form-label" style={{ marginBottom: 4 }}>Min</label>
+                                                            <input type="number" className="form-input" value={edit.min}
+                                                                   onChange={(e) => setAssetEdits(prev => ({ ...prev, [id]: { ...edit, min: e.target.value === '' ? '' : Number(e.target.value) } }))} />
+                                                        </div>
+                                                        <div className="form-group" style={{ marginBottom: 6 }}>
+                                                            <label className="form-label" style={{ marginBottom: 4 }}>Max</label>
+                                                            <input type="number" className="form-input" value={edit.max}
+                                                                   onChange={(e) => setAssetEdits(prev => ({ ...prev, [id]: { ...edit, max: e.target.value === '' ? '' : Number(e.target.value) } }))} />
+                                                        </div>
+                                                        <div className="form-group" style={{ marginBottom: 8 }}>
+                                                            <label className="form-label" style={{ marginBottom: 4 }}>Example Prompt</label>
+                                                            <textarea className="form-input" rows={3} value={edit.example_prompt}
+                                                                      onChange={(e) => setAssetEdits(prev => ({ ...prev, [id]: { ...edit, example_prompt: e.target.value } }))}
+                                                                      placeholder="e.g., <lora:your_lora:0.8>, style keywords..." />
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                                            <button type="button" className="btn btn-secondary" disabled={saving}
+                                                                    onClick={() => setAssetEdits(prev => ({ ...prev, [id]: { min: a.min ?? '', max: a.max ?? '', example_prompt: a.example_prompt ?? '' } }))}>
+                                                                Reset
+                                                            </button>
+                                                            <button type="button" className="btn btn-primary" disabled={saving}
+                                                                    onClick={async () => {
+                                                                        setAssetsError(null);
+                                                                        setAssetSaving(prev => ({ ...prev, [id]: true }));
+                                                                        try {
+                                                                            const patch = {
+                                                                                min: edit.min === '' ? null : edit.min,
+                                                                                max: edit.max === '' ? null : edit.max,
+                                                                                example_prompt: edit.example_prompt
+                                                                            };
+                                                                            const result = await sdAPI.updateAsset(id, patch);
+                                                                            if (result && result.success === false) {
+                                                                                throw new Error(result.error || 'Failed to update asset');
+                                                                            }
+                                                                            // Update local state with edits
+                                                                            setAssets(prev => prev.map(item => item.id === id ? { ...item, ...patch } : item));
+                                                                        } catch (err) {
+                                                                            console.error('Failed to save asset', err);
+                                                                            setAssetsError(err?.message || 'Failed to save asset');
+                                                                        } finally {
+                                                                            setAssetSaving(prev => ({ ...prev, [id]: false }));
+                                                                        }
+                                                                    }}>
+                                                                {saving ? (<><i className="fa fa-spinner fa-spin"></i> Saving...</>) : 'Save'}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 </div>

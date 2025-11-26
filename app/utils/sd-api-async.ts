@@ -111,6 +111,40 @@ class StableDiffusionAsyncAdapter {
         return { queued: true };
     }
 
+    // Assets API
+    async getAssets() {
+        try {
+            const resp = await fetch(`${this.baseUrl.replace(/\/$/, '')}/sdapi/v1/assets`, {
+                method: 'GET',
+                headers: this.getAuthHeaders()
+            } as any);
+            if ((resp as any).ok) {
+                const data = await (resp as any).json();
+                return Array.isArray(data) ? data : [];
+            }
+        } catch (_) {}
+        return [];
+    }
+
+    async updateAsset(id: string, patch: any) {
+        try {
+            const resp = await fetch(`${this.baseUrl.replace(/\/$/, '')}/sdapi/v1/assets/${encodeURIComponent(id)}`, {
+                method: 'PUT',
+                headers: this.getAuthHeaders(),
+                body: JSON.stringify(patch || {})
+            } as any);
+            if ((resp as any).ok) {
+                return await (resp as any).json();
+            } else {
+                let msg = 'Failed to update asset';
+                try { const err = await (resp as any).json(); msg = err.error || err.message || msg; } catch(_) {}
+                return { success: false, error: msg } as any;
+            }
+        } catch (e: any) {
+            return { success: false, error: e?.message || 'Failed to update asset' } as any;
+        }
+    }
+
     async skip() {
         // Optional: implement cancel endpoint if needed in future
         return { queued: true };
