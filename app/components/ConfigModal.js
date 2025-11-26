@@ -367,7 +367,6 @@ function ConfigModal({ show, onClose }) {
                                                         title="Enable detector"
                                                         ariaLabel="Enable detector"
                                                     />
-                                                    <span>Enable</span>
                                                 </div>
 
                                                 <input

@@ -2,6 +2,7 @@
 
 import { useApp } from '../context/AppContext';
 import './LoraSettings.css';
+import { ToggleSwitch } from '@/app/design-system/atoms/ToggleSwitch';
 
 export default function LoraSettings() {
     const { state, dispatch, actions } = useApp();
@@ -91,14 +92,12 @@ export default function LoraSettings() {
                     <div key={slider.name} className="lora-group">
                         <div className="lora-slider-header">
                             <label className="lora-label">
-                                <label className="lora-switch">
-                                    <input
-                                        type="checkbox"
-                                        checked={sliderState.enabled}
-                                        onChange={() => handleSliderToggle(slider.name, slider.defaultValue)}
-                                    />
-                                    <span className="lora-switch-slider"></span>
-                                </label>
+                                <ToggleSwitch
+                                    checked={sliderState.enabled}
+                                    onChange={() => handleSliderToggle(slider.name, slider.defaultValue)}
+                                    title={`Enable ${slider.name}`}
+                                    ariaLabel={`Enable ${slider.name}`}
+                                />
                                 <span>{slider.name}</span>
                                 {slider.url && (
                                     <a
@@ -139,14 +138,12 @@ export default function LoraSettings() {
                 return (
                     <div key={toggle.name} className="lora-group">
                         <label className="lora-label lora-toggle-label">
-                            <label className="lora-switch">
-                                <input
-                                    type="checkbox"
-                                    checked={toggleState}
-                                    onChange={(e) => handleToggleChange(toggle.name, e.target.checked)}
-                                />
-                                <span className="lora-switch-slider"></span>
-                            </label>
+                            <ToggleSwitch
+                                checked={toggleState}
+                                onChange={(e) => handleToggleChange(toggle.name, e.target.checked)}
+                                title={`Enable ${toggle.name}`}
+                                ariaLabel={`Enable ${toggle.name}`}
+                            />
                             <span>{toggle.name}</span>
                             {toggle.url && (
                                 <a
