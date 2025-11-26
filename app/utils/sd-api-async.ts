@@ -46,7 +46,7 @@ class StableDiffusionAsyncAdapter {
         return headers;
     }
 
-    async submitJob(path: string, payload: any, timeout = 15000) {
+    async submitJob(path: string, payload: any, withWebhook = true, timeout = 15000) {
         const url = `${this.baseUrl.replace(/\/$/, '')}${path}`;
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeout);
@@ -55,11 +55,11 @@ class StableDiffusionAsyncAdapter {
             const response = await fetch(url, {
                 method: 'POST',
                 headers: this.getAuthHeaders(),
-                body: JSON.stringify({
+                body: JSON.stringify(withWebhook ? {
                     ...rest,
                     webhookUrl: this.getWebhookUrl(),
                     webhookKey: __webhookAuthToken || this.authToken
-                }),
+                } : rest),
                 signal: controller.signal
             } as any);
             clearTimeout(id);

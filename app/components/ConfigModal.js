@@ -7,6 +7,8 @@ import { useSettings } from '../hooks';
 import { ModalHeader } from '@/app/design-system/molecules/ModalHeader';
 import { IconButton } from '@/app/design-system/atoms/IconButton';
 import { ToggleSwitch } from '@/app/design-system/atoms/ToggleSwitch';
+import sdAPI from '@/app/utils/sd-api';
+import { notifyJobQueued } from '@/app/utils/queue-notifications';
 import './ConfigModal.css';
 
 function ConfigModal({ show, onClose }) {
@@ -19,6 +21,12 @@ function ConfigModal({ show, onClose }) {
     const [saving, setSaving] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
     const [error, setError] = useState(null);
+
+    // Downloads state
+    const [dlType, setDlType] = useState('lora'); // 'lora' | 'model'
+    const [dlUrl, setDlUrl] = useState('');
+    const [dlError, setDlError] = useState(null);
+    const [downloading, setDownloading] = useState(false);
 
     // Form state
     const [userSettings, setUserSettings] = useState({
@@ -156,6 +164,7 @@ function ConfigModal({ show, onClose }) {
         { id: 'defaults', label: 'Defaults', icon: 'fa-sliders' },
         { id: 'generation', label: 'Generation', icon: 'fa-cog' },
         { id: 'adetailer', label: 'ADetailer', icon: 'fa-magic' },
+        { id: 'downloads', label: 'Downloads', icon: 'fa-download' },
         { id: 'global', label: 'Global Settings', icon: 'fa-globe', adminOnly: true }
     ];
 
@@ -197,6 +206,93 @@ function ConfigModal({ show, onClose }) {
 
                     {!loading && (
                         <>
+                            {activeTab === 'downloads' && (
+                                <div className="config-section">
+                                    <h5>Downloads</h5>
+                                    <p className="config-description">
+                                        Download assets from Civitai into your Stable Diffusion instance via the proxy.
+                                    </p>
+
+                                    {dlError && (
+                                        <div className="config-error" style={{ marginBottom: 12 }}>
+                                            <i className="fa fa-exclamation-circle"></i>
+                                            <span>{dlError}</span>
+                                        </div>
+                                    )}
+
+                                    <div className="form-group" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                                        <div style={{ minWidth: 160 }}>
+                                            <label className="form-label">Type</label>
+                                            <select
+                                                className="form-input"
+                                                value={dlType}
+                                                onChange={(e) => setDlType(e.target.value)}
+                                            >
+                                                <option value="lora">Lora</option>
+                                                <option value="model">Model</option>
+                                            </select>
+                                        </div>
+
+                                        <div style={{ flex: 1, minWidth: 260 }}>
+                                            <label className="form-label">Civitai URL or AIR URN</label>
+                                            <input
+                                                type="text"
+                                                className="form-input"
+                                                placeholder="https://civitai.com/models/... or urn:air:sdxl:lora:civitai:123@456"
+                                                value={dlUrl}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setDlUrl(val);
+                                                    // Detect AIR URN and auto-set type
+                                                    const m = /^urn:air:[^:]+:(lora|checkpoint):civitai:\d+(?:@\d+)?$/i.exec((val || '').trim());
+                                                    if (m) {
+                                                        const kind = m[1].toLowerCase();
+                                                        setDlType(kind === 'checkpoint' ? 'model' : 'lora');
+                                                        setDlError(null);
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+
+                                        <div style={{ alignSelf: 'end' }}>
+                                            <button
+                                                type="button"
+                                                className="btn btn-primary"
+                                                disabled={downloading}
+                                                onClick={async () => {
+                                                    setDlError(null);
+                                                    // Validate URL or AIR URN
+                                                    const url = (dlUrl || '').trim();
+                                                    const isHttp = /^https:\/\/civitai\.com\//i.test(url);
+                                                    const isUrn = /^urn:air:[^:]+:(lora|checkpoint):civitai:\d+(?:@\d+)?$/i.test(url);
+                                                    if (!isHttp && !isUrn) {
+                                                        setDlError('Please enter a valid Civitai URL (https://civitai.com/...) or AIR URN (urn:air:...)');
+                                                        return;
+                                                    }
+                                                    setDownloading(true);
+                                                    try {
+                                                        // Map AIR URN checkpoint -> model already via dlType
+                                                        const resp = await sdAPI.submitJob('/sdapi/v1/assets/download', { kind: dlType, url }, false);
+                                                        // If queued, broadcast
+                                                        const jobId = resp?.jobId || resp?.raw?.jobId || resp?.raw?.id || null;
+                                                        if (resp?.queued && jobId) {
+                                                            notifyJobQueued(String(jobId));
+                                                        }
+                                                    } catch (e) {
+                                                        console.error('Download failed', e);
+                                                        setDlError(e?.message || 'Failed to start download');
+                                                    } finally {
+                                                        setDownloading(false);
+                                                    }
+                                                }}
+                                            >
+                                                {downloading ? (<><i className="fa fa-spinner fa-spin"></i> Downloading...</>) : (<><i className="fa fa-download"></i> Download</>)}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {activeTab === 'defaults' && (
                                 <div className="config-section">
                                     <h5>Default Settings</h5>
