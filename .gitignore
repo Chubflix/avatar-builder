@@ -4,6 +4,7 @@ node_modules/
 # Data (database and generated images)
 data/
 *.db
+!app/data/
 
 # Environment
 .env
