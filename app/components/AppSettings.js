@@ -31,6 +31,13 @@ export default function AppSettings() {
         });
     };
 
+    const handleToggleTagAutocomplete = () => {
+        dispatch({
+            type: actions.SET_TAG_AUTOCOMPLETE_ENABLED,
+            payload: !state.tagAutocompleteEnabled
+        });
+    };
+
     if (!state.showAppSettings) return null;
 
     const settingsContent = (
@@ -75,6 +82,21 @@ export default function AppSettings() {
                         type="checkbox"
                         checked={state.hideNsfw}
                         onChange={handleToggleHideNsfw}
+                    />
+                    <span className="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div className="setting-item">
+                <div className="setting-label">
+                    <i className="fa fa-tags"></i>
+                    <span>Tag Autocomplete</span>
+                </div>
+                <label className="toggle-switch">
+                    <input
+                        type="checkbox"
+                        checked={state.tagAutocompleteEnabled}
+                        onChange={handleToggleTagAutocomplete}
                     />
                     <span className="toggle-slider"></span>
                 </label>

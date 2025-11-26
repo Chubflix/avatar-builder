@@ -112,6 +112,8 @@ export interface AppState {
   showImageInfo: boolean;
   hideNsfw: boolean;
   showFavoritesOnly: boolean;
+  // Feature toggles
+  tagAutocompleteEnabled: boolean;
 
   // Lora settings
   loraSliders: Record<string, LoraSliderState>;
@@ -222,6 +224,7 @@ const ActionTypes = {
   SET_SHOW_IMAGE_INFO: 'SET_SHOW_IMAGE_INFO',
   SET_HIDE_NSFW: 'SET_HIDE_NSFW',
   SET_SHOW_FAVORITES_ONLY: 'SET_SHOW_FAVORITES_ONLY',
+  SET_TAG_AUTOCOMPLETE_ENABLED: 'SET_TAG_AUTOCOMPLETE_ENABLED',
 
   // Bulk actions
   RESET_TO_DEFAULTS: 'RESET_TO_DEFAULTS',
@@ -316,6 +319,7 @@ const initialState: AppState = {
   showImageInfo: true,
   hideNsfw: false,
   showFavoritesOnly: false,
+  tagAutocompleteEnabled: true,
 
   // Lora settings
   loraSliders: {},
@@ -455,6 +459,8 @@ function appReducer(state: AppState, action: Action): AppState {
       return { ...state, showImageInfo: Boolean(action.payload) };
     case 'SET_HIDE_NSFW':
       return { ...state, hideNsfw: Boolean(action.payload) };
+    case 'SET_TAG_AUTOCOMPLETE_ENABLED':
+      return { ...state, tagAutocompleteEnabled: Boolean(action.payload) };
     case 'SET_SHOW_FAVORITES_ONLY':
       return { ...state, showFavoritesOnly: Boolean(action.payload) };
     case 'RESET_TO_DEFAULTS':
@@ -557,6 +563,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: 'SET_NOTIFICATIONS_ENABLED', payload: settings.notificationsEnabled !== undefined ? settings.notificationsEnabled : true });
         dispatch({ type: 'SET_SHOW_IMAGE_INFO', payload: settings.showImageInfo !== undefined ? settings.showImageInfo : true });
         dispatch({ type: 'SET_HIDE_NSFW', payload: settings.hideNsfw !== undefined ? settings.hideNsfw : false });
+        dispatch({ type: 'SET_TAG_AUTOCOMPLETE_ENABLED', payload: settings.tagAutocompleteEnabled !== undefined ? settings.tagAutocompleteEnabled : true });
         dispatch({ type: 'SET_LOCKS', payload: settings.locks !== undefined ? settings.locks : {} });
 
         // Load lora settings
@@ -603,6 +610,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       notificationsEnabled: state.notificationsEnabled,
       showImageInfo: state.showImageInfo,
       hideNsfw: state.hideNsfw,
+      tagAutocompleteEnabled: state.tagAutocompleteEnabled,
       loraSliders: state.loraSliders,
       loraToggles: state.loraToggles,
       loraStyle: state.loraStyle,
@@ -626,6 +634,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     state.notificationsEnabled,
     state.showImageInfo,
     state.hideNsfw,
+    state.tagAutocompleteEnabled,
     state.loraSliders,
     state.loraToggles,
     state.loraStyle,

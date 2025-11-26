@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import './PromptAutocomplete.css';
+import { useApp } from '../context/AppContext';
 
 function getCurrentToken(text, caret) {
   const before = text.slice(0, caret);
@@ -93,6 +94,11 @@ function useCaretPosition(textareaRef, value) {
 }
 
 export default function PromptAutocomplete({ textareaRef, value, onSelect }) {
+  const { state } = useApp();
+  const enabled = state?.tagAutocompleteEnabled !== false; // default to true
+  // If disabled, render nothing and attach no listeners
+  if (!enabled) return null;
+
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
