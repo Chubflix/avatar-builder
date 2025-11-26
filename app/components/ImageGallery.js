@@ -64,6 +64,37 @@ function ImageGallery({onOpenLightbox, onRestoreSettings, onDelete, onLoadMore})
         setShowFolderSelector(true);
     };
 
+    const handleBulkSetNSFW = async (value) => {
+        if (selectedImages.length === 0) return;
+        // Optimistic update
+        try {
+            const ids = [...selectedImages];
+            const currentImages = [...images];
+            ids.forEach(id => {
+                const img = currentImages.find(i => i.id === id);
+                if (img) {
+                    dispatch({ type: actions.UPDATE_IMAGE, payload: { ...img, is_nsfw: !!value } });
+                }
+            });
+
+            // Persist server-side
+            await Promise.all(ids.map(async (id) => {
+                const img = currentImages.find(i => i.id === id);
+                if (!img) return;
+                const updated = await imageAPI.updateFlags(img, { is_nsfw: !!value });
+                // Ensure canonical server response is applied
+                dispatch({ type: actions.UPDATE_IMAGE, payload: updated });
+            }));
+
+            dispatch({
+                type: actions.SET_STATUS,
+                payload: { type: 'success', message: `Marked ${selectedImages.length} image(s) as ${value ? 'NSFW' : 'SFW'}` }
+            });
+        } catch (err) {
+            dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: 'Failed to update NSFW on some images' } });
+        }
+    };
+
     if (images.length === 0) {
         return (
             <div className="empty-state">
@@ -141,6 +172,28 @@ function ImageGallery({onOpenLightbox, onRestoreSettings, onDelete, onLoadMore})
                                         <i className="fa fa-download"></i>
                                         Download
                                     </button>
+                                    <div className="btn-selection-action" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                        <label htmlFor="bulk-nsfw" style={{ fontSize: 12, opacity: 0.8 }}>NSFW:</label>
+                                        <select
+                                            id="bulk-nsfw"
+                                            className="form-input"
+                                            style={{ padding: '4px 6px', height: 28 }}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val === 'nsfw') {
+                                                    handleBulkSetNSFW(true);
+                                                } else if (val === 'sfw') {
+                                                    handleBulkSetNSFW(false);
+                                                }
+                                                // reset selection back to placeholder
+                                                e.target.value = '';
+                                            }}
+                                        >
+                                            <option value="">Set NSFW…</option>
+                                            <option value="nsfw">Mark as NSFW</option>
+                                            <option value="sfw">Mark as SFW</option>
+                                        </select>
+                                    </div>
                                     <button
                                         className="btn-selection-action"
                                         onClick={handleBulkMove}
