@@ -280,7 +280,7 @@ export const imageAPI = {
     getUrl(image: Image | null): string {
         const raw = image?.url || `/generated/${image?.filename}`;
         // If the URL is already absolute (e.g., returned from PATCH/PUT APIs), don't prefix API_BASE
-        if (typeof raw === 'string' && /^(https?:)?\/\//i.test(raw)) {
+        if (/^(https?:)?\/\//i.test(raw)) {
             return raw;
         }
         return `${API_BASE}${raw}`;
@@ -291,6 +291,8 @@ export const imageAPI = {
      */
     download(image: Image) {
         const link = document.createElement('a');
+        if (!image.filename) throw new Error('Failed to create download');
+
         link.href = this.getUrl(image);
         link.download = image.filename;
         link.click();
