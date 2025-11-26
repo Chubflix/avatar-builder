@@ -36,11 +36,7 @@ export function useImageSync() {
             // Update image in local state
             dispatch({
                 type: actions.UPDATE_IMAGE,
-                payload: {
-                    id: data.id,
-                    is_favorite: data.is_favorite,
-                    is_nsfw: data.is_nsfw
-                }
+                payload: imageAPI.getById(data.id)
             });
         };
 

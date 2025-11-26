@@ -210,8 +210,10 @@ export const imageAPI = {
             throw new Error('Failed to update image flags');
         }
 
-        const updatedImage = {...image, ...updates};
-        debug.log('imageAPI', 'updated image:', updatedImage);
+        // Prefer server response, which includes the authoritative image URL and other fields
+        const serverImage = await response.json();
+        const updatedImage = { ...image, ...serverImage } as Image;
+        debug.log('imageAPI', 'updated image (from server):', updatedImage);
 
         return updatedImage;
 
