@@ -1,5 +1,4 @@
 // @ts-nocheck
-import {useApp} from "@/app/context/AppContext";
 import {useEffect, useRef} from "react";
 import { getAblyRealtime } from "@/app/lib/ably";
 import debug from "@/app/utils/debug";
@@ -8,32 +7,34 @@ import {imageAPI} from "@/app/utils/backend-api";
 /**
  * Hook to subscribe to realtime image events (saved, updated, moved, deleted)
  */
-export function useImagesRealtime() {
-    const { state, dispatch, actions } = useApp();
+export function useRealtimeImages({
+    selectedFolder,
+    selectedCharacter,
+    images,
+    onAddImage,
+}) {
 
-    const selectedFolderRef = useRef(state.selectedFolder);
-    const selectedCharacterRef = useRef(state.selectedCharacter);
-    const imagesRef = useRef(state.images);
-    const currentFolderRef = useRef(state.currentFolder);
+    const selectedFolderRef = useRef(selectedFolder);
+    const selectedCharacterRef = useRef(selectedCharacter);
+    const imagesRef = useRef(images);
 
-    useEffect(() => { selectedFolderRef.current = state.selectedFolder; }, [state.selectedFolder]);
-    useEffect(() => { selectedCharacterRef.current = state.selectedCharacter; }, [state.selectedCharacter]);
-    useEffect(() => { imagesRef.current = state.images; }, [state.images]);
-    useEffect(() => { currentFolderRef.current = state.currentFolder; }, [state.currentFolder]);
+    useEffect(() => { selectedFolderRef.current = selectedFolder; }, [selectedFolder]);
+    useEffect(() => { selectedCharacterRef.current = selectedCharacter; }, [selectedCharacter]);
+    useEffect(() => { imagesRef.current = images; }, [images]);
 
     useEffect(() => {
         // Subscribe to Ably channel 'images' for image_saved events
         const realtime = getAblyRealtime();
         if (!realtime) {
-            console.warn('[Realtime] Ably not configured; skipping subscription');
+            debug.warn('Realtime Images', 'Ably not configured; skipping subscription');
             return () => {};
         }
 
         const channel = realtime.channels.get('images');
 
-        console.log('subscribed to Ably channel #images');
+        debug.log('Realtime Images', 'subscribed to Ably channel #images');
         const onImageSaved = async (payload) => {
-            console.log("received a message via Ably on #images", payload);
+            debug.log('Realtime Images', "received a message via Ably on #images", payload);
 
             try {
                 // Ably message: { name, data }
@@ -43,6 +44,8 @@ export function useImagesRealtime() {
 
                 const selectedCharId = selectedCharacterRef.current?.id || null;
                 const selectedFolder = selectedFolderRef.current; // '' | 'unfiled' | <id>
+
+                debug.log('Realtime Images', 'received image_saved event', { id, folder_id, character_id, selectedCharId, selectedFolder });
 
                 if (selectedCharId) {
                     // Viewing a character - character must match
@@ -80,18 +83,24 @@ export function useImagesRealtime() {
                     // else: viewing "All Images" - add everything
                 }
 
+                debug.log('Realtime Images', 'image matches view filters, adding to state');
+
                 // Prevent duplicates
                 if (imagesRef.current?.some(img => String(img.id) === String(id))) return;
+
+                debug.log('Realtime Images', 'image does not exist in state, adding');
 
                 // Fetch the full image via API and add to state
                 const image = await imageAPI.getById(id);
                 if (image) {
-                    dispatch({ type: actions.ADD_IMAGES, payload: [image] });
-                    dispatch({ type: actions.SET_TOTAL_IMAGES, payload: (state.totalImages || 0) + 1 });
+                    debug.log('Realtime Images', 'image fetched from API', { id, image });
+                    onAddImage(image);
+                } else {
+                    debug.warn('Realtime Images', 'Failed to fetch image from API', { id });
                 }
             } catch (err) {
                 // Non-fatal
-                debug.warn('Realtime', 'Failed to process image_saved event', err);
+                debug.warn('Realtime Images', 'Failed to process image_saved event', err);
             }
         };
 
@@ -102,5 +111,5 @@ export function useImagesRealtime() {
             try { realtime.channels.release('images'); } catch (_) { /* noop */ }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [onAddImage]);
 }

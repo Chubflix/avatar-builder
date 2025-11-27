@@ -46,6 +46,7 @@ function AppContent() {
 
     const { config, settingsLoaded, currentFolder, selectedFolder, folders, selectedCharacter } = state;
     const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+    const [pageTotalImages, setPageTotalImages] = useState(0); // local header count
 
     // recover queue if needed
     useEffect(() => {
@@ -370,11 +371,27 @@ function AppContent() {
                                  currentFolder ? folders.find(f => f.id === currentFolder)?.name || 'Images' :
                                  selectedCharacter ? selectedCharacter.name : 'Images'}
                             </h2>
-                            <span className="results-count">{state.totalImages} image(s)</span>
+                            <span className="results-count">{pageTotalImages} image(s)</span>
                         </div>
 
                         <GalleryWithLightboxContainer
                             onRestoreSettings={handleRestoreSettings}
+                            // Localized gallery interface props
+                            currentFolder={currentFolder}
+                            selectedCharacter={selectedCharacter}
+                            onCurrentFolderChange={(folderId) => dispatch({ type: actions.SET_CURRENT_FOLDER, payload: folderId })}
+                            onSelectedCharacterChange={(character) => dispatch({ type: actions.SET_SELECTED_CHARACTER, payload: character })}
+                            onNotify={(message, type = 'info') => dispatch({ type: actions.SET_STATUS, payload: { type, message } })}
+                            onStatus={({ type = 'info', message }) => dispatch({ type: actions.SET_STATUS, payload: { type, message } })}
+                            onInitMask={(mask) => dispatch({ type: actions.SET_MASK_IMAGE, payload: mask })}
+                            onInitImage={(dataUrl, opts = {}) => {
+                                dispatch({ type: actions.SET_INIT_IMAGE, payload: dataUrl });
+                                if (opts && opts.openInpaint) {
+                                    // Handle showing inpaint modal via the onInitImage flag behavior
+                                    dispatch({ type: actions.SET_SHOW_INPAINT_MODAL, payload: true });
+                                }
+                            }}
+                            onTotalImagesChange={(n) => setPageTotalImages(Number(n || 0))}
                         />
                     </div>
                 </div>

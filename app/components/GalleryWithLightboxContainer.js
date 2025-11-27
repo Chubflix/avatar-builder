@@ -1,45 +1,70 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useFolders } from '../hooks';
 import { imageAPI } from '../utils/backend-api';
-import { sendNotification } from '../utils/notifications';
-import { useImagesRealtime } from '@/app/hooks/realtime';
+import { useRealtimeImages } from '@/app/hooks/images/realtime';
 import { useImageSync } from '@/app/hooks/realtime-sync';
 import ImageGallery from './ImageGallery';
 import GalleryLightbox from './GalleryLightbox';
+import debug from "@/app/utils/debug";
 
 /**
  * Container component that manages state and API calls for ImageGallery and Lightbox.
  * This component handles all business logic, state management, and API interactions,
  * while the presentational components focus purely on rendering UI.
  */
-function GalleryWithLightboxContainer({ onRestoreSettings }) {
+function GalleryWithLightboxContainer({
+    onRestoreSettings,
+    // Newly externalized state/handlers
+    currentFolder,
+    selectedCharacter,
+    onCurrentFolderChange: setCurrentFolder,
+    onSelectedCharacterChange: setSelectedCharacter,
+    onNotify: notify,
+    onStatus: setStatus,
+    onInitMask: setInitMask,
+    onInitImage: setInitImage,
+    onTotalImagesChange
+}) {
     const { state, dispatch, actions } = useApp();
     const { loadFolders } = useFolders();
-    // Enable realtime image events within the container
-    useImagesRealtime();
+
+    debug.log("GalleryWithLightboxContainer", "render");
+
     useImageSync();
-    const {
-        images,
-        totalImages,
-        hasMore,
-        isLoadingMore,
-        selectedImages,
-        isSelecting,
-        hideNsfw,
-        showFavoritesOnly,
-        lightboxIndex,
-        lastClickedIndex,
-        showImageInfo,
-        folders,
-        characters
-    } = state;
+    const { hideNsfw, folders, characters } = state;
 
-    // === Image Loading (moved from useImages hook into this container) ===
+    // Localize gallery/lightbox state to this container
+    const [images, setImages] = useState([]);
+    const [hasMore, setHasMore] = useState(false);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [selectedImages, setSelectedImages] = useState([]);
+    const [isSelecting, setIsSelecting] = useState(false);
+    const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+    const [lightboxIndex, setLightboxIndex] = useState(null);
+    const [lastClickedIndex, setLastClickedIndex] = useState(null);
+    const [showImageInfo, setShowImageInfo] = useState(state.showImageInfo);
+    const [totalImages, setTotalImages] = useState(0);
 
-    const loadImages = useCallback(async (offset = 0, folderId = state.currentFolder, characterId = state.selectedCharacter) => {
+    // Enable realtime image events within the container
+    useRealtimeImages({
+        selectedFolder: currentFolder,
+        selectedCharacter: selectedCharacter,
+        images: images,
+        onAddImage: useCallback((image) => {
+            setImages((prev) => [image, ...prev]);
+            setTotalImages(prev => prev + 1);
+        }, []),
+    });
+
+    // Keep local showImageInfo in sync with global preference changes
+    useEffect(() => {
+        setShowImageInfo(state.showImageInfo);
+    }, [state.showImageInfo]);
+
+    const loadImages = useCallback(async (offset = 0, folderId = currentFolder, characterId = selectedCharacter) => {
         try {
             const data = await imageAPI.getAll({
                 folderId: folderId,
@@ -49,45 +74,46 @@ function GalleryWithLightboxContainer({ onRestoreSettings }) {
             });
 
             if (offset === 0) {
-                dispatch({ type: actions.SET_IMAGES, payload: data.images });
+                setImages(data.images || []);
             } else {
-                dispatch({ type: actions.APPEND_IMAGES, payload: data.images });
+                setImages(prev => ([...prev, ...((data.images) || [])]));
             }
 
-            dispatch({ type: actions.SET_HAS_MORE, payload: data.hasMore });
-            dispatch({ type: actions.SET_TOTAL_IMAGES, payload: data.total });
+            setHasMore(!!data.hasMore);
+            const nextTotal = Number(data.total || 0);
+            setTotalImages(nextTotal);
+            if (onTotalImagesChange) onTotalImagesChange(nextTotal);
         } catch (err) {
-            // Use unified notification helper
-            sendNotification('Failed to load images', 'error', dispatch, actions, state.notificationsEnabled);
+            // Notify via page-level handler
+            if (notify) notify('Failed to load images', 'error');
         }
-    }, [dispatch, actions, state.currentFolder, state.selectedCharacter, state.notificationsEnabled]);
+    }, [currentFolder, selectedCharacter, notify, onTotalImagesChange]);
 
     const loadMoreImages = useCallback(async () => {
-        if (state.isLoadingMore || !state.hasMore) return;
-        dispatch({ type: actions.SET_LOADING_MORE, payload: true });
+        if (isLoadingMore || !hasMore) return;
+        setIsLoadingMore(true);
         try {
-            await loadImages(state.images.length);
+            await loadImages(images.length);
         } finally {
-            dispatch({ type: actions.SET_LOADING_MORE, payload: false });
+            setIsLoadingMore(false);
         }
-    }, [state.isLoadingMore, state.hasMore, state.images.length, dispatch, actions, loadImages]);
+    }, [isLoadingMore, hasMore, images.length, loadImages]);
 
     // Initial and reactive loads when folder/character changes
     useEffect(() => {
         if (state.settingsLoaded) {
-            loadImages(0, state.currentFolder, state.selectedCharacter);
+            loadImages(0, currentFolder, selectedCharacter);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [state.settingsLoaded, state.currentFolder, state.selectedCharacter]);
+    }, [state.settingsLoaded, currentFolder, selectedCharacter]);
 
     // Filter images based on NSFW and favorites settings
-    let filteredImages = images;
-    if (hideNsfw) {
-        filteredImages = filteredImages.filter(img => !img.is_nsfw);
-    }
-    if (showFavoritesOnly) {
-        filteredImages = filteredImages.filter(img => img.is_favorite);
-    }
+    const filteredImages = useMemo(() => {
+        let list = images;
+        if (hideNsfw) list = list.filter(img => !img.is_nsfw);
+        if (showFavoritesOnly) list = list.filter(img => img.is_favorite);
+        return list;
+    }, [images, hideNsfw, showFavoritesOnly]);
 
     // Calculate lightbox state from filtered images
     const currentImageFromOriginal = lightboxIndex !== null ? images[lightboxIndex] : null;
@@ -101,7 +127,7 @@ function GalleryWithLightboxContainer({ onRestoreSettings }) {
     // === Gallery Handlers ===
 
     const handleToggleSelecting = (value) => {
-        dispatch({ type: actions.SET_IS_SELECTING, payload: value });
+        setIsSelecting(!!value);
     };
 
     // === ImageCard Handlers ===
@@ -109,18 +135,16 @@ function GalleryWithLightboxContainer({ onRestoreSettings }) {
     const handleToggleSelection = (imageId, imageIndex, shiftKey) => {
         // Check if shift key is pressed and we have a previous click
         if (shiftKey && lastClickedIndex !== null) {
-            // Select range from lastClickedIndex to current index
-            dispatch({
-                type: actions.SELECT_IMAGE_RANGE,
-                payload: { startIndex: lastClickedIndex, endIndex: imageIndex }
-            });
+            const start = Math.min(lastClickedIndex, imageIndex);
+            const end = Math.max(lastClickedIndex, imageIndex);
+            const rangeIds = images.slice(start, end + 1).map(img => img.id);
+            setSelectedImages(prev => Array.from(new Set([...(prev || []), ...rangeIds])));
         } else {
-            // Normal toggle
-            dispatch({ type: actions.TOGGLE_IMAGE_SELECTION, payload: imageId });
+            setSelectedImages(prev => (prev.includes(imageId) ? prev.filter(id => id !== imageId) : [...prev, imageId]));
         }
 
         // Update last clicked index
-        dispatch({ type: actions.SET_LAST_CLICKED_INDEX, payload: imageIndex });
+        setLastClickedIndex(imageIndex);
     };
 
     const handleToggleFavoriteOnCard = async (image) => {
@@ -128,13 +152,10 @@ function GalleryWithLightboxContainer({ onRestoreSettings }) {
             const updatedImage = await imageAPI.updateFlags(image, {
                 is_favorite: !image.is_favorite
             });
-            dispatch({ type: actions.UPDATE_IMAGE, payload: updatedImage });
+            setImages(prev => prev.map(img => (img.id === updatedImage.id ? updatedImage : img)));
         } catch (error) {
             console.error('Failed to toggle favorite:', error);
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: { type: 'error', message: 'Failed to update favorite' }
-            });
+            setStatus && setStatus({ type: 'error', message: 'Failed to update favorite' });
         }
     };
 
@@ -143,50 +164,46 @@ function GalleryWithLightboxContainer({ onRestoreSettings }) {
             const updatedImage = await imageAPI.updateFlags(image, {
                 is_nsfw: !image.is_nsfw
             });
-            dispatch({ type: actions.UPDATE_IMAGE, payload: updatedImage });
+            setImages(prev => prev.map(img => (img.id === updatedImage.id ? updatedImage : img)));
         } catch (error) {
             console.error('Failed to toggle NSFW:', error);
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: { type: 'error', message: 'Failed to update NSFW flag' }
-            });
+            setStatus && setStatus({ type: 'error', message: 'Failed to update NSFW flag' });
         }
     };
 
     const handleFilterByFolder = (folderId) => {
-        dispatch({ type: actions.SET_CURRENT_FOLDER, payload: folderId });
+        setCurrentFolder && setCurrentFolder(folderId);
     };
 
     const handleFilterByCharacter = (character) => {
-        dispatch({ type: actions.SET_SELECTED_CHARACTER, payload: character });
-        dispatch({ type: actions.SET_CURRENT_FOLDER, payload: null });
+        setSelectedCharacter && setSelectedCharacter(character);
+        setCurrentFolder && setCurrentFolder(null);
     };
 
     const handleFilterUnfiled = () => {
-        dispatch({ type: actions.SET_CURRENT_FOLDER, payload: 'unfiled' });
+        setCurrentFolder && setCurrentFolder('unfiled');
     };
 
     const handleToggleFavoritesOnly = () => {
-        dispatch({ type: actions.SET_SHOW_FAVORITES_ONLY, payload: !showFavoritesOnly });
+        setShowFavoritesOnly(prev => !prev);
     };
 
     const handleSelectAll = () => {
-        dispatch({ type: actions.SELECT_ALL_IMAGES });
+        setSelectedImages(images.map(img => img.id));
     };
 
     const handleClearSelection = () => {
-        dispatch({ type: actions.CLEAR_SELECTION });
+        setSelectedImages([]);
+        setIsSelecting(false);
+        setLastClickedIndex(null);
     };
 
     const handleBulkDownload = async () => {
         try {
             await imageAPI.downloadZip(selectedImages);
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: { type: 'success', message: `Downloaded ${selectedImages.length} images` }
-            });
+            setStatus && setStatus({ type: 'success', message: `Downloaded ${selectedImages.length} images` });
         } catch (err) {
-            dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: 'Failed to download images' } });
+            setStatus && setStatus({ type: 'error', message: 'Failed to download images' });
         }
     };
 
@@ -196,31 +213,29 @@ function GalleryWithLightboxContainer({ onRestoreSettings }) {
 
         try {
             await imageAPI.bulkDelete(selectedImages);
-            selectedImages.forEach(id => {
-                dispatch({ type: actions.REMOVE_IMAGE, payload: id });
-            });
-            dispatch({ type: actions.SET_TOTAL_IMAGES, payload: totalImages - selectedImages.length });
-            dispatch({ type: actions.CLEAR_SELECTION });
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: { type: 'success', message: `Deleted ${selectedImages.length} images` }
-            });
+            setImages(prev => prev.filter(img => !selectedImages.includes(img.id)));
+            const nextTotal = Math.max(0, Number(totalImages || 0) - selectedImages.length);
+            setTotalImages(nextTotal);
+            if (onTotalImagesChange) onTotalImagesChange(nextTotal);
+            setSelectedImages([]);
+            setIsSelecting(false);
+            setLastClickedIndex(null);
+            setStatus && setStatus({ type: 'success', message: `Deleted ${selectedImages.length} images` });
         } catch (err) {
-            dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: 'Failed to delete images' } });
+            setStatus && setStatus({ type: 'error', message: 'Failed to delete images' });
         }
     };
 
     const handleBulkMove = async (folderId) => {
         try {
             await imageAPI.bulkMove(selectedImages, folderId || null);
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: { type: 'success', message: `Moved ${selectedImages.length} images` }
-            });
-            dispatch({ type: actions.CLEAR_SELECTION });
+            setStatus && setStatus({ type: 'success', message: `Moved ${selectedImages.length} images` });
+            setSelectedImages([]);
+            setIsSelecting(false);
+            setLastClickedIndex(null);
             // Real-time sync will handle UI updates automatically
         } catch (err) {
-            sendNotification('Failed to move images', 'error', dispatch, actions, state.notificationsEnabled);
+            if (notify) notify('Failed to move images', 'error');
         }
     };
 
@@ -229,29 +244,20 @@ function GalleryWithLightboxContainer({ onRestoreSettings }) {
         // Optimistic update
         try {
             const ids = [...selectedImages];
-            const currentImages = [...images];
-            ids.forEach(id => {
-                const img = currentImages.find(i => i.id === id);
-                if (img) {
-                    dispatch({ type: actions.UPDATE_IMAGE, payload: { ...img, is_nsfw: !!value } });
-                }
-            });
+            setImages(prev => prev.map(img => (ids.includes(img.id) ? { ...img, is_nsfw: !!value } : img)));
 
             // Persist server-side
             await Promise.all(ids.map(async (id) => {
-                const img = currentImages.find(i => i.id === id);
+                const img = (images || []).find(i => i.id === id);
                 if (!img) return;
                 const updated = await imageAPI.updateFlags(img, { is_nsfw: !!value });
                 // Ensure canonical server response is applied
-                dispatch({ type: actions.UPDATE_IMAGE, payload: updated });
+                setImages(prev => prev.map(it => (it.id === updated.id ? updated : it)));
             }));
 
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: { type: 'success', message: `Marked ${selectedImages.length} image(s) as ${value ? 'NSFW' : 'SFW'}` }
-            });
+            setStatus && setStatus({ type: 'success', message: `Marked ${selectedImages.length} image(s) as ${value ? 'NSFW' : 'SFW'}` });
         } catch (err) {
-            dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: 'Failed to update NSFW on some images' } });
+            setStatus && setStatus({ type: 'error', message: 'Failed to update NSFW on some images' });
         }
     };
 
@@ -260,29 +266,31 @@ function GalleryWithLightboxContainer({ onRestoreSettings }) {
             await imageAPI.update(image.id, { folderId: folderId || null });
             // Real-time sync will handle UI updates automatically
         } catch (err) {
-            sendNotification('Failed to move image', 'error', dispatch, actions, state.notificationsEnabled);
+            if (notify) notify('Failed to move image', 'error');
         }
     };
 
     const handleDeleteImage = async (imageId) => {
         try {
             await imageAPI.delete(imageId);
-            dispatch({ type: actions.REMOVE_IMAGE, payload: imageId });
-            dispatch({ type: actions.SET_TOTAL_IMAGES, payload: totalImages - 1 });
-            sendNotification('Image deleted', 'success', dispatch, actions, state.notificationsEnabled);
+            setImages(prev => prev.filter(img => img.id !== imageId));
+            const nextTotal = Math.max(0, Number(totalImages || 0) - 1);
+            setTotalImages(nextTotal);
+            if (onTotalImagesChange) onTotalImagesChange(nextTotal);
+            if (notify) notify('Image deleted', 'success');
         } catch (err) {
-            sendNotification('Failed to delete image', 'error', dispatch, actions, state.notificationsEnabled);
+            if (notify) notify('Failed to delete image', 'error');
         }
     };
 
     // === Lightbox Handlers ===
 
     const handleOpenLightbox = (index) => {
-        dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: index });
+        setLightboxIndex(index);
     };
 
     const handleCloseLightbox = () => {
-        dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: null });
+        setLightboxIndex(null);
     };
 
     const handleNavigate = (newFilteredIndex) => {
@@ -290,7 +298,7 @@ function GalleryWithLightboxContainer({ onRestoreSettings }) {
             const targetImage = filteredImages[newFilteredIndex];
             const originalIndex = images.findIndex(img => img.id === targetImage.id);
             if (originalIndex !== -1) {
-                dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: originalIndex });
+                setLightboxIndex(originalIndex);
             }
         }
     };
@@ -315,15 +323,9 @@ function GalleryWithLightboxContainer({ onRestoreSettings }) {
     const handleCopyToClipboard = async (image) => {
         try {
             await imageAPI.copyToClipboard(image);
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: { type: 'success', message: 'Image copied to clipboard!' }
-            });
+            setStatus && setStatus({ type: 'success', message: 'Image copied to clipboard!' });
         } catch (err) {
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: { type: 'error', message: 'Failed to copy image' }
-            });
+            setStatus && setStatus({ type: 'error', message: 'Failed to copy image' });
         }
     };
 
@@ -363,21 +365,15 @@ function GalleryWithLightboxContainer({ onRestoreSettings }) {
             const blob = await res.blob();
             const reader = new FileReader();
             reader.onloadend = () => {
-                dispatch({ type: actions.SET_INIT_IMAGE, payload: reader.result });
-                dispatch({ type: actions.SET_MASK_IMAGE, payload: null });
-                dispatch({
-                    type: actions.SET_STATUS,
-                    payload: { type: 'success', message: 'Set current image as Img2Img source' }
-                });
+                setInitImage && setInitImage(reader.result, { openInpaint: false });
+                setInitMask && setInitMask(null);
+                setStatus && setStatus({ type: 'success', message: 'Set current image as Img2Img source' });
                 handleCloseLightbox();
             };
             reader.readAsDataURL(blob);
         } catch (err) {
             console.error('Failed to set init image:', err);
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: { type: 'error', message: 'Failed to use image as source' }
-            });
+            setStatus && setStatus({ type: 'error', message: 'Failed to use image as source' });
         }
     };
 
@@ -387,18 +383,14 @@ function GalleryWithLightboxContainer({ onRestoreSettings }) {
             const blob = await res.blob();
             const reader = new FileReader();
             reader.onloadend = () => {
-                dispatch({ type: actions.SET_INIT_IMAGE, payload: reader.result });
-                dispatch({ type: actions.SET_MASK_IMAGE, payload: null });
-                dispatch({ type: actions.SET_SHOW_INPAINT_MODAL, payload: true });
+                setInitImage && setInitImage(reader.result, { openInpaint: true });
+                setInitMask && setInitMask(null);
                 handleCloseLightbox();
             };
             reader.readAsDataURL(blob);
         } catch (err) {
             console.error('Failed to start inpaint:', err);
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: { type: 'error', message: 'Failed to start inpaint' }
-            });
+            setStatus && setStatus({ type: 'error', message: 'Failed to start inpaint' });
         }
     };
 
