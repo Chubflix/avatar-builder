@@ -353,11 +353,10 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
             </div>
 
             {isGenerating && (
-                <div className="progress-container">
+                <div className="progress-container" style={{ ['--progress']: `${progress}%` }}>
                     <div className="progress-bar">
                         <div
                             className="progress-fill"
-                            style={{ width: `${progress}%` }}
                         ></div>
                     </div>
                     <div className="progress-text">{progress}% complete</div>

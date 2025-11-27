@@ -38,8 +38,8 @@ function MobilePromptSlideout({ show, onClose, onGenerate }) {
         <>
             {/* Top Progress Bar */}
             {isGenerating && (
-                <div className="mobile-top-progress">
-                    <div className="mobile-top-progress-fill" style={{ width: `${progress}%` }}></div>
+                <div className="mobile-top-progress" style={{ ['--progress']: `${progress}%` }}>
+                    <div className="mobile-top-progress-fill"></div>
                 </div>
             )}
 
