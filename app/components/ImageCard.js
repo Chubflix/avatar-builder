@@ -1,82 +1,65 @@
 import React from 'react';
-import {useApp} from '../context/AppContext';
-import {imageAPI, API_BASE} from '../utils/backend-api';
 
-function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageMove, index}) {
-    const {state, dispatch, actions} = useApp();
-    const {selectedImages, isSelecting, lastClickedIndex, showImageInfo} = state;
-
+/**
+ * Presentational component for displaying an image card.
+ * All state and API logic is handled by the parent container.
+ */
+function ImageCard({
+    image,
+    index,
+    selectedImages,
+    isSelecting,
+    lastClickedIndex,
+    showImageInfo,
+    folders,
+    characters,
+    onOpenLightbox,
+    onRestoreSettings,
+    onDelete,
+    onImageMove,
+    onDownload,
+    onToggleSelection,
+    onToggleFavorite,
+    onToggleNsfw,
+    onFilterByFolder,
+    onFilterByCharacter,
+    onFilterUnfiled
+}) {
     const isSelected = selectedImages.includes(image.id);
 
-    const handleDownload = (e, image) => {
+    const handleDownload = (e) => {
         e.stopPropagation();
-        imageAPI.download(image);
+        onDownload(image);
     };
 
-    const handleRestoreWithSeed = (e, image) => {
+    const handleRestoreWithSeed = (e) => {
         e.stopPropagation();
         onRestoreSettings(image, true);
     };
 
-    const handleRestoreWithoutSeed = (e, image) => {
+    const handleRestoreWithoutSeed = (e) => {
         e.stopPropagation();
         onRestoreSettings(image, false);
     };
 
-    const handleDelete = (e, imageId) => {
+    const handleDelete = (e) => {
         e.stopPropagation();
-        onDelete(imageId);
+        onDelete(image.id);
     };
 
-    const handleToggleSelection = (e, imageId, imageIndex) => {
+    const handleToggleSelection = (e) => {
         e.stopPropagation();
-
-        // Check if shift key is pressed and we have a previous click
-        if (e.shiftKey && lastClickedIndex !== null) {
-            // Select range from lastClickedIndex to current index
-            dispatch({
-                type: actions.SELECT_IMAGE_RANGE,
-                payload: { startIndex: lastClickedIndex, endIndex: imageIndex }
-            });
-        } else {
-            // Normal toggle
-            dispatch({type: actions.TOGGLE_IMAGE_SELECTION, payload: imageId});
-        }
-
-        // Update last clicked index
-        dispatch({type: actions.SET_LAST_CLICKED_INDEX, payload: imageIndex});
+        onToggleSelection(image.id, index, e.shiftKey);
     };
 
-    const handleToggleFavorite = async (e) => {
+    const handleToggleFavorite = (e) => {
         e.stopPropagation();
-        try {
-            const updatedImage = await imageAPI.updateFlags(image, {
-                is_favorite: !image.is_favorite
-            });
-            dispatch({ type: actions.UPDATE_IMAGE, payload: updatedImage });
-        } catch (error) {
-            console.error('Failed to toggle favorite:', error);
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: { type: 'error', message: 'Failed to update favorite' }
-            });
-        }
+        onToggleFavorite(image);
     };
 
-    const handleToggleNsfw = async (e) => {
+    const handleToggleNsfw = (e) => {
         e.stopPropagation();
-        try {
-            const updatedImage = await imageAPI.updateFlags(image, {
-                is_nsfw: !image.is_nsfw
-            });
-            dispatch({ type: actions.UPDATE_IMAGE, payload: updatedImage });
-        } catch (error) {
-            console.error('Failed to toggle NSFW:', error);
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: { type: 'error', message: 'Failed to update NSFW flag' }
-            });
-        }
+        onToggleNsfw(image);
     };
 
     return (
@@ -84,7 +67,7 @@ function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageM
             <div
                 className="image-wrapper"
                 style={{'--bg-image': `url(${image.url})`}}
-                onClick={(e) => isSelecting ? handleToggleSelection(e, image.id, index) : onOpenLightbox(index)}
+                onClick={(e) => isSelecting ? handleToggleSelection(e) : onOpenLightbox(index)}
             >
                 {isSelecting && (
                     <div className="image-checkbox">
@@ -92,7 +75,7 @@ function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageM
                         <input
                             type="checkbox"
                             checked={isSelected}
-                            onChange={(e) => handleToggleSelection(e, image.id, index)}
+                            onChange={handleToggleSelection}
                             onClick={(e) => e.stopPropagation()}
                         />
                     </div>
@@ -123,28 +106,28 @@ function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageM
                 {!isSelecting && <div className="image-overlay">
                     <button
                         className="image-btn"
-                        onClick={(e) => handleDownload(e, image)}
+                        onClick={handleDownload}
                         title="Download"
                     >
                         <i className="fa fa-download"></i>
                     </button>
                     <button
                         className="image-btn secondary"
-                        onClick={(e) => handleRestoreWithSeed(e, image)}
+                        onClick={handleRestoreWithSeed}
                         title="Restore with seed"
                     >
                         <i className="fa fa-undo"></i>
                     </button>
                     <button
                         className="image-btn secondary"
-                        onClick={(e) => handleRestoreWithoutSeed(e, image)}
+                        onClick={handleRestoreWithoutSeed}
                         title="Restore without seed"
                     >
                         <i className="fa fa-random"></i>
                     </button>
                     <button
                         className="image-btn danger"
-                        onClick={(e) => handleDelete(e, image.id)}
+                        onClick={handleDelete}
                         title="Delete"
                     >
                         <i className="fa fa-trash"></i>
@@ -163,22 +146,22 @@ function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageM
                 {image.folder_path ? (
                     // Split path into individual badges with separators
                     <>
-                        {image.folder_path.split(' / ').map((folderName, index, array) => {
-                            const isLast = index === array.length - 1;
+                        {image.folder_path.split(' / ').map((folderName, idx, array) => {
+                            const isLast = idx === array.length - 1;
                             return (
-                                <React.Fragment key={index}>
+                                <React.Fragment key={idx}>
                                     <div className={`image-folder-badge-split ${!isLast ? 'path-part' : ''}`}>
                                         <button
                                             className="folder-badge-filter"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 // Find folder by matching the name at this depth
-                                                const pathUpToHere = array.slice(0, index + 1);
-                                                const folder = state.folders.find(f => {
+                                                const pathUpToHere = array.slice(0, idx + 1);
+                                                const folder = folders.find(f => {
                                                     // Build path for this folder and check if it matches
                                                     const folderPathParts = [];
                                                     let currentId = f.id;
-                                                    const folderMap = new Map(state.folders.map(folder => [folder.id, folder]));
+                                                    const folderMap = new Map(folders.map(folder => [folder.id, folder]));
                                                     while (currentId) {
                                                         const currentFolder = folderMap.get(currentId);
                                                         if (!currentFolder) break;
@@ -188,7 +171,7 @@ function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageM
                                                     return folderPathParts.join(' / ') === pathUpToHere.join(' / ');
                                                 });
                                                 if (folder) {
-                                                    dispatch({type: actions.SET_CURRENT_FOLDER, payload: folder.id});
+                                                    onFilterByFolder(folder.id);
                                                 }
                                             }}
                                             title={`Filter by ${folderName}`}
@@ -217,15 +200,14 @@ function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageM
                             className="folder-badge-filter"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                const character = state.characters.find(c => c.id === image.character_id);
+                                const character = characters.find(c => c.id === image.character_id);
                                 if (character) {
-                                    dispatch({type: actions.SET_SELECTED_CHARACTER, payload: character});
-                                    dispatch({type: actions.SET_CURRENT_FOLDER, payload: null});
+                                    onFilterByCharacter(character);
                                 }
                             }}
                             title="Filter by character"
                         >
-                            {state.characters.find(c => c.id === image.character_id)?.name || 'Character'}
+                            {characters.find(c => c.id === image.character_id)?.name || 'Character'}
                         </button>
                         <button
                             className="folder-badge-move"
@@ -242,7 +224,7 @@ function ImageCard({image, onOpenLightbox, onRestoreSettings, onDelete, onImageM
                             className="folder-badge-filter"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                dispatch({type: actions.SET_CURRENT_FOLDER, payload: 'unfiled'});
+                                onFilterUnfiled();
                             }}
                             title="Filter unfiled images"
                         >

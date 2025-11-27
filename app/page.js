@@ -12,9 +12,8 @@ import debug from './utils/debug';
 
 // Components
 import ControlsPanel from './components/ControlsPanel';
-import ImageGallery from './components/ImageGallery';
+import GalleryWithLightboxContainer from './components/GalleryWithLightboxContainer';
 import FolderModal from './components/FolderModal';
-import Lightbox from './components/Lightbox';
 import MobileControls from './components/MobileControls';
 import MobilePromptSlideout from './components/MobilePromptSlideout';
 import PWAManager from './components/PWAManager';
@@ -33,7 +32,7 @@ import './lightbox-details.css';
 function AppContent() {
     const { state, dispatch, actions, loadSettings } = useApp();
     const { loadFolders, createFolder, updateFolder, deleteFolder } = useFolders();
-    const { loadImages, loadMoreImages, deleteImage, moveImageToFolder } = useImages();
+    const { loadImages, loadMoreImages } = useImages();
     const { generate } = useGeneration();
     const { loadModels } = useModels();
     // Start realtime subscriptions
@@ -230,14 +229,6 @@ function AppContent() {
         // Real-time sync will handle folder updates automatically
     };
 
-    const handleOpenLightbox = (index) => {
-        dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: index });
-    };
-
-    const handleCloseLightbox = () => {
-        dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: null });
-    };
-
     const handleRestoreSettings = (image, withSeed) => {
         dispatch({type: actions.SET_POSITIVE_PROMPT, payload: image.positive_prompt || ''});
         dispatch({type: actions.SET_NEGATIVE_PROMPT, payload: image.negative_prompt || ''});
@@ -327,16 +318,6 @@ function AppContent() {
         dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message } });
     };
 
-    const handleMoveToFolder = async (imageId, folderId) => {
-        await moveImageToFolder(imageId, folderId);
-        // Real-time sync will handle folder updates automatically
-    };
-
-    const handleDeleteImage = async (imageId) => {
-        await deleteImage(imageId);
-        // Real-time sync will handle folder updates automatically
-    };
-
     if (isLoadingConfig) {
         return (
             <>
@@ -402,10 +383,8 @@ function AppContent() {
                             <span className="results-count">{state.totalImages} image(s)</span>
                         </div>
 
-                        <ImageGallery
-                            onOpenLightbox={handleOpenLightbox}
+                        <GalleryWithLightboxContainer
                             onRestoreSettings={handleRestoreSettings}
-                            onDelete={handleDeleteImage}
                             onLoadMore={loadMoreImages}
                         />
                     </div>
@@ -445,14 +424,6 @@ function AppContent() {
             <ConfigModal
                 show={state.showConfigModal}
                 onClose={() => dispatch({ type: actions.SET_SHOW_CONFIG_MODAL, payload: false })}
-            />
-
-            <Lightbox
-                onClose={handleCloseLightbox}
-                onMoveToFolder={handleMoveToFolder}
-                onRestoreSettings={handleRestoreSettings}
-                onDelete={handleDeleteImage}
-                onLoadMore={loadMoreImages}
             />
 
             {/* App Settings */}

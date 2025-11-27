@@ -1,98 +1,53 @@
 import React, {useState} from 'react';
-import {useApp} from '../context/AppContext';
-import {imageAPI} from '../utils/backend-api';
 import LocationPicker from './LocationPicker';
 import ImageCard from './ImageCard';
 
-function ImageGallery({onOpenLightbox, onRestoreSettings, onDelete, onLoadMore}) {
-    const {state, dispatch, actions} = useApp();
-    const {images, totalImages, hasMore, isLoadingMore, selectedImages, isSelecting, hideNsfw, showFavoritesOnly} = state;
+/**
+ * Presentational component for displaying image gallery.
+ * All state and API logic is handled by the parent container.
+ */
+function ImageGallery({
+    images,
+    filteredImages,
+    totalImages,
+    hasMore,
+    isLoadingMore,
+    selectedImages,
+    isSelecting,
+    hideNsfw,
+    showFavoritesOnly,
+    lastClickedIndex,
+    showImageInfo,
+    folders,
+    characters,
+    onOpenLightbox,
+    onRestoreSettings,
+    onDelete,
+    onLoadMore,
+    onImageMove,
+    onToggleSelecting,
+    onToggleFavoritesOnly,
+    onSelectAll,
+    onClearSelection,
+    onBulkDownload,
+    onBulkDelete,
+    onBulkMove,
+    onBulkSetNSFW,
+    onDownload,
+    onToggleSelection,
+    onToggleFavoriteOnCard,
+    onToggleNsfwOnCard,
+    onFilterByFolder,
+    onFilterByCharacter,
+    onFilterUnfiled
+}) {
     const [showFolderSelector, setShowFolderSelector] = useState(false);
     const [selectedImageForMove, setSelectedImageForMove] = useState(null);
     const [bulkMoveMode, setBulkMoveMode] = useState(false);
 
-    // Filter images based on NSFW and favorites settings
-    let filteredImages = images;
-    if (hideNsfw) {
-        filteredImages = filteredImages.filter(img => !img.is_nsfw);
-    }
-    if (showFavoritesOnly) {
-        filteredImages = filteredImages.filter(img => img.is_favorite);
-    }
-
-    const handleSelectAll = () => {
-        dispatch({type: actions.SELECT_ALL_IMAGES});
-    };
-
-    const handleClearSelection = () => {
-        dispatch({type: actions.CLEAR_SELECTION});
-    };
-
-    const handleBulkDownload = async () => {
-        try {
-            await imageAPI.downloadZip(selectedImages);
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: {type: 'success', message: `Downloaded ${selectedImages.length} images`}
-            });
-        } catch (err) {
-            dispatch({type: actions.SET_STATUS, payload: {type: 'error', message: 'Failed to download images'}});
-        }
-    };
-
-    const handleBulkDelete = async () => {
-        if (!window.confirm(`Delete ${selectedImages.length} selected images?`)) return;
-
-        try {
-            await imageAPI.bulkDelete(selectedImages);
-            selectedImages.forEach(id => {
-                dispatch({type: actions.REMOVE_IMAGE, payload: id});
-            });
-            dispatch({type: actions.SET_TOTAL_IMAGES, payload: totalImages - selectedImages.length});
-            dispatch({type: actions.CLEAR_SELECTION});
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: {type: 'success', message: `Deleted ${selectedImages.length} images`}
-            });
-        } catch (err) {
-            dispatch({type: actions.SET_STATUS, payload: {type: 'error', message: 'Failed to delete images'}});
-        }
-    };
-
-    const handleBulkMove = () => {
+    const handleBulkMoveClick = () => {
         setBulkMoveMode(true);
         setShowFolderSelector(true);
-    };
-
-    const handleBulkSetNSFW = async (value) => {
-        if (selectedImages.length === 0) return;
-        // Optimistic update
-        try {
-            const ids = [...selectedImages];
-            const currentImages = [...images];
-            ids.forEach(id => {
-                const img = currentImages.find(i => i.id === id);
-                if (img) {
-                    dispatch({ type: actions.UPDATE_IMAGE, payload: { ...img, is_nsfw: !!value } });
-                }
-            });
-
-            // Persist server-side
-            await Promise.all(ids.map(async (id) => {
-                const img = currentImages.find(i => i.id === id);
-                if (!img) return;
-                const updated = await imageAPI.updateFlags(img, { is_nsfw: !!value });
-                // Ensure canonical server response is applied
-                dispatch({ type: actions.UPDATE_IMAGE, payload: updated });
-            }));
-
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: { type: 'success', message: `Marked ${selectedImages.length} image(s) as ${value ? 'NSFW' : 'SFW'}` }
-            });
-        } catch (err) {
-            dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: 'Failed to update NSFW on some images' } });
-        }
     };
 
     if (images.length === 0) {
@@ -133,14 +88,14 @@ function ImageGallery({onOpenLightbox, onRestoreSettings, onDelete, onLoadMore})
                     <>
                         <button
                             className="btn-select"
-                            onClick={() => dispatch({type: actions.SET_IS_SELECTING, payload: true})}
+                            onClick={() => onToggleSelecting(true)}
                         >
                             <i className="fa fa-check-square-o"></i>
                             Select
                         </button>
                         <button
                             className={`btn-filter ${showFavoritesOnly ? 'active' : ''}`}
-                            onClick={() => dispatch({type: actions.SET_SHOW_FAVORITES_ONLY, payload: !showFavoritesOnly})}
+                            onClick={onToggleFavoritesOnly}
                             title={showFavoritesOnly ? 'Show all images' : 'Show favorites only'}
                         >
                             <i className={`fa ${showFavoritesOnly ? 'fa-heart' : 'fa-heart-o'}`}></i>
@@ -157,7 +112,7 @@ function ImageGallery({onOpenLightbox, onRestoreSettings, onDelete, onLoadMore})
                         <div className="selection-actions">
                             <button
                                 className="btn-selection-action"
-                                onClick={handleSelectAll}
+                                onClick={onSelectAll}
                                 disabled={selectedImages.length === images.length}
                             >
                                 <i className="fa fa-check-square"></i>
@@ -167,7 +122,7 @@ function ImageGallery({onOpenLightbox, onRestoreSettings, onDelete, onLoadMore})
                                 <>
                                     <button
                                         className="btn-selection-action"
-                                        onClick={handleBulkDownload}
+                                        onClick={onBulkDownload}
                                     >
                                         <i className="fa fa-download"></i>
                                         Download
@@ -181,9 +136,9 @@ function ImageGallery({onOpenLightbox, onRestoreSettings, onDelete, onLoadMore})
                                             onChange={(e) => {
                                                 const val = e.target.value;
                                                 if (val === 'nsfw') {
-                                                    handleBulkSetNSFW(true);
+                                                    onBulkSetNSFW(true);
                                                 } else if (val === 'sfw') {
-                                                    handleBulkSetNSFW(false);
+                                                    onBulkSetNSFW(false);
                                                 }
                                                 // reset selection back to placeholder
                                                 e.target.value = '';
@@ -196,14 +151,14 @@ function ImageGallery({onOpenLightbox, onRestoreSettings, onDelete, onLoadMore})
                                     </div>
                                     <button
                                         className="btn-selection-action"
-                                        onClick={handleBulkMove}
+                                        onClick={handleBulkMoveClick}
                                     >
                                         <i className="fa fa-folder-o"></i>
                                         Move
                                     </button>
                                     <button
                                         className="btn-selection-action danger"
-                                        onClick={handleBulkDelete}
+                                        onClick={onBulkDelete}
                                     >
                                         <i className="fa fa-trash"></i>
                                         Delete
@@ -212,7 +167,7 @@ function ImageGallery({onOpenLightbox, onRestoreSettings, onDelete, onLoadMore})
                             )}
                             <button
                                 className="btn-selection-action"
-                                onClick={handleClearSelection}
+                                onClick={onClearSelection}
                             >
                                 <i className="fa fa-times"></i>
                                 Cancel
@@ -226,17 +181,31 @@ function ImageGallery({onOpenLightbox, onRestoreSettings, onDelete, onLoadMore})
                 {filteredImages.map((image, filteredIndex) => {
                     // Find the actual index in the original images array
                     const actualIndex = images.findIndex(img => img.id === image.id);
-                    return <ImageCard key={image.id}
-                                      index={actualIndex}
-                                      image={image}
-                                      onRestoreSettings={onRestoreSettings}
-                                      onOpenLightbox={onOpenLightbox}
-                                      onDelete={onDelete}
-                                      onImageMove={(e, image) => {
-                                          e.stopPropagation();
-                                          setSelectedImageForMove(image);
-                                          setShowFolderSelector(true);
-                                      }}
+                    return <ImageCard
+                        key={image.id}
+                        index={actualIndex}
+                        image={image}
+                        selectedImages={selectedImages}
+                        isSelecting={isSelecting}
+                        lastClickedIndex={lastClickedIndex}
+                        showImageInfo={showImageInfo}
+                        folders={folders}
+                        characters={characters}
+                        onRestoreSettings={onRestoreSettings}
+                        onOpenLightbox={onOpenLightbox}
+                        onDelete={onDelete}
+                        onDownload={onDownload}
+                        onToggleSelection={onToggleSelection}
+                        onToggleFavorite={onToggleFavoriteOnCard}
+                        onToggleNsfw={onToggleNsfwOnCard}
+                        onFilterByFolder={onFilterByFolder}
+                        onFilterByCharacter={onFilterByCharacter}
+                        onFilterUnfiled={onFilterUnfiled}
+                        onImageMove={(e, image) => {
+                            e.stopPropagation();
+                            setSelectedImageForMove(image);
+                            setShowFolderSelector(true);
+                        }}
                     />;
                 })}
             </div>
@@ -273,25 +242,11 @@ function ImageGallery({onOpenLightbox, onRestoreSettings, onDelete, onLoadMore})
                     setSelectedImageForMove(null);
                     setBulkMoveMode(false);
                 }}
-                onSelect={async (folderId) => {
-                    try {
-                        if (bulkMoveMode) {
-                            await imageAPI.bulkMove(selectedImages, folderId || null);
-                            dispatch({
-                                type: actions.SET_STATUS,
-                                payload: {type: 'success', message: `Moved ${selectedImages.length} images`}
-                            });
-                            dispatch({type: actions.CLEAR_SELECTION});
-                            // Real-time sync will handle UI updates automatically
-                        } else if (selectedImageForMove) {
-                            await imageAPI.update(selectedImageForMove.id, {folderId: folderId || null});
-                            // Real-time sync will handle UI updates automatically
-                        }
-                    } catch (err) {
-                        dispatch({
-                            type: actions.SET_STATUS,
-                            payload: {type: 'error', message: 'Failed to move images'}
-                        });
+                onSelect={(folderId) => {
+                    if (bulkMoveMode) {
+                        onBulkMove(folderId || null);
+                    } else if (selectedImageForMove) {
+                        onImageMove(selectedImageForMove, folderId || null);
                     }
                     setShowFolderSelector(false);
                     setSelectedImageForMove(null);

@@ -35,10 +35,6 @@ function ConfigModal({ show, onClose }) {
     const [assetEdits, setAssetEdits] = useState({}); // id -> { min, max, example_prompt }
     const [assetSaving, setAssetSaving] = useState({}); // id -> boolean
 
-    // Lightbox takeover state for showing LoRA images inside the global lightbox
-    const [lightboxBackup, setLightboxBackup] = useState(null); // previous images array
-    const [lightboxHijacked, setLightboxHijacked] = useState(false);
-
     // Form state
     const [userSettings, setUserSettings] = useState({
         default_positive_prompt: '',
@@ -159,52 +155,7 @@ function ConfigModal({ show, onClose }) {
         }
     }, [show, activeTab]);
 
-    // TODO: remove and create new lightbox component instead
-    // When the lightbox closes (index becomes null), restore previous images if we hijacked them
-    useEffect(() => {
-        if (!lightboxHijacked) return;
-        if (state.lightboxIndex === null && lightboxBackup) {
-            dispatch({ type: actions.SET_IMAGES, payload: lightboxBackup });
-            setLightboxBackup(null);
-            setLightboxHijacked(false);
-        }
-    }, [state.lightboxIndex, lightboxHijacked, lightboxBackup, dispatch, actions]);
 
-    const openAssetLightbox = (asset) => {
-        if (!asset) return;
-        // Build list of image objects compatible with Lightbox expectations
-        const urls = new Set();
-        const images = [];
-        const pushIfNew = (img) => {
-            const url = img?.url || img;
-            if (!url || urls.has(url)) return;
-            urls.add(url);
-            images.push({
-                id: `${asset.id}:${images.length}`,
-                url,
-                is_nsfw: Boolean(img?.is_nsfw),
-                width: img?.width || null,
-                height: img?.height || null,
-                // Minimal fields to satisfy Lightbox; other props are optional
-                name: asset.name || 'LoRA Image',
-            });
-        };
-        if (Array.isArray(asset.images)) {
-            asset.images.forEach(pushIfNew);
-        }
-        if (asset.image_url) {
-            pushIfNew({ url: asset.image_url, is_nsfw: false });
-        }
-        if (images.length === 0) return; // nothing to show
-
-        // Backup current images and replace with our temporary gallery
-        if (!lightboxHijacked) {
-            setLightboxBackup(state.images);
-            setLightboxHijacked(true);
-        }
-        dispatch({ type: actions.SET_IMAGES, payload: images });
-        dispatch({ type: actions.SET_LIGHTBOX_INDEX, payload: 0 });
-    };
 
     const handleSaveUserSettings = async () => {
         setSaving(true);
@@ -413,12 +364,10 @@ function ConfigModal({ show, onClose }) {
                                                             role={imageUrl ? 'button' : undefined}
                                                             tabIndex={imageUrl ? 0 : -1}
                                                             title={imageUrl ? 'Open preview images' : undefined}
-                                                            onClick={() => imageUrl && openAssetLightbox(a)}
                                                             onKeyDown={(e) => {
                                                                 if (!imageUrl) return;
                                                                 if (e.key === 'Enter' || e.key === ' ') {
                                                                     e.preventDefault();
-                                                                    openAssetLightbox(a);
                                                                 }
                                                             }}
                                                         >
