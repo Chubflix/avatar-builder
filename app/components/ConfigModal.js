@@ -395,6 +395,7 @@ function ConfigModal({ show, onClose }) {
                                                                 is_nsfw: !!img?.is_nsfw,
                                                                 width: img?.width || undefined,
                                                                 height: img?.height || undefined,
+                                                                meta: img?.meta || undefined
                                                             });
                                                         });
                                                     }

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import Lightbox from './Lightbox';
+import CivitAiGenetationDetails from "@/app/components/Lightbox/CivitAiGenerationDetails";
 
 /**
  * ExternalImagesLightboxContainer
@@ -60,8 +61,8 @@ export default function ExternalImagesLightboxContainer({
                     <Lightbox.Navigation />
                     <div className="lightbox-main-content">
                         <Lightbox.Image />
-                        {/* Show details sidebar (may render N/A for external images) */}
-                        <Lightbox.Details onSetModel={() => {}} />
+                        {/* Custom CivitAI generation details registered on Lightbox to ensure it receives Provider data */}
+                        <CivitAiGenetationDetails onSetModel={() => {}} />
                     </div>
                     <div className="lightbox-content-wrapper">
                         {/* Bottom metadata / index info */}

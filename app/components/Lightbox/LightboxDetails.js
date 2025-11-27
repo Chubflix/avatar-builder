@@ -5,23 +5,90 @@ import { useLightbox } from '../../context/LightboxContext';
  * LightboxDetails - Generation details sidebar
  * Receives onSetModel as prop for better reusability
  */
-export function LightboxDetails({ onSetModel }) {
+export function LightboxDetails({ onSetModel, onCopyPositivePrompt, onCopyNegativePrompt }) {
     const { currentImage, showGenerationDetails } = useLightbox();
 
     if (!showGenerationDetails || !currentImage) return null;
 
+    const positive = currentImage.positive_prompt || '';
+    const negative = currentImage.negative_prompt || '';
+
+    const handleCopyPositive = () => {
+        if (!positive) return;
+        if (typeof onCopyPositivePrompt === 'function') {
+            onCopyPositivePrompt(positive);
+            return;
+        }
+        if (navigator?.clipboard?.writeText) {
+            navigator.clipboard.writeText(positive).catch(() => {});
+        }
+    };
+
+    const handleCopyNegative = () => {
+        if (!negative) return;
+        if (typeof onCopyNegativePrompt === 'function') {
+            onCopyNegativePrompt(negative);
+            return;
+        }
+        if (navigator?.clipboard?.writeText) {
+            navigator.clipboard.writeText(negative).catch(() => {});
+        }
+    };
+
     return (
         <div className="lightbox-details-sidebar">
             <div className="settings-display" style={{ marginBottom: '1rem' }}>
-                <div><strong>Positive Prompt:</strong></div>
+                <div>
+                    {positive && (
+                        <button
+                            type="button"
+                            onClick={handleCopyPositive}
+                            title="Copy positive prompt"
+                            aria-label="Copy positive prompt"
+                            style={{
+                                marginRight: 8,
+                                padding: 0,
+                                background: 'transparent',
+                                border: 'none',
+                                fontSize: '0.9rem',
+                                lineHeight: 1,
+                                cursor: 'pointer',
+                                color: 'inherit'
+                            }}
+                        >
+                            <i className="fa fa-clipboard" aria-hidden="true" />
+                        </button>
+                    )}
+                    <strong>Positive Prompt:</strong>
+                </div>
                 <p style={{ fontSize: '0.7rem', marginTop: '0.25rem', lineHeight: '1.4' }}>
-                    {currentImage.positive_prompt || 'N/A'}
+                    {positive || 'N/A'}
                 </p>
-                {currentImage.negative_prompt && (
+                {negative && (
                     <>
-                        <div style={{ marginTop: '0.5rem' }}><strong>Negative Prompt:</strong></div>
+                        <div style={{ marginTop: '0.5rem' }}>
+                            <button
+                                type="button"
+                                onClick={handleCopyNegative}
+                                title="Copy negative prompt"
+                                aria-label="Copy negative prompt"
+                                style={{
+                                    marginRight: 8,
+                                    padding: 0,
+                                    background: 'transparent',
+                                    border: 'none',
+                                    fontSize: '0.9rem',
+                                    lineHeight: 1,
+                                    cursor: 'pointer',
+                                    color: 'inherit'
+                                }}
+                            >
+                                <i className="fa fa-clipboard" aria-hidden="true" />
+                            </button>
+                            <strong>Negative Prompt:</strong>
+                        </div>
                         <p style={{ fontSize: '0.7rem', marginTop: '0.25rem', lineHeight: '1.4' }}>
-                            {currentImage.negative_prompt}
+                            {negative}
                         </p>
                     </>
                 )}
