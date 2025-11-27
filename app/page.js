@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { QueueProvider } from './context/QueueContext';
 import { useFolders, useGeneration, useModels } from './hooks';
@@ -8,6 +8,7 @@ import { useFolderSync, useCharacterSync } from "@/app/hooks/realtime-sync";
 import { useQueue } from './hooks/queue';
 import { useGalleryKeyboardShortcuts } from './hooks/keyboard';
 import debug from './utils/debug';
+import { sendNotification } from './utils/notifications';
 
 // Components
 import ControlsPanel from './components/ControlsPanel';
@@ -220,7 +221,8 @@ function AppContent() {
         // Real-time sync will handle folder updates automatically
     };
 
-    const handleRestoreSettings = (image, withSeed) => {
+    // Memoize to avoid re-rendering GalleryWithLightboxContainer on app status/progress updates
+    const handleRestoreSettings = useCallback((image, withSeed) => {
         dispatch({type: actions.SET_POSITIVE_PROMPT, payload: image.positive_prompt || ''});
         dispatch({type: actions.SET_NEGATIVE_PROMPT, payload: image.negative_prompt || ''});
         if (!state.locks.model) {
@@ -307,7 +309,43 @@ function AppContent() {
 
         const message = withSeed ? 'Settings restored from image (with seed)' : 'Settings restored from image (random seed)';
         dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message } });
-    };
+    }, [dispatch, actions, config, state.loraSliders, state.locks]);
+
+    // Stable callbacks to avoid re-rendering GalleryWithLightboxContainer on unrelated state changes
+    const handleCurrentFolderChange = useCallback((folderId) => {
+        dispatch({ type: actions.SET_CURRENT_FOLDER, payload: folderId });
+    }, [dispatch, actions]);
+
+    const handleSelectedCharacterChange = useCallback((character) => {
+        dispatch({ type: actions.SET_SELECTED_CHARACTER, payload: character });
+    }, [dispatch, actions]);
+
+    const handleNotify = useCallback((message, type = 'info') => {
+        sendNotification(message, type, dispatch, actions, state.notificationsEnabled);
+    }, [dispatch, actions, state.notificationsEnabled]);
+
+    const handleStatus = useCallback(({ type = 'info', message }) => {
+        dispatch({ type: actions.SET_STATUS, payload: { type, message } });
+    }, [dispatch, actions]);
+
+    const handleInitMask = useCallback((mask) => {
+        dispatch({ type: actions.SET_MASK_IMAGE, payload: mask });
+    }, [dispatch, actions]);
+
+    const handleInitImage = useCallback((dataUrl, opts = {}) => {
+        dispatch({ type: actions.SET_INIT_IMAGE, payload: dataUrl });
+        if (opts && opts.openInpaint) {
+            dispatch({ type: actions.SET_SHOW_INPAINT_MODAL, payload: true });
+        }
+    }, [dispatch, actions]);
+
+    const handleSetModel = useCallback((model) => {
+        dispatch({ type: actions.SET_SELECTED_MODEL, payload: model });
+    }, [dispatch, actions]);
+
+    const handleReloadFolders = useCallback(() => loadFolders(), [loadFolders]);
+
+    const handleTotalImagesChange = useCallback((n) => setPageTotalImages(Number(n || 0)), []);
 
     if (isLoadingConfig) {
         return (
@@ -376,22 +414,22 @@ function AppContent() {
 
                         <GalleryWithLightboxContainer
                             onRestoreSettings={handleRestoreSettings}
-                            // Localized gallery interface props
                             currentFolder={currentFolder}
                             selectedCharacter={selectedCharacter}
-                            onCurrentFolderChange={(folderId) => dispatch({ type: actions.SET_CURRENT_FOLDER, payload: folderId })}
-                            onSelectedCharacterChange={(character) => dispatch({ type: actions.SET_SELECTED_CHARACTER, payload: character })}
-                            onNotify={(message, type = 'info') => dispatch({ type: actions.SET_STATUS, payload: { type, message } })}
-                            onStatus={({ type = 'info', message }) => dispatch({ type: actions.SET_STATUS, payload: { type, message } })}
-                            onInitMask={(mask) => dispatch({ type: actions.SET_MASK_IMAGE, payload: mask })}
-                            onInitImage={(dataUrl, opts = {}) => {
-                                dispatch({ type: actions.SET_INIT_IMAGE, payload: dataUrl });
-                                if (opts && opts.openInpaint) {
-                                    // Handle showing inpaint modal via the onInitImage flag behavior
-                                    dispatch({ type: actions.SET_SHOW_INPAINT_MODAL, payload: true });
-                                }
-                            }}
-                            onTotalImagesChange={(n) => setPageTotalImages(Number(n || 0))}
+                            settingsLoaded={settingsLoaded}
+                            hideNsfw={state.hideNsfw}
+                            folders={folders}
+                            characters={state.characters}
+                            showImageInfoPreference={state.showImageInfo}
+                            onCurrentFolderChange={handleCurrentFolderChange}
+                            onSelectedCharacterChange={handleSelectedCharacterChange}
+                            onNotify={handleNotify}
+                            onStatus={handleStatus}
+                            onInitMask={handleInitMask}
+                            onInitImage={handleInitImage}
+                            onSetModel={handleSetModel}
+                            onReloadFolders={handleReloadFolders}
+                            onTotalImagesChange={handleTotalImagesChange}
                         />
                     </div>
                 </div>

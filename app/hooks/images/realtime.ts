@@ -12,6 +12,8 @@ export function useRealtimeImages({
     selectedCharacter,
     images,
     onAddImage,
+    onUpdateImage,
+    onRemoveImage,
 }) {
 
     const selectedFolderRef = useRef(selectedFolder);
@@ -23,7 +25,7 @@ export function useRealtimeImages({
     useEffect(() => { imagesRef.current = images; }, [images]);
 
     useEffect(() => {
-        // Subscribe to Ably channel 'images' for image_saved events
+        // Subscribe to Ably channel 'images' for image events
         const realtime = getAblyRealtime();
         if (!realtime) {
             debug.warn('Realtime Images', 'Ably not configured; skipping subscription');
@@ -33,83 +35,100 @@ export function useRealtimeImages({
         const channel = realtime.channels.get('images');
 
         debug.log('Realtime Images', 'subscribed to Ably channel #images');
-        const onImageSaved = async (payload) => {
-            debug.log('Realtime Images', "received a message via Ably on #images", payload);
 
+        const matchesCurrentView = ({ folder_id, character_id }) => {
+            const selectedCharId = selectedCharacterRef.current?.id || null;
+            const selectedFolder = selectedFolderRef.current; // '' | 'unfiled' | <id>
+
+            if (selectedCharId) {
+                if (character_id !== selectedCharId) return false;
+                if (!selectedFolder || selectedFolder === '') return true;
+                if (selectedFolder === 'unfiled') return folder_id == null;
+                return String(folder_id || '') === String(selectedFolder);
+            } else {
+                if (selectedFolder === 'unfiled') {
+                    return folder_id == null && character_id == null;
+                } else if (selectedFolder && selectedFolder !== '') {
+                    return String(folder_id || '') === String(selectedFolder);
+                }
+                // All Images
+                return true;
+            }
+        };
+
+        const fetchAndAddIfNeeded = async (id) => {
+            if (imagesRef.current?.some(img => String(img.id) === String(id))) return;
+            const image = await imageAPI.getById(id);
+            if (image && onAddImage) onAddImage(image);
+        };
+
+        // image_saved → consider add if it matches current view
+        const onImageSaved = async (payload) => {
             try {
-                // Ably message: { name, data }
                 const data = payload?.data ?? payload?.payload ?? payload;
-                const { id, folder_id, character_id } = data || {};
+                const { id } = data || {};
                 if (!id) return;
 
-                const selectedCharId = selectedCharacterRef.current?.id || null;
-                const selectedFolder = selectedFolderRef.current; // '' | 'unfiled' | <id>
-
-                debug.log('Realtime Images', 'received image_saved event', { id, folder_id, character_id, selectedCharId, selectedFolder });
-
-                if (selectedCharId) {
-                    // Viewing a character - character must match
-                    if (character_id !== selectedCharId) {
-                        return;
-                    }
-
-                    // Check folder matching
-                    let folderMatches = false;
-                    if (!selectedFolder || selectedFolder === '') {
-                        // When no folder selected, show all images for this character
-                        folderMatches = true;
-                    } else if (selectedFolder === 'unfiled') {
-                        // Should not normally happen when character is selected, but handle it
-                        folderMatches = folder_id == null;
-                    } else {
-                        // Specific folder selected
-                        folderMatches = String(folder_id || '') === String(selectedFolder);
-                    }
-
-                    if (!folderMatches) return;
-                } else {
-                    // No character selected - check view mode
-                    if (selectedFolder === 'unfiled') {
-                        // Viewing "Unfiled" - only add images with no folder AND no character
-                        if (folder_id != null || character_id != null) {
-                            return;
-                        }
-                    } else if (selectedFolder && selectedFolder !== '') {
-                        // Viewing a specific folder (without character context)
-                        if (String(folder_id || '') !== String(selectedFolder)) {
-                            return;
-                        }
-                    }
-                    // else: viewing "All Images" - add everything
-                }
-
-                debug.log('Realtime Images', 'image matches view filters, adding to state');
-
-                // Prevent duplicates
-                if (imagesRef.current?.some(img => String(img.id) === String(id))) return;
-
-                debug.log('Realtime Images', 'image does not exist in state, adding');
-
-                // Fetch the full image via API and add to state
-                const image = await imageAPI.getById(id);
-                if (image) {
-                    debug.log('Realtime Images', 'image fetched from API', { id, image });
-                    onAddImage(image);
-                } else {
-                    debug.warn('Realtime Images', 'Failed to fetch image from API', { id });
+                // get metadata to test match if present; otherwise fetch and then test
+                // We already receive folder_id/character_id from server events
+                if (matchesCurrentView(data)) {
+                    await fetchAndAddIfNeeded(id);
                 }
             } catch (err) {
-                // Non-fatal
                 debug.warn('Realtime Images', 'Failed to process image_saved event', err);
             }
         };
 
+        // image_updated → update if present and still matches view; if not present but matches, add
+        const onImageUpdated = async (payload) => {
+            try {
+                const data = payload?.data ?? payload?.payload ?? payload;
+                const { id } = data || {};
+                if (!id) return;
+                const image = await imageAPI.getById(id);
+                if (!image) return;
+                const inList = imagesRef.current?.some(img => String(img.id) === String(id));
+                if (matchesCurrentView({ folder_id: image.folder_id, character_id: image.character_id })) {
+                    if (inList) {
+                        if (onUpdateImage) onUpdateImage(image);
+                    } else {
+                        if (onAddImage) onAddImage(image);
+                    }
+                } else if (inList) {
+                    // Updated but no longer matches filter (edge case)
+                    if (onRemoveImage) onRemoveImage(id);
+                }
+            } catch (err) {
+                debug.warn('Realtime Images', 'Failed to process image_updated event', err);
+            }
+        };
+
+        // image_deleted → remove if present
+        const onImageDeleted = async (payload) => {
+            try {
+                const data = payload?.data ?? payload?.payload ?? payload;
+                const { id } = data || {};
+                if (!id) return;
+                if (imagesRef.current?.some(img => String(img.id) === String(id))) {
+                    if (onRemoveImage) onRemoveImage(id);
+                }
+            } catch (err) {
+                debug.warn('Realtime Images', 'Failed to process image_deleted event', err);
+            }
+        };
+
         channel.subscribe('image_saved', onImageSaved);
+        channel.subscribe('image_updated', onImageUpdated);
+        channel.subscribe('image_moved', onImageUpdated);
+        channel.subscribe('image_deleted', onImageDeleted);
 
         return () => {
-            try { channel.unsubscribe('image_saved', onImageSaved); } catch (_) { /* noop */ }
-            try { realtime.channels.release('images'); } catch (_) { /* noop */ }
+            try { channel.unsubscribe('image_saved', onImageSaved); } catch { /* noop */ }
+            try { channel.unsubscribe('image_updated', onImageUpdated); } catch { /* noop */ }
+            try { channel.unsubscribe('image_moved', onImageUpdated); } catch { /* noop */ }
+            try { channel.unsubscribe('image_deleted', onImageDeleted); } catch { /* noop */ }
+            try { realtime.channels.release('images'); } catch { /* noop */ }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [onAddImage]);
+    }, [onAddImage, onUpdateImage, onRemoveImage]);
 }

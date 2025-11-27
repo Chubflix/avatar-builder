@@ -1,11 +1,8 @@
 'use client';
 
-import { useEffect, useCallback, useMemo, useState } from 'react';
-import { useApp } from '../context/AppContext';
-import { useFolders } from '../hooks';
+import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import { imageAPI } from '../utils/backend-api';
 import { useRealtimeImages } from '@/app/hooks/images/realtime';
-import { useImageSync } from '@/app/hooks/realtime-sync';
 import ImageGallery from './ImageGallery';
 import GalleryLightbox from './GalleryLightbox';
 import debug from "@/app/utils/debug";
@@ -17,7 +14,6 @@ import debug from "@/app/utils/debug";
  */
 function GalleryWithLightboxContainer({
     onRestoreSettings,
-    // Newly externalized state/handlers
     currentFolder,
     selectedCharacter,
     onCurrentFolderChange: setCurrentFolder,
@@ -26,15 +22,16 @@ function GalleryWithLightboxContainer({
     onStatus: setStatus,
     onInitMask: setInitMask,
     onInitImage: setInitImage,
-    onTotalImagesChange
+    onTotalImagesChange,
+    hideNsfw,
+    folders,
+    characters,
+    settingsLoaded,
+    onSetModel,
+    onReloadFolders,
+    showImageInfoPreference,
 }) {
-    const { state, dispatch, actions } = useApp();
-    const { loadFolders } = useFolders();
-
     debug.log("GalleryWithLightboxContainer", "render");
-
-    useImageSync();
-    const { hideNsfw, folders, characters } = state;
 
     // Localize gallery/lightbox state to this container
     const [images, setImages] = useState([]);
@@ -45,7 +42,7 @@ function GalleryWithLightboxContainer({
     const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
     const [lightboxIndex, setLightboxIndex] = useState(null);
     const [lastClickedIndex, setLastClickedIndex] = useState(null);
-    const [showImageInfo, setShowImageInfo] = useState(state.showImageInfo);
+    const [showImageInfo, setShowImageInfo] = useState(showImageInfoPreference);
     const [totalImages, setTotalImages] = useState(0);
 
     // Enable realtime image events within the container
@@ -55,14 +52,29 @@ function GalleryWithLightboxContainer({
         images: images,
         onAddImage: useCallback((image) => {
             setImages((prev) => [image, ...prev]);
-            setTotalImages(prev => prev + 1);
+            setTotalImages(prev => {
+                const next = prev + 1;
+                if (onTotalImagesChange) onTotalImagesChange(next);
+                return next;
+            });
+        }, [onTotalImagesChange]),
+        onUpdateImage: useCallback((image) => {
+            setImages(prev => prev.map(img => (String(img.id) === String(image.id) ? image : img)));
         }, []),
+        onRemoveImage: useCallback((id) => {
+            setImages(prev => prev.filter(img => String(img.id) !== String(id)));
+            setTotalImages(prev => {
+                const next = Math.max(0, (prev || 0) - 1);
+                if (onTotalImagesChange) onTotalImagesChange(next);
+                return next;
+            });
+        }, [onTotalImagesChange]),
     });
 
-    // Keep local showImageInfo in sync with global preference changes
+    // Keep local showImageInfo in sync with preference changes from parent
     useEffect(() => {
-        setShowImageInfo(state.showImageInfo);
-    }, [state.showImageInfo]);
+        setShowImageInfo(showImageInfoPreference);
+    }, [showImageInfoPreference]);
 
     const loadImages = useCallback(async (offset = 0, folderId = currentFolder, characterId = selectedCharacter) => {
         try {
@@ -101,11 +113,11 @@ function GalleryWithLightboxContainer({
 
     // Initial and reactive loads when folder/character changes
     useEffect(() => {
-        if (state.settingsLoaded) {
+        if (settingsLoaded) {
             loadImages(0, currentFolder, selectedCharacter);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [state.settingsLoaded, currentFolder, selectedCharacter]);
+    }, [settingsLoaded, currentFolder, selectedCharacter]);
 
     // Filter images based on NSFW and favorites settings
     const filteredImages = useMemo(() => {
@@ -306,13 +318,10 @@ function GalleryWithLightboxContainer({
     const handleMoveToFolder = async (imageId, folderId) => {
         try {
             await imageAPI.update(imageId, { folderId: folderId || null });
-            await loadFolders();
+            if (onReloadFolders) await onReloadFolders();
             // Real-time sync will handle UI updates automatically
         } catch (err) {
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: { type: 'error', message: 'Failed to move image' }
-            });
+            setStatus && setStatus({ type: 'error', message: 'Failed to move image' });
         }
     };
 
@@ -334,13 +343,11 @@ function GalleryWithLightboxContainer({
             const updatedImage = await imageAPI.updateFlags(image, {
                 is_favorite: !image.is_favorite
             });
-            dispatch({ type: actions.UPDATE_IMAGE, payload: updatedImage });
+            // Update local list to avoid global context dependency
+            setImages(prev => prev.map(img => (img.id === updatedImage.id ? updatedImage : img)));
         } catch (error) {
             console.error('Failed to toggle favorite:', error);
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: { type: 'error', message: 'Failed to update favorite' }
-            });
+            setStatus && setStatus({ type: 'error', message: 'Failed to update favorite' });
         }
     };
 
@@ -349,13 +356,11 @@ function GalleryWithLightboxContainer({
             const updatedImage = await imageAPI.updateFlags(image, {
                 is_nsfw: !image.is_nsfw
             });
-            dispatch({ type: actions.UPDATE_IMAGE, payload: updatedImage });
+            // Update local list to avoid global context dependency
+            setImages(prev => prev.map(img => (img.id === updatedImage.id ? updatedImage : img)));
         } catch (error) {
             console.error('Failed to toggle NSFW:', error);
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: { type: 'error', message: 'Failed to update NSFW flag' }
-            });
+            setStatus && setStatus({ type: 'error', message: 'Failed to update NSFW flag' });
         }
     };
 
@@ -395,7 +400,7 @@ function GalleryWithLightboxContainer({
     };
 
     const handleSetModel = (model) => {
-        dispatch({ type: actions.SET_SELECTED_MODEL, payload: model });
+        if (onSetModel) onSetModel(model);
     };
 
     // Custom keyboard shortcuts for this specific lightbox implementation (d, f, h keys)
@@ -494,4 +499,4 @@ function GalleryWithLightboxContainer({
     );
 }
 
-export default GalleryWithLightboxContainer;
+export default React.memo(GalleryWithLightboxContainer);
