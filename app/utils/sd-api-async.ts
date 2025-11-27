@@ -196,13 +196,14 @@ class StableDiffusionAsyncAdapter {
         return b64;
     }
 
-    #addADetailer(payload: any, enabled?: boolean, model?: string) {
-        if (enabled && model) {
-            payload.alwayson_scripts = {
-                ADetailer: {
-                    args: [ true, false, { ad_model: model } ]
-                }
-            };
+    #addADetailer(payload: any, enabled?: boolean, models?: string | string[]) {
+        if (enabled && models) {
+            if (models.length > 0) {
+                const args: any[] = [true, false, ...models.filter(Boolean).map(m => ({ ad_model: m }))];
+                payload.alwayson_scripts = {
+                    ADetailer: { args }
+                };
+            }
         }
         return payload;
     }
@@ -218,8 +219,7 @@ class StableDiffusionAsyncAdapter {
         steps = 20,
         cfgScale = 7,
         seed = -1,
-        adetailerEnabled = false,
-        adetailerModel = null,
+        adetailerModels = null,
         __webhookAuthToken = undefined
     }: any) {
         const payload: any = {
@@ -235,7 +235,8 @@ class StableDiffusionAsyncAdapter {
             seed,
             __webhookAuthToken
         };
-        return this.#addADetailer(payload, adetailerEnabled, adetailerModel);
+        const models = Array.isArray(adetailerModels) && adetailerModels.length > 0 ? adetailerModels : [];
+        return this.#addADetailer(payload, adetailerEnabled, models as any);
     }
 
     #mapImg2ImgParams({
@@ -254,6 +255,7 @@ class StableDiffusionAsyncAdapter {
         denoisingStrength = 0.5,
         adetailerEnabled = false,
         adetailerModel = null,
+        adetailerModels = null,
         __webhookAuthToken = undefined
     }: any) {
         // Allow object inputs shaped like { base64: string }
@@ -283,7 +285,8 @@ class StableDiffusionAsyncAdapter {
             __webhookAuthToken
         };
         if (maskB64) payload.mask = maskB64;
-        return this.#addADetailer(payload, adetailerEnabled, adetailerModel);
+        const models = Array.isArray(adetailerModels) && adetailerModels.length > 0 ? adetailerModels : adetailerModel;
+        return this.#addADetailer(payload, adetailerEnabled, models as any);
     }
 }
 

@@ -112,6 +112,14 @@ export function useGeneration() {
             const loraAdditions = buildLoraPrompt(config, loraSliders, loraToggles, loraStyle);
             const finalPrompt = positivePrompt + loraAdditions;
 
+            // Determine ADetailer settings from the adetailer_list (not the single legacy field)
+            const adList = Array.isArray((config as any).adetailer_list) ? (config as any).adetailer_list : [];
+            const enabledModels: string[] = adList
+                .filter((i: any) => i && i.enabled && typeof i.model === 'string' && i.model.trim().length > 0)
+                .map((i: any) => i.model.trim());
+            const adetailerEnabledFromList = enabledModels.length > 0;
+            const adetailerModelFromList = enabledModels[0] || null;
+
             // If using inpaint (initImage + maskImage), ensure mask exists in DB and S3 and get mask_id
             let maskId = null;
             const initB64 = typeof initImage === 'string' ? initImage : (initImage?.base64 || null);
@@ -148,8 +156,9 @@ export function useGeneration() {
                 steps: config.generation.steps,
                 cfgScale: config.generation.cfgScale,
                 seed,
-                adetailerEnabled: config.adetailer.enabled,
-                adetailerModel: config.adetailer.model,
+                adetailerEnabled: adetailerEnabledFromList,
+                adetailerModel: adetailerModelFromList,
+                adetailerModels: enabledModels,
                 folder_id: selectedFolder || null,
                 loras: {
                     sliders: loraSliders,
@@ -194,8 +203,7 @@ export function useGeneration() {
                         cfgScale: config.generation.cfgScale,
                         seed,
                         denoisingStrength: typeof denoisingStrength === 'number' ? denoisingStrength : 0.5,
-                        adetailerEnabled: config.adetailer.enabled,
-                        adetailerModel: config.adetailer.model,
+                        adetailerModels: enabledModels,
                         __webhookAuthToken: webhookToken || undefined
                     })
                     : await sdAPI.generateImageFromImage({
@@ -211,8 +219,7 @@ export function useGeneration() {
                         cfgScale: config.generation.cfgScale,
                         seed,
                         denoisingStrength: typeof denoisingStrength === 'number' ? denoisingStrength : 0.5,
-                        adetailerEnabled: config.adetailer.enabled,
-                        adetailerModel: config.adetailer.model,
+                        adetailerModels: enabledModels,
                         __webhookAuthToken: webhookToken || undefined
                     }))
                 : await sdAPI.generateImage({
@@ -226,8 +233,7 @@ export function useGeneration() {
                     steps: config.generation.steps,
                     cfgScale: config.generation.cfgScale,
                     seed,
-                    adetailerEnabled: config.adetailer.enabled,
-                    adetailerModel: config.adetailer.model,
+                    adetailerModels: enabledModels,
                     __webhookAuthToken: webhookToken || undefined
                 });
 
