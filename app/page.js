@@ -3,9 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { QueueProvider } from './context/QueueContext';
-import { useFolders, useImages, useGeneration, useModels } from './hooks';
-import { useImagesRealtime } from "@/app/hooks/realtime";
-import { useImageSync, useFolderSync, useCharacterSync } from "@/app/hooks/realtime-sync";
+import { useFolders, useGeneration, useModels } from './hooks';
+import { useFolderSync, useCharacterSync } from "@/app/hooks/realtime-sync";
 import { useQueue } from './hooks/queue';
 import { useGalleryKeyboardShortcuts } from './hooks/keyboard';
 import debug from './utils/debug';
@@ -32,12 +31,9 @@ import './lightbox-details.css';
 function AppContent() {
     const { state, dispatch, actions, loadSettings } = useApp();
     const { loadFolders, createFolder, updateFolder, deleteFolder } = useFolders();
-    const { loadImages, loadMoreImages } = useImages();
     const { generate } = useGeneration();
     const { loadModels } = useModels();
-    // Start realtime subscriptions
-    useImagesRealtime();      // For new images (image_saved)
-    useImageSync();           // For image updates/moves/deletes
+
     useFolderSync();          // For folder CRUD
     useCharacterSync();       // For character CRUD
     useGalleryKeyboardShortcuts();
@@ -149,13 +145,7 @@ function AppContent() {
             debug.log('App', 'Component cleanup - setting mounted=false');
             mounted = false;
         };
-    }, [dispatch, actions, loadSettings, loadModels, loadFolders, loadImages]);
-
-    useEffect(() => {
-        if (settingsLoaded && isInitialized.current) {
-            loadImages(0, currentFolderRef.current);
-        }
-    }, [currentFolder, settingsLoaded, loadImages]);
+    }, [dispatch, actions, loadSettings, loadModels, loadFolders]);
 
     // Sync gallery filter → save folder (when user changes gallery filter)
     useEffect(() => {
@@ -385,7 +375,6 @@ function AppContent() {
 
                         <GalleryWithLightboxContainer
                             onRestoreSettings={handleRestoreSettings}
-                            onLoadMore={loadMoreImages}
                         />
                     </div>
                 </div>

@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { useFolders } from '../hooks';
 import { imageAPI } from '../utils/backend-api';
+import { sendNotification } from '../utils/notifications';
+import { useImagesRealtime } from '@/app/hooks/realtime';
+import { useImageSync } from '@/app/hooks/realtime-sync';
 import ImageGallery from './ImageGallery';
 import GalleryLightbox from './GalleryLightbox';
 
@@ -12,9 +15,12 @@ import GalleryLightbox from './GalleryLightbox';
  * This component handles all business logic, state management, and API interactions,
  * while the presentational components focus purely on rendering UI.
  */
-function GalleryWithLightboxContainer({ onRestoreSettings, onLoadMore }) {
+function GalleryWithLightboxContainer({ onRestoreSettings }) {
     const { state, dispatch, actions } = useApp();
     const { loadFolders } = useFolders();
+    // Enable realtime image events within the container
+    useImagesRealtime();
+    useImageSync();
     const {
         images,
         totalImages,
@@ -30,6 +36,49 @@ function GalleryWithLightboxContainer({ onRestoreSettings, onLoadMore }) {
         folders,
         characters
     } = state;
+
+    // === Image Loading (moved from useImages hook into this container) ===
+
+    const loadImages = useCallback(async (offset = 0, folderId = state.currentFolder, characterId = state.selectedCharacter) => {
+        try {
+            const data = await imageAPI.getAll({
+                folderId: folderId,
+                character_id: characterId,
+                limit: 50,
+                offset
+            });
+
+            if (offset === 0) {
+                dispatch({ type: actions.SET_IMAGES, payload: data.images });
+            } else {
+                dispatch({ type: actions.APPEND_IMAGES, payload: data.images });
+            }
+
+            dispatch({ type: actions.SET_HAS_MORE, payload: data.hasMore });
+            dispatch({ type: actions.SET_TOTAL_IMAGES, payload: data.total });
+        } catch (err) {
+            // Use unified notification helper
+            sendNotification('Failed to load images', 'error', dispatch, actions, state.notificationsEnabled);
+        }
+    }, [dispatch, actions, state.currentFolder, state.selectedCharacter, state.notificationsEnabled]);
+
+    const loadMoreImages = useCallback(async () => {
+        if (state.isLoadingMore || !state.hasMore) return;
+        dispatch({ type: actions.SET_LOADING_MORE, payload: true });
+        try {
+            await loadImages(state.images.length);
+        } finally {
+            dispatch({ type: actions.SET_LOADING_MORE, payload: false });
+        }
+    }, [state.isLoadingMore, state.hasMore, state.images.length, dispatch, actions, loadImages]);
+
+    // Initial and reactive loads when folder/character changes
+    useEffect(() => {
+        if (state.settingsLoaded) {
+            loadImages(0, state.currentFolder, state.selectedCharacter);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [state.settingsLoaded, state.currentFolder, state.selectedCharacter]);
 
     // Filter images based on NSFW and favorites settings
     let filteredImages = images;
@@ -171,10 +220,7 @@ function GalleryWithLightboxContainer({ onRestoreSettings, onLoadMore }) {
             dispatch({ type: actions.CLEAR_SELECTION });
             // Real-time sync will handle UI updates automatically
         } catch (err) {
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: { type: 'error', message: 'Failed to move images' }
-            });
+            sendNotification('Failed to move images', 'error', dispatch, actions, state.notificationsEnabled);
         }
     };
 
@@ -214,10 +260,7 @@ function GalleryWithLightboxContainer({ onRestoreSettings, onLoadMore }) {
             await imageAPI.update(image.id, { folderId: folderId || null });
             // Real-time sync will handle UI updates automatically
         } catch (err) {
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: { type: 'error', message: 'Failed to move image' }
-            });
+            sendNotification('Failed to move image', 'error', dispatch, actions, state.notificationsEnabled);
         }
     };
 
@@ -226,12 +269,9 @@ function GalleryWithLightboxContainer({ onRestoreSettings, onLoadMore }) {
             await imageAPI.delete(imageId);
             dispatch({ type: actions.REMOVE_IMAGE, payload: imageId });
             dispatch({ type: actions.SET_TOTAL_IMAGES, payload: totalImages - 1 });
-            dispatch({
-                type: actions.SET_STATUS,
-                payload: { type: 'success', message: 'Image deleted' }
-            });
+            sendNotification('Image deleted', 'success', dispatch, actions, state.notificationsEnabled);
         } catch (err) {
-            dispatch({ type: actions.SET_STATUS, payload: { type: 'error', message: 'Failed to delete image' } });
+            sendNotification('Failed to delete image', 'error', dispatch, actions, state.notificationsEnabled);
         }
     };
 
@@ -415,7 +455,7 @@ function GalleryWithLightboxContainer({ onRestoreSettings, onLoadMore }) {
                 onOpenLightbox={handleOpenLightbox}
                 onRestoreSettings={onRestoreSettings}
                 onDelete={handleDeleteImage}
-                onLoadMore={onLoadMore}
+                onLoadMore={loadMoreImages}
                 onImageMove={handleImageMove}
                 onToggleSelecting={handleToggleSelecting}
                 onToggleFavoritesOnly={handleToggleFavoritesOnly}
@@ -445,7 +485,7 @@ function GalleryWithLightboxContainer({ onRestoreSettings, onLoadMore }) {
                     isLoadingMore={isLoadingMore}
                     onClose={handleCloseLightbox}
                     onNavigate={handleNavigate}
-                    onLoadMore={onLoadMore}
+                    onLoadMore={loadMoreImages}
                     onToggleFavorite={handleToggleFavorite}
                     onToggleNsfw={handleToggleNsfw}
                     onSetModel={handleSetModel}
