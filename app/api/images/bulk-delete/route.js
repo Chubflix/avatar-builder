@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { createAuthClient } from '@/app/lib/supabase-server';
 import { deleteImageFromStorage } from '@/app/lib/s3-server';
+import {publishRealtimeEvent} from "@/app/lib/ably";
 
 export async function POST(request) {
     try {
@@ -32,6 +33,17 @@ export async function POST(request) {
 
         if (fetchError) throw fetchError;
 
+        // Delete from database
+        const { data: deletedImages, error } = await supabase
+            .from('images')
+            .delete()
+            .in('id', imageIds)
+            .eq('user_id', user.id)
+            .select(`
+                id, folder_id,
+                folder:folders(id, character:characters(id))
+            `);
+
         // Delete from S3 storage (best-effort per object)
         if (images && images.length > 0) {
             const deletes = images.map(img => deleteImageFromStorage(img.storage_path).catch(e => {
@@ -40,14 +52,17 @@ export async function POST(request) {
             await Promise.allSettled(deletes);
         }
 
-        // Delete from database
-        const { error } = await supabase
-            .from('images')
-            .delete()
-            .in('id', imageIds)
-            .eq('user_id', user.id);
-
         if (error) throw error;
+
+        for (const image of deletedImages) {
+            // Publish realtime event
+            await publishRealtimeEvent('images', 'image_deleted', {
+                id: image.id,
+                user_id: user.id,
+                folder_id: image.folder?.id,
+                character_id: image.folder?.character?.id || null
+            });
+        }
 
         return NextResponse.json({ success: true, count: imageIds.length });
     } catch (error) {

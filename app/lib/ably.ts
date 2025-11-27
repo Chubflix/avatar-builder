@@ -3,6 +3,9 @@
 // Server: uses ABLY_API_KEY
 
 // We intentionally type Ably instances as any to avoid importing types at runtime.
+
+import debug from "@/app/utils/debug";
+
 let _realtime: any = null;
 let _rest: any = null;
 
@@ -48,7 +51,7 @@ export async function publishRealtimeEvent(channelName: string, eventName: strin
   try {
     const ably = getAblyRest();
     if (!ably) {
-      console.warn(`[Ably] Cannot publish ${channelName}:${eventName} - REST client not configured`);
+      debug.warn('Ably', `Cannot publish ${channelName}:${eventName} - REST client not configured`);
       return;
     }
 
@@ -58,11 +61,10 @@ export async function publishRealtimeEvent(channelName: string, eventName: strin
       ...data,
     });
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`[Ably] Published ${channelName}:${eventName}`, data);
-    }
+    debug.log('Ably', `Published ${channelName}:${eventName}`, data);
+
   } catch (error: any) {
     // Swallow realtime errors; logging only
-    console.warn(`[Ably] Failed to publish ${channelName}:${eventName}:`, error?.message || error);
+    debug.warn('Ably', `Failed to publish ${channelName}:${eventName}:`, error?.message || error);
   }
 }

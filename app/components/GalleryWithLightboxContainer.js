@@ -159,30 +159,6 @@ function GalleryWithLightboxContainer({
         setLastClickedIndex(imageIndex);
     };
 
-    const handleToggleFavoriteOnCard = async (image) => {
-        try {
-            const updatedImage = await imageAPI.updateFlags(image, {
-                is_favorite: !image.is_favorite
-            });
-            setImages(prev => prev.map(img => (img.id === updatedImage.id ? updatedImage : img)));
-        } catch (error) {
-            console.error('Failed to toggle favorite:', error);
-            setStatus && setStatus({ type: 'error', message: 'Failed to update favorite' });
-        }
-    };
-
-    const handleToggleNsfwOnCard = async (image) => {
-        try {
-            const updatedImage = await imageAPI.updateFlags(image, {
-                is_nsfw: !image.is_nsfw
-            });
-            setImages(prev => prev.map(img => (img.id === updatedImage.id ? updatedImage : img)));
-        } catch (error) {
-            console.error('Failed to toggle NSFW:', error);
-            setStatus && setStatus({ type: 'error', message: 'Failed to update NSFW flag' });
-        }
-    };
-
     const handleFilterByFolder = (folderId) => {
         setCurrentFolder && setCurrentFolder(folderId);
     };
@@ -283,6 +259,8 @@ function GalleryWithLightboxContainer({
     };
 
     const handleDeleteImage = async (imageId) => {
+        if (typeof window === 'undefined') return;
+        if (!window.confirm(`Are you sure you want to delete the selected image?`)) return;
         try {
             await imageAPI.delete(imageId);
             setImages(prev => prev.filter(img => img.id !== imageId));
@@ -464,8 +442,8 @@ function GalleryWithLightboxContainer({
                 onBulkSetNSFW={handleBulkSetNSFW}
                 onDownload={handleDownload}
                 onToggleSelection={handleToggleSelection}
-                onToggleFavoriteOnCard={handleToggleFavoriteOnCard}
-                onToggleNsfwOnCard={handleToggleNsfwOnCard}
+                onToggleFavoriteOnCard={handleToggleFavorite}
+                onToggleNsfwOnCard={handleToggleNsfw}
                 onFilterByFolder={handleFilterByFolder}
                 onFilterByCharacter={handleFilterByCharacter}
                 onFilterUnfiled={handleFilterUnfiled}

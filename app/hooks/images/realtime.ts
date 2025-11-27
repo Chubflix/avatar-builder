@@ -81,6 +81,7 @@ export function useRealtimeImages({
 
         // image_updated → update if present and still matches view; if not present but matches, add
         const onImageUpdated = async (payload) => {
+            debug.log('Realtime Images', 'image_updated or image_moved', payload);
             try {
                 const data = payload?.data ?? payload?.payload ?? payload;
                 const { id } = data || {};

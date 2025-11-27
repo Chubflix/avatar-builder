@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { createAuthClient } from '@/app/lib/supabase-server';
+import {publishRealtimeEvent} from "@/app/lib/ably";
 
 export async function POST(request) {
     try {
@@ -37,13 +38,27 @@ export async function POST(request) {
         }
 
         // Update images (RLS ensures user can only update their own)
-        const { error } = await supabase
+        const { data: images, error } = await supabase
             .from('images')
             .update({ folder_id: folderId || null })
             .in('id', imageIds)
-            .eq('user_id', user.id);
+            .eq('user_id', user.id)
+            .select(`
+                id, folder_id,
+                folder:folders(id, character:characters(id))
+            `);
 
         if (error) throw error;
+
+        for (const image of images) {
+            // Publish realtime event
+            await publishRealtimeEvent('images', 'image_moved', {
+                id: image.id,
+                user_id: user.id,
+                folder_id: image.folder?.id,
+                character_id: image.folder?.character?.id || null
+            });
+        }
 
         return NextResponse.json({ success: true, count: imageIds.length });
     } catch (error) {
