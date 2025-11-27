@@ -363,11 +363,9 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
                 </div>
             )}
 
-            {queueCount > 0 && (
-                <div className="queue-status" onClick={() => dispatch({ type: actions.SET_SHOW_QUEUE_MANAGER, payload: true })}>
-                    {queueCount} {queueCount === 1 ? 'job' : 'jobs'} in queue
-                </div>
-            )}
+            <div className="queue-status" onClick={() => dispatch({ type: actions.SET_SHOW_QUEUE_MANAGER, payload: true })}>
+                {queueCount} {queueCount === 1 ? 'job' : 'jobs'} in queue
+            </div>
 
             {status && (
                 <div className={`status-message ${status.type}`}>

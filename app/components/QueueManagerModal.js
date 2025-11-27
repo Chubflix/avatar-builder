@@ -160,6 +160,20 @@ function QueueManagerModal({ show, onClose }) {
                             {jobs.map((job, index) => {
                                 const jobId = job.id || job.uuid;
                                 const isDeleting = deleting.has(jobId);
+                                const statusRaw = (job.job_status || job.status || job.state || 'queued') + '';
+                                const status = statusRaw.toLowerCase();
+                                const isQueued = status === 'queued' || status === 'pending' || status === 'waiting';
+                                // Normalize progress (supports 0..1 and 0..100)
+                                const normalizePercent = (val) => {
+                                    let n = Number(val);
+                                    if (!Number.isFinite(n)) return 0;
+                                    if (n > 0 && n <= 1) n = n * 100;
+                                    if (n < 0) n = 0;
+                                    if (n > 100) n = 100;
+                                    return Math.round(n);
+                                };
+                                const progressPct = normalizePercent(job.progress ?? job.progress_pct ?? job.percent ?? job.percentage);
+                                const createdAtStr = job.created_at ? new Date(job.created_at).toLocaleString() : null;
 
                                 return (
                                     <div key={jobId || index} className="queue-job-item">
@@ -176,12 +190,27 @@ function QueueManagerModal({ show, onClose }) {
                                                         : `Job ${jobId || index + 1}`}
                                                 </div>
                                                 <div className="queue-job-meta">
-                                                    <span className="queue-job-status">
-                                                        {job.status || 'queued'}
+                                                    <span className="queue-job-status" title="Job status">
+                                                        {status}
                                                     </span>
                                                     {job.position !== undefined && (
                                                         <span className="queue-job-position">
                                                             Position: {job.position}
+                                                        </span>
+                                                    )}
+                                                    {job.type && (
+                                                        <span className="queue-job-type" title="Job type">
+                                                            Type: {job.type}
+                                                        </span>
+                                                    )}
+                                                    {createdAtStr && (
+                                                        <span className="queue-job-created" title="Created at">
+                                                            Created: {createdAtStr}
+                                                        </span>
+                                                    )}
+                                                    {!isQueued && (
+                                                        <span className="queue-job-progress" title="Progress">
+                                                            {progressPct}%
                                                         </span>
                                                     )}
                                                 </div>

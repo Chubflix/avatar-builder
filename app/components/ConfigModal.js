@@ -24,9 +24,10 @@ function ConfigModal({ show, onClose }) {
     const [error, setError] = useState(null);
 
     // Downloads state
-    const [dlType, setDlType] = useState('lora'); // 'lora' | 'model'
+    const [dlType, setDlType] = useState('lora'); // 'lora' | 'model' (inferred from AIR URN)
     const [dlUrl, setDlUrl] = useState('');
     const [dlError, setDlError] = useState(null);
+    const [dlMessage, setDlMessage] = useState(null);
     const [downloading, setDownloading] = useState(false);
 
     // Assets state (for Downloads tab)
@@ -282,31 +283,25 @@ function ConfigModal({ show, onClose }) {
                                             <span>{dlError}</span>
                                         </div>
                                     )}
+                                    {dlMessage && (
+                                        <div className="config-info" style={{ marginBottom: 12 }}>
+                                            <i className="fa fa-info-circle"></i>
+                                            <span>{dlMessage}</span>
+                                        </div>
+                                    )}
 
                                     <div className="form-group" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                                        <div style={{ minWidth: 160 }}>
-                                            <label className="form-label">Type</label>
-                                            <select
-                                                className="form-input"
-                                                value={dlType}
-                                                onChange={(e) => setDlType(e.target.value)}
-                                            >
-                                                <option value="lora">Lora</option>
-                                                <option value="model">Model</option>
-                                            </select>
-                                        </div>
-
                                         <div style={{ flex: 1, minWidth: 260 }}>
-                                            <label className="form-label">Civitai URL or AIR URN</label>
+                                            <label className="form-label">AIR URN</label>
                                             <input
                                                 type="text"
                                                 className="form-input"
-                                                placeholder="https://civitai.com/models/... or urn:air:sdxl:lora:civitai:123@456"
+                                                placeholder="e.g., urn:air:sdxl:lora:civitai:123@456"
                                                 value={dlUrl}
                                                 onChange={(e) => {
                                                     const val = e.target.value;
                                                     setDlUrl(val);
-                                                    // Detect AIR URN and auto-set type
+                                                    // Detect AIR URN and clear error
                                                     const m = /^urn:air:[^:]+:(lora|checkpoint):civitai:\d+(?:@\d+)?$/i.exec((val || '').trim());
                                                     if (m) {
                                                         const kind = m[1].toLowerCase();
@@ -324,18 +319,23 @@ function ConfigModal({ show, onClose }) {
                                                 disabled={downloading}
                                                 onClick={async () => {
                                                     setDlError(null);
-                                                    // Validate URL or AIR URN
+                                                    setDlMessage(null);
+                                                    // Validate AIR URN only
                                                     const url = (dlUrl || '').trim();
-                                                    const isHttp = /^https:\/\/civitai\.com\//i.test(url);
-                                                    const isUrn = /^urn:air:[^:]+:(lora|checkpoint):civitai:\d+(?:@\d+)?$/i.test(url);
-                                                    if (!isHttp && !isUrn) {
-                                                        setDlError('Please enter a valid Civitai URL (https://civitai.com/...) or AIR URN (urn:air:...)');
+                                                    const urnMatch = /^urn:air:[^:]+:(lora|checkpoint):civitai:\d+(?:@\d+)?$/i.exec(url);
+                                                    if (!urnMatch) {
+                                                        setDlError('Please enter a valid AIR URN (urn:air:...)');
                                                         return;
                                                     }
+                                                    const kind = urnMatch[1].toLowerCase();
+                                                    setDlType(kind === 'checkpoint' ? 'model' : 'lora');
+                                                    // Immediate UX feedback
+                                                    setDlMessage('Queued');
+                                                    setDlUrl('');
                                                     setDownloading(true);
                                                     try {
-                                                        // Map AIR URN checkpoint -> model already via dlType
-                                                        const resp = await sdAPI.submitJob('/sdapi/v1/assets/download', { kind: dlType, url }, false);
+                                                        // Send to proxy; kind is derived from AIR URN
+                                                        const resp = await sdAPI.submitJob('/sdapi/v1/assets/download', { kind: (kind === 'checkpoint' ? 'model' : 'lora'), url }, false);
                                                         // If queued, broadcast
                                                         const jobId = resp?.jobId || resp?.raw?.jobId || resp?.raw?.id || null;
                                                         if (resp?.queued && jobId) {
@@ -344,6 +344,7 @@ function ConfigModal({ show, onClose }) {
                                                     } catch (e) {
                                                         console.error('Download failed', e);
                                                         setDlError(e?.message || 'Failed to start download');
+                                                        setDlMessage(null);
                                                     } finally {
                                                         setDownloading(false);
                                                     }
