@@ -16,6 +16,7 @@ export default function LoraSettings() {
 
     // Sort styles alphabetically
     const sortedStyles = [...styles].sort((a, b) => a.name.localeCompare(b.name));
+    const selectedStyle = sortedStyles.find(s => s.name === state.loraStyle);
 
     const handleSliderChange = (name, value) => {
         dispatch({
@@ -54,15 +55,15 @@ export default function LoraSettings() {
                 <div className="lora-group">
                     <label className="lora-label">
                         <span>Style</span>
-                        {sortedStyles[0]?.url && (
+                        {selectedStyle?.url && (
                             <a
-                                href={sortedStyles[0].url}
+                                href={selectedStyle.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="lora-doc-link"
                                 title="View documentation"
                             >
-                                <i className="fa fa-question-circle"></i>
+                                <i className="fa fa-external-link"></i>
                             </a>
                         )}
                     </label>
@@ -107,7 +108,7 @@ export default function LoraSettings() {
                                         className="lora-doc-link"
                                         title="View documentation"
                                     >
-                                        <i className="fa fa-question-circle"></i>
+                                        <i className="fa fa-external-link"></i>
                                     </a>
                                 )}
                             </label>
@@ -153,7 +154,7 @@ export default function LoraSettings() {
                                     className="lora-doc-link"
                                     title="View documentation"
                                 >
-                                    <i className="fa fa-question-circle"></i>
+                                    <i className="fa fa-external-link"></i>
                                 </a>
                             )}
                         </label>

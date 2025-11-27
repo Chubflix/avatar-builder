@@ -303,7 +303,7 @@ export function useSettings() {
 
     const updateGlobalSettings = useCallback(async (key, value, description = '') => {
         const configResponse = await fetch('/api/settings/global', {
-            method: 'POST',
+            method: 'PUT',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({key, value, description})
         });
@@ -316,7 +316,12 @@ export function useSettings() {
             const response = await fetch('/api/admin/check');
             if (!response.ok) return false;
             const data = await response.json();
-            return !!data?.isAdmin;
+            // Accept both camelCase and snake_case from the API for robustness
+            // Also fall back to role === 'admin' if provided
+            if (typeof data?.isAdmin !== 'undefined') return !!data.isAdmin;
+            if (typeof data?.is_admin !== 'undefined') return !!data.is_admin;
+            if (typeof data?.role === 'string') return data.role === 'admin';
+            return false;
         } catch (_) {
             return false;
         }

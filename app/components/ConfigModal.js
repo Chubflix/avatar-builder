@@ -200,6 +200,21 @@ function ConfigModal({ show, onClose }) {
     const handleSave = () => {
         if (activeTab === 'global') {
             handleSaveGlobalSettings();
+        } else if (activeTab === 'loras') {
+            // Save only loras to global settings
+            if (!isAdmin) {
+                setError('Admin access required to modify global settings');
+                return;
+            }
+            setSaving(true);
+            setError(null);
+            updateGlobalSettings('loras', globalSettings.loras, 'Available LoRA models and configurations')
+                .then(() => onClose())
+                .catch((err) => {
+                    console.error('Failed to save LoRAs:', err);
+                    setError(err.message || 'Failed to save LoRAs');
+                })
+                .finally(() => setSaving(false));
         } else {
             handleSaveUserSettings();
         }
@@ -212,6 +227,7 @@ function ConfigModal({ show, onClose }) {
         { id: 'generation', label: 'Generation', icon: 'fa-cog' },
         { id: 'adetailer', label: 'ADetailer', icon: 'fa-magic' },
         { id: 'downloads', label: 'Downloads', icon: 'fa-download' },
+        { id: 'loras', label: 'Loras', icon: 'fa-puzzle-piece', adminOnly: true },
         { id: 'global', label: 'Global Settings', icon: 'fa-globe', adminOnly: true }
     ];
 
@@ -423,7 +439,26 @@ function ConfigModal({ show, onClose }) {
                                                         </div>
                                                         <div style={{ fontWeight: 600, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                                                             <i className="fa fa-puzzle-piece"></i>
-                                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name || 'Unnamed LoRA'}</span>
+                                                            {a?.source_url ? (
+                                                                <a
+                                                                    href={a.source_url}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    title={a.source_url}
+                                                                    style={{
+                                                                        overflow: 'hidden',
+                                                                        textOverflow: 'ellipsis',
+                                                                        whiteSpace: 'nowrap',
+                                                                        color: 'inherit',
+                                                                        textDecoration: 'none'
+                                                                    }}
+                                                                >
+                                                                    {a.name || 'Unnamed LoRA'}
+                                                                    <i className="fa fa-external-link" style={{ opacity: 0.7, marginLeft: 6, fontSize: 12 }}></i>
+                                                                </a>
+                                                            ) : (
+                                                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name || 'Unnamed LoRA'}</span>
+                                                            )}
                                                         </div>
                                                         <div className="form-group" style={{ marginBottom: 6 }}>
                                                             <label className="form-label" style={{ marginBottom: 4 }}>Min</label>
@@ -697,6 +732,149 @@ function ConfigModal({ show, onClose }) {
                                 </div>
                             )}
 
+                            {activeTab === 'loras' && (
+                                <div className="config-section">
+                                    <h5>LoRAs</h5>
+                                    <p className="config-description">
+                                        {isAdmin ? 'Manage system-wide LoRAs that appear in the app' : 'Admin access required to modify LoRAs'}
+                                    </p>
+
+                                    {!isAdmin && (
+                                        <div className="config-info">
+                                            <i className="fa fa-info-circle"></i>
+                                            <span>Contact an administrator to make changes to LoRAs.</span>
+                                        </div>
+                                    )}
+
+                                    {isAdmin && (
+                                        <>
+                                            {(globalSettings.loras?.length === 0) && (
+                                                <div className="config-info" style={{ marginBottom: 12 }}>
+                                                    <i className="fa fa-info-circle"></i>
+                                                    <span>No LoRAs configured yet. Add your first item below.</span>
+                                                </div>
+                                            )}
+
+                                            {(globalSettings.loras || []).map((item, idx) => {
+                                                const updateItem = (patch) => setGlobalSettings(prev => {
+                                                    const list = Array.isArray(prev.loras) ? [...prev.loras] : [];
+                                                    list[idx] = { ...list[idx], ...patch };
+                                                    return { ...prev, loras: list };
+                                                });
+                                                const removeItem = () => setGlobalSettings(prev => {
+                                                    const list = Array.isArray(prev.loras) ? [...prev.loras] : [];
+                                                    list.splice(idx, 1);
+                                                    return { ...prev, loras: list };
+                                                });
+                                                const type = item?.type || 'style';
+                                                return (
+                                                    <div key={idx} className="panel" style={{ marginBottom: 12 }}>
+                                                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                                            <strong style={{ fontSize: 14 }}>LoRA #{idx + 1}</strong>
+                                                            <div style={{ display: 'flex', gap: 8 }}>
+                                                                <button type="button" className="btn btn-secondary"
+                                                                        title="Move up" disabled={idx === 0}
+                                                                        onClick={() => setGlobalSettings(prev => {
+                                                                            const list = [...(prev.loras || [])];
+                                                                            const temp = list[idx - 1];
+                                                                            list[idx - 1] = list[idx];
+                                                                            list[idx] = temp;
+                                                                            return { ...prev, loras: list };
+                                                                        })}>
+                                                                    <i className="fa fa-arrow-up"></i>
+                                                                </button>
+                                                                <button type="button" className="btn btn-secondary"
+                                                                        title="Move down" disabled={idx === (globalSettings.loras?.length - 1)}
+                                                                        onClick={() => setGlobalSettings(prev => {
+                                                                            const list = [...(prev.loras || [])];
+                                                                            const temp = list[idx + 1];
+                                                                            list[idx + 1] = list[idx];
+                                                                            list[idx] = temp;
+                                                                            return { ...prev, loras: list };
+                                                                        })}>
+                                                                    <i className="fa fa-arrow-down"></i>
+                                                                </button>
+                                                                <button type="button" className="btn btn-danger" title="Remove" onClick={removeItem}>
+                                                                    <i className="fa fa-trash"></i>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="form-group">
+                                                            <label className="form-label">Name</label>
+                                                            <input className="form-input" value={item.name || ''} onChange={(e) => updateItem({ name: e.target.value })} placeholder="Display name" />
+                                                        </div>
+                                                        <div className="form-group">
+                                                            <label className="form-label">URL</label>
+                                                            <input className="form-input" value={item.url || ''} onChange={(e) => updateItem({ url: e.target.value })} placeholder="Civitai or reference URL (optional)" />
+                                                        </div>
+                                                        <div className="form-group">
+                                                            <label className="form-label">Type</label>
+                                                            <select className="form-input" value={type} onChange={(e) => updateItem({ type: e.target.value })}>
+                                                                <option value="style">Style</option>
+                                                                <option value="toggle">Toggle</option>
+                                                                <option value="slider">Slider</option>
+                                                            </select>
+                                                        </div>
+                                                        <div className="form-group">
+                                                            <label className="form-label">Prompt</label>
+                                                            <input className="form-input" value={item.prompt || ''} onChange={(e) => updateItem({ prompt: e.target.value })} placeholder="<lora:YourLora:1> or slider with ${value}" />
+                                                        </div>
+
+                                                        {type === 'slider' && (
+                                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+                                                                <div className="form-group">
+                                                                    <label className="form-label">Min</label>
+                                                                    <input type="number" className="form-input" value={(item.min ?? '')}
+                                                                           onChange={(e) => updateItem({ min: e.target.value === '' ? '' : Number(e.target.value) })} />
+                                                                </div>
+                                                                <div className="form-group">
+                                                                    <label className="form-label">Max</label>
+                                                                    <input type="number" className="form-input" value={(item.max ?? '')}
+                                                                           onChange={(e) => updateItem({ max: e.target.value === '' ? '' : Number(e.target.value) })} />
+                                                                </div>
+                                                                <div className="form-group">
+                                                                    <label className="form-label">Step</label>
+                                                                    <input type="number" className="form-input" value={(item.step ?? '')}
+                                                                           onChange={(e) => updateItem({ step: e.target.value === '' ? '' : Number(e.target.value) })} />
+                                                                </div>
+                                                                <div className="form-group">
+                                                                    <label className="form-label">Default</label>
+                                                                    <input type="number" className="form-input" value={(item.defaultValue ?? 0)}
+                                                                           onChange={(e) => updateItem({ defaultValue: e.target.value === '' ? 0 : Number(e.target.value) })} />
+                                                                </div>
+                                                                <div className="form-group">
+                                                                    <label className="form-label">Min Label</label>
+                                                                    <input className="form-input" value={item.minDesc || ''} onChange={(e) => updateItem({ minDesc: e.target.value })} placeholder="Young" />
+                                                                </div>
+                                                                <div className="form-group">
+                                                                    <label className="form-label">Max Label</label>
+                                                                    <input className="form-input" value={item.maxDesc || ''} onChange={(e) => updateItem({ maxDesc: e.target.value })} placeholder="Old" />
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+
+                                            <div className="form-group">
+                                                <button type="button" className="btn btn-secondary"
+                                                        onClick={() => setGlobalSettings(prev => ({
+                                                            ...prev,
+                                                            loras: [
+                                                                ...(Array.isArray(prev.loras) ? prev.loras : []),
+                                                                { name: '', url: '', type: 'style', prompt: '' }
+                                                            ]
+                                                        }))}
+                                                >
+                                                    <i className="fa fa-plus"></i> Add LoRA
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+
                             {activeTab === 'global' && (
                                 <div className="config-section">
                                     <h5>Global Settings</h5>
@@ -716,26 +894,7 @@ function ConfigModal({ show, onClose }) {
 
                                     {isAdmin && (
                                         <>
-                                            <div className="form-group">
-                                                <label className="form-label">LoRAs (JSON)</label>
-                                                <textarea
-                                                    className="form-input code-input"
-                                                    value={JSON.stringify(globalSettings.loras, null, 2)}
-                                                    onChange={(e) => {
-                                                        try {
-                                                            const parsed = JSON.parse(e.target.value);
-                                                            setGlobalSettings(prev => ({ ...prev, loras: parsed }));
-                                                            setError(null);
-                                                        } catch (err) {
-                                                            // Keep the text but show error
-                                                            setError('Invalid JSON format');
-                                                        }
-                                                    }}
-                                                    rows={12}
-                                                    placeholder='[{"name": "...", "prompt": "...", "type": "..."}]'
-                                                />
-                                                <small className="form-hint">Array of LoRA configurations with name, prompt, type, etc.</small>
-                                            </div>
+                                            {/* LoRAs are now edited in the dedicated tab. Keeping dimensions here. */}
 
                                             <div className="form-group">
                                                 <label className="form-label">Dimensions (JSON)</label>
