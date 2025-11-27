@@ -10,6 +10,7 @@ import { ToggleSwitch } from '@/app/design-system/atoms/ToggleSwitch';
 import sdAPI from '@/app/utils/sd-api';
 import { notifyJobQueued } from '@/app/utils/queue-notifications';
 import './ConfigModal.css';
+import ExternalImagesLightboxContainer from './ExternalImagesLightboxContainer';
 
 function ConfigModal({ show, onClose }) {
     const [mounted, setMounted] = useState(false);
@@ -34,6 +35,11 @@ function ConfigModal({ show, onClose }) {
     const [assetsError, setAssetsError] = useState(null);
     const [assetEdits, setAssetEdits] = useState({}); // id -> { min, max, example_prompt }
     const [assetSaving, setAssetSaving] = useState({}); // id -> boolean
+
+    // External Lightbox for asset previews
+    const [showAssetLightbox, setShowAssetLightbox] = useState(false);
+    const [assetLightboxImages, setAssetLightboxImages] = useState([]);
+    const [assetLightboxIndex, setAssetLightboxIndex] = useState(0);
 
     // Form state
     const [userSettings, setUserSettings] = useState({
@@ -357,6 +363,35 @@ function ConfigModal({ show, onClose }) {
                                                 const imageUrl = a.image_url || (Array.isArray(a.images) && a.images[0]?.url) || '';
                                                 const isNSFW = Array.isArray(a.images) ? a.images.some(img => !!img?.is_nsfw) : false;
                                                 const saving = !!assetSaving[id];
+                                                const openAssetLightbox = () => {
+                                                    // Build images list from asset.images with fallback to image_url
+                                                    const list = [];
+                                                    const urls = new Set();
+                                                    if (Array.isArray(a.images)) {
+                                                        a.images.forEach((img, idx) => {
+                                                            const u = img?.url || '';
+                                                            if (!u || urls.has(u)) return;
+                                                            urls.add(u);
+                                                            list.push({
+                                                                id: `asset-${id}-${idx}`,
+                                                                url: u,
+                                                                is_nsfw: !!img?.is_nsfw,
+                                                                width: img?.width || undefined,
+                                                                height: img?.height || undefined,
+                                                            });
+                                                        });
+                                                    }
+                                                    if (a.image_url && !urls.has(a.image_url)) {
+                                                        urls.add(a.image_url);
+                                                        list.unshift({ id: `asset-${id}-cover`, url: a.image_url, is_nsfw: isNSFW });
+                                                    }
+                                                    if (list.length === 0 && imageUrl) {
+                                                        list.push({ id: `asset-${id}-cover`, url: imageUrl, is_nsfw: isNSFW });
+                                                    }
+                                                    setAssetLightboxImages(list);
+                                                    setAssetLightboxIndex(0);
+                                                    setShowAssetLightbox(true);
+                                                };
                                                 return (
                                                     <div key={id} style={{ border: '1px solid var(--border-color, #333)', borderRadius: 8, padding: 10, background: 'var(--panel-bg, #111)' }}>
                                                         <div
@@ -364,10 +399,12 @@ function ConfigModal({ show, onClose }) {
                                                             role={imageUrl ? 'button' : undefined}
                                                             tabIndex={imageUrl ? 0 : -1}
                                                             title={imageUrl ? 'Open preview images' : undefined}
+                                                            onClick={() => { if (imageUrl) openAssetLightbox(); }}
                                                             onKeyDown={(e) => {
                                                                 if (!imageUrl) return;
                                                                 if (e.key === 'Enter' || e.key === ' ') {
                                                                     e.preventDefault();
+                                                                    openAssetLightbox();
                                                                 }
                                                             }}
                                                         >
@@ -749,6 +786,14 @@ function ConfigModal({ show, onClose }) {
                         )}
                     </button>
                 </div>
+
+                {/* External Images Lightbox for asset previews */}
+                <ExternalImagesLightboxContainer
+                    show={show && showAssetLightbox}
+                    images={assetLightboxImages}
+                    initialIndex={assetLightboxIndex}
+                    onClose={() => setShowAssetLightbox(false)}
+                />
             </div>
         </div>
     );
