@@ -235,6 +235,23 @@ export const imageAPI = {
     },
 
     /**
+     * Bulk move images to folder
+     */
+    async bulkMove(imageIds: string[], folderId: string | null) {
+        const response = await fetch(`${API_BASE}/api/images/bulk-move`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageIds, folderId })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to move images');
+        }
+
+        return await response.json();
+    },
+
+    /**
      * Bulk delete images
      */
     async bulkDelete(imageIds: string[]) {
