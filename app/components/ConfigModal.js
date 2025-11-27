@@ -32,6 +32,7 @@ function ConfigModal({ show, onClose }) {
 
     // Assets state (for Downloads tab)
     const [assets, setAssets] = useState([]);
+    const [assetsQuery, setAssetsQuery] = useState(''); // live in-memory filter for downloads
     const [assetsLoading, setAssetsLoading] = useState(false);
     const [assetsError, setAssetsError] = useState(null);
     const [assetEdits, setAssetEdits] = useState({}); // id -> { min, max, example_prompt }
@@ -356,9 +357,20 @@ function ConfigModal({ show, onClose }) {
                                     </div>
                                     {/* Assets List */}
                                     <div style={{ marginTop: 20, borderTop: '1px solid var(--border-color, #333)', paddingTop: 12 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
                                             <h6 style={{ margin: 0 }}>Available LoRAs</h6>
-                                            <div>
+                                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                                <div className="form-input-wrapper" style={{ position: 'relative' }}>
+                                                    <i className="fa fa-search" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', opacity: 0.6 }}></i>
+                                                    <input
+                                                        type="text"
+                                                        value={assetsQuery}
+                                                        onChange={(e) => setAssetsQuery(e.target.value)}
+                                                        placeholder="Search downloads..."
+                                                        className="form-input"
+                                                        style={{ paddingLeft: 30, minWidth: 220 }}
+                                                    />
+                                                </div>
                                                 <button type="button" className="btn btn-secondary" onClick={loadAssets} disabled={assetsLoading}>
                                                     {assetsLoading ? (<><i className="fa fa-spinner fa-spin"></i> Refreshing...</>) : (<><i className="fa fa-refresh"></i> Refresh</>)}
                                                 </button>
@@ -370,11 +382,37 @@ function ConfigModal({ show, onClose }) {
                                                 <span>{assetsError}</span>
                                             </div>
                                         )}
-                                        {!assetsLoading && (assets?.filter?.(a => a?.kind === 'lora') || []).length === 0 && (
+                                        {!assetsLoading && (() => {
+                                            const list = (assets || []).filter(a => a?.kind === 'lora');
+                                            const q = (assetsQuery || '').trim().toLowerCase();
+                                            const filtered = q ? list.filter(a => {
+                                                const hay = [
+                                                    a?.name,
+                                                    a?.id && String(a.id),
+                                                    a?.source_url,
+                                                    a?.example_prompt,
+                                                ].filter(Boolean).join(' ').toLowerCase();
+                                                return hay.includes(q);
+                                            }) : list;
+                                            return filtered.length === 0;
+                                        })() && (
                                             <div className="config-empty">No LoRAs available.</div>
                                         )}
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
-                                            {(assets || []).filter(a => a?.kind === 'lora').map((a) => {
+                                            {(() => {
+                                                const list = (assets || []).filter(a => a?.kind === 'lora');
+                                                const q = (assetsQuery || '').trim().toLowerCase();
+                                                const filtered = q ? list.filter(a => {
+                                                    const hay = [
+                                                        a?.name,
+                                                        a?.id && String(a.id),
+                                                        a?.source_url,
+                                                        a?.example_prompt,
+                                                    ].filter(Boolean).join(' ').toLowerCase();
+                                                    return hay.includes(q);
+                                                }) : list;
+                                                return filtered;
+                                            })().map((a) => {
                                                 const id = a.id;
                                                 const edit = assetEdits[id] || { min: a.min ?? '', max: a.max ?? '', example_prompt: a.example_prompt ?? '' };
                                                 const imageUrl = a.image_url || (Array.isArray(a.images) && a.images[0]?.url) || '';
@@ -427,9 +465,15 @@ function ConfigModal({ show, onClose }) {
                                                             }}
                                                         >
                                                             {imageUrl ? (
-                                                                <img src={imageUrl} alt={a.name || 'LoRA'} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 6 }} />
+                                                                <div style={{ width: '100%', aspectRatio: '1 / 1.75', overflow: 'hidden', borderRadius: 6, background: '#222' }}>
+                                                                    <img
+                                                                        src={imageUrl}
+                                                                        alt={a.name || 'LoRA'}
+                                                                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                                                    />
+                                                                </div>
                                                             ) : (
-                                                                <div style={{ width: '100%', height: 140, background: '#222', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#777' }}>
+                                                                <div style={{ width: '100%', aspectRatio: '1 / 1.75', background: '#222', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#777' }}>
                                                                     <i className="fa fa-image"></i>
                                                                 </div>
                                                             )}
