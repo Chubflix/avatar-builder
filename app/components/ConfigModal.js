@@ -448,6 +448,15 @@ function ConfigModal({ show, onClose }) {
                                                     setAssetLightboxIndex(0);
                                                     setShowAssetLightbox(true);
                                                 };
+                                                // Count how many configured LoRA settings reference this downloaded asset
+                                                const refsCount = Array.isArray(globalSettings?.loras)
+                                                    ? globalSettings.loras.filter(l => {
+                                                        const aid = (l?.asset_id ?? '').toString().trim();
+                                                        if (!aid) return false;
+                                                        return aid === (id != null ? id.toString() : '');
+                                                    }).length
+                                                    : 0;
+
                                                 return (
                                                     <div key={id} style={{ border: '1px solid var(--border-color, #333)', borderRadius: 8, padding: 10, background: 'var(--panel-bg, #111)' }}>
                                                         <div
@@ -505,6 +514,25 @@ function ConfigModal({ show, onClose }) {
                                                             ) : (
                                                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name || 'Unnamed LoRA'}</span>
                                                             )}
+                                                            <span
+                                                                title={`Referenced in ${refsCount} LoRA setting${refsCount === 1 ? '' : 's'}`}
+                                                                style={{
+                                                                    marginLeft: 'auto',
+                                                                    display: 'inline-flex',
+                                                                    alignItems: 'center',
+                                                                    gap: 6,
+                                                                    background: 'rgba(255,255,255,0.06)',
+                                                                    border: '1px solid rgba(255,255,255,0.12)',
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: 6,
+                                                                    fontWeight: 500,
+                                                                    fontSize: 12,
+                                                                    color: 'inherit'
+                                                                }}
+                                                            >
+                                                                <i className="fa fa-link" aria-hidden="true" style={{ opacity: 0.85 }}></i>
+                                                                {refsCount}
+                                                            </span>
                                                         </div>
                                                         <div className="form-group" style={{ marginBottom: 6 }}>
                                                             <label className="form-label" style={{ marginBottom: 4 }}>Min</label>
@@ -522,7 +550,46 @@ function ConfigModal({ show, onClose }) {
                                                                       onChange={(e) => setAssetEdits(prev => ({ ...prev, [id]: { ...edit, example_prompt: e.target.value } }))}
                                                                       placeholder="e.g., <lora:your_lora:0.8>, style keywords..." />
                                                         </div>
-                                                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                                        <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-secondary"
+                                                                title="Create a new LoRA entry using this asset"
+                                                                onClick={() => {
+                                                                    // Build a new LoRA configuration entry prefilled from this asset
+                                                                    const hasRange = (edit.min !== '' && edit.min !== null && edit.min !== undefined) ||
+                                                                        (edit.max !== '' && edit.max !== null && edit.max !== undefined);
+                                                                    const minVal = edit.min === '' || edit.min === null || typeof edit.min === 'undefined' ? undefined : Number(edit.min);
+                                                                    const maxVal = edit.max === '' || edit.max === null || typeof edit.max === 'undefined' ? undefined : Number(edit.max);
+                                                                    const step = (hasRange ? 0.05 : undefined);
+                                                                    const defaultValue = (typeof minVal === 'number' && typeof maxVal === 'number')
+                                                                        ? (minVal + maxVal) / 2
+                                                                        : (typeof minVal === 'number' ? minVal : (typeof maxVal === 'number' ? maxVal : undefined));
+
+                                                                    const newEntry = {
+                                                                        name: a.name || 'LoRA',
+                                                                        asset_id: (a?.id != null ? String(a.id) : ''),
+                                                                        url: a?.source_url || a?.url || '',
+                                                                        type: hasRange ? 'slider' : 'style',
+                                                                        prompt: edit.example_prompt || a.example_prompt || '',
+                                                                        ...(typeof minVal === 'number' ? { min: minVal } : {}),
+                                                                        ...(typeof maxVal === 'number' ? { max: maxVal } : {}),
+                                                                        ...(typeof step === 'number' ? { step } : {}),
+                                                                        ...(typeof defaultValue === 'number' ? { defaultValue } : {})
+                                                                    };
+
+                                                                    setGlobalSettings(prev => ({
+                                                                        ...prev,
+                                                                        loras: [
+                                                                            ...(Array.isArray(prev.loras) ? prev.loras : []),
+                                                                            newEntry
+                                                                        ]
+                                                                    }));
+                                                                }}
+                                                            >
+                                                                <i className="fa fa-plus" aria-hidden="true"></i> Use in Lora
+                                                            </button>
+                                                            <div style={{ display: 'flex', gap: 8 }}>
                                                             <button type="button" className="btn btn-secondary" disabled={saving}
                                                                     onClick={() => setAssetEdits(prev => ({ ...prev, [id]: { min: a.min ?? '', max: a.max ?? '', example_prompt: a.example_prompt ?? '' } }))}>
                                                                 Reset
@@ -552,6 +619,7 @@ function ConfigModal({ show, onClose }) {
                                                                     }}>
                                                                 {saving ? (<><i className="fa fa-spinner fa-spin"></i> Saving...</>) : 'Save'}
                                                             </button>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 );
@@ -851,6 +919,15 @@ function ConfigModal({ show, onClose }) {
                                                             <input className="form-input" value={item.name || ''} onChange={(e) => updateItem({ name: e.target.value })} placeholder="Display name" />
                                                         </div>
                                                         <div className="form-group">
+                                                            <label className="form-label">Asset ID</label>
+                                                            <input
+                                                                className="form-input"
+                                                                value={item.asset_id || ''}
+                                                                onChange={(e) => updateItem({ asset_id: e.target.value })}
+                                                                placeholder="Link to downloaded asset (optional)"
+                                                            />
+                                                        </div>
+                                                        <div className="form-group">
                                                             <label className="form-label">URL</label>
                                                             <input className="form-input" value={item.url || ''} onChange={(e) => updateItem({ url: e.target.value })} placeholder="Civitai or reference URL (optional)" />
                                                         </div>
@@ -908,8 +985,8 @@ function ConfigModal({ show, onClose }) {
                                                         onClick={() => setGlobalSettings(prev => ({
                                                             ...prev,
                                                             loras: [
-                                                                ...(Array.isArray(prev.loras) ? prev.loras : []),
-                                                                { name: '', url: '', type: 'style', prompt: '' }
+                                                            ...(Array.isArray(prev.loras) ? prev.loras : []),
+                                                            { name: '', asset_id: '', url: '', type: 'style', prompt: '' }
                                                             ]
                                                         }))}
                                                 >

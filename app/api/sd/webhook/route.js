@@ -64,7 +64,7 @@ export async function POST(request) {
             scheduler: job.payload?.scheduler,
             steps: job.payload?.steps,
             cfgScale: job.payload?.cfgScale,
-            seed: job.payload?.seed,
+            seed: body.seed || job.payload?.seed,
             adetailerEnabled: job.payload?.adetailerEnabled,
             adetailerModel: job.payload?.adetailerModel,
             info: body?.info || job.payload?.info || {},
