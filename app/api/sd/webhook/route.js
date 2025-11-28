@@ -75,13 +75,13 @@ export async function POST(request) {
             maskId: resolvedMaskId
         };
 
-        for (const img of images) {
+        for (const [index, img] of images.entries()) {
             let perMaskId = meta.maskId || null;
             await saveGeneratedImage({
                 supabase,
                 userId: job.user_id,
                 imageBase64: typeof img === 'string' ? img : img?.data || '',
-                meta: { ...meta, maskId: perMaskId }
+                meta: { ...meta, maskId: perMaskId, seed: meta.seed ? (Number(meta.seed) + index) : null }
             });
         }
 
