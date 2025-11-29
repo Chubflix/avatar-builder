@@ -1,29 +1,40 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import './PromptAutocomplete.css';
 import { useApp } from '../context/AppContext';
 
 function getCurrentToken(text, caret) {
   const before = text.slice(0, caret);
+  const after = text.slice(caret);
+
+  // Find start of token (look backward)
   const sepIdx = Math.max(before.lastIndexOf(','), before.lastIndexOf('\n'), before.lastIndexOf(' '));
   const start = sepIdx === -1 ? 0 : sepIdx + 1;
   let token = before.slice(start).trimStart();
   const leadingSpaces = before.slice(start).length - token.length;
-  return { token, start: start + leadingSpaces };
+
+  // Find end of token (look forward) - stop at separator or end of string
+  const afterSepMatch = after.match(/^[^,\n\s]*/);
+  const endOffset = afterSepMatch ? afterSepMatch[0].length : 0;
+
+  return {
+    token,
+    start: start + leadingSpaces,
+    end: caret + endOffset
+  };
 }
 
 function replaceCurrentToken(text, caret, replacement) {
-  const { token, start } = getCurrentToken(text, caret);
-  const end = caret;
+  const { start, end } = getCurrentToken(text, caret);
   const before = text.slice(0, start);
   const after = text.slice(end);
   // Ensure comma separation styling like "tag, " if not end-of-line and not already comma
   let insert = replacement;
-  const needsComma = after.trim().length === 0 || after.trim().startsWith(',') ? false : true;
+  const needsComma = !(after.trim().length === 0 || after.trim().startsWith(','));
   if (needsComma) insert += ', ';
-  return before + insert + after.replace(/^\s*/, '');
+  return before + insert + after;
 }
 
 function useCaretPosition(textareaRef, value) {
@@ -75,8 +86,6 @@ function useCaretPosition(textareaRef, value) {
     const listeners = [
       ['keyup', compute],
       ['input', compute],
-      ['click', compute],
-      ['focus', compute],
     ];
     listeners.forEach(([e, fn]) => ta.addEventListener(e, fn));
     const onResize = () => compute();
@@ -158,10 +167,7 @@ export default function PromptAutocomplete({ textareaRef, value, onSelect }) {
     const ta = textareaRef.current;
     if (!ta) return;
 
-    const computeAndMaybeOpen = (source) => {
-      if (suppressOpenRef.current && (source === 'click' || source === 'focus')) {
-        return; // don't reopen until user types
-      }
+    const computeAndMaybeOpen = () => {
       const caret = ta.selectionStart;
       const { token } = getCurrentToken(ta.value, caret);
       const pref = token.toLowerCase();
@@ -182,18 +188,14 @@ export default function PromptAutocomplete({ textareaRef, value, onSelect }) {
     const onInput = () => {
       // user typed; allow reopening again
       suppressOpenRef.current = false;
-      computeAndMaybeOpen('input');
+      computeAndMaybeOpen();
     };
-    const onClick = () => computeAndMaybeOpen('click');
-    const onFocus = () => computeAndMaybeOpen('focus');
 
+    // Only trigger autocomplete on input (typing, backspace, delete)
+    // NOT on mouse clicks or focus changes
     ta.addEventListener('input', onInput);
-    ta.addEventListener('click', onClick);
-    ta.addEventListener('focus', onFocus);
     return () => {
       ta.removeEventListener('input', onInput);
-      ta.removeEventListener('click', onClick);
-      ta.removeEventListener('focus', onFocus);
     };
   }, [textareaRef]);
 
