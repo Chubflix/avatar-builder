@@ -8,6 +8,7 @@ export function LightboxImage() {
     const {
         currentImage,
         isZoomed,
+        handleToggleZoom,
         panPosition,
         isPanning,
         isMousePanning,
@@ -26,6 +27,7 @@ export function LightboxImage() {
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
+                onClick={() => !isZoomed && handleToggleZoom()}
                 style={{
                     transform: isZoomed
                         ? `scale(2) translate(${panPosition.x / 2}px, ${panPosition.y / 2}px)`
