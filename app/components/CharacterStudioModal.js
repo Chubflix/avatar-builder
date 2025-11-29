@@ -183,11 +183,12 @@ function calculateRegionsFromPose(keypoints, width, height) {
         },
 
         // Separate body sub-regions (non-overlapping)
-        torso: {
+        body: {
             x: Math.min(lShoulder[0], rShoulder[0]) - 0.08,
             y: Math.min(lShoulder[1], rShoulder[1]),
             w: Math.max(rShoulder[0], rHip[0]) - Math.min(lShoulder[0], lHip[0]) + 0.16,
-            h: Math.max(lHip[1], rHip[1]) - Math.min(lShoulder[1], rShoulder[1]) + 0.10
+            h: Math.max(lHip[1], rHip[1]) - Math.min(lShoulder[1], rShoulder[1]) + 0.10,
+            color: '#FF6B6B'
         },
 
         left_upper_arm,
@@ -277,13 +278,15 @@ function CharacterStudioModal() {
                     ctx.translate(region.centerX, region.centerY);
                     ctx.rotate(region.angle * Math.PI / 180);
 
-                    ctx.fillStyle = region.color || "#FF6B6B";
-                    ctx.fillRect(
+                    ctx.fillStyle = "#FF6B6B";
+                    ctx.setLineDash([8, 4]);
+                    ctx.strokeRect(
                         -(region.length / 2),
                         -(region.thickness / 2),
                         region.length,
                         region.thickness
                     );
+                    ctx.setLineDash([]);
                     ctx.restore();
                     return;
                 }
@@ -345,33 +348,6 @@ function CharacterStudioModal() {
                 }
             });
         }
-
-        Object.entries(regions).forEach(([key, region]) => {
-            if (region.angle !== undefined) {
-                // ctx.save();
-                // ctx.translate(region.centerX, region.centerY);  // Now correct pixel coords
-                // ctx.rotate(region.angle * Math.PI / 180);
-                //
-                // ctx.fillStyle = 'rgba(255,255,255,0.8)';
-                // ctx.fillRect(-(region.length / 2), -(region.thickness / 2), region.length, region.thickness);
-                //
-                // ctx.strokeStyle = '#FF4444';
-                // ctx.lineWidth = 3;
-                // ctx.strokeRect(-(region.length / 2), -(region.thickness / 2), region.length, region.thickness);
-                // ctx.restore();
-
-                // ✅ Debug joints (PIXEL coords)
-                ctx.fillStyle = '#00FF00';  // pointA
-                ctx.beginPath();
-                ctx.arc(region.pointA_px[0], region.pointA_px[1], 8, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.fillStyle = '#0000FF';  // pointB
-                ctx.beginPath();
-                ctx.arc(region.pointB_px[0], region.pointB_px[1], 8, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        });
     }, [selectedPose, showSkeleton, showRegions, showDebug, regions]);
 
     const handleClose = () => {
@@ -419,7 +395,9 @@ function CharacterStudioModal() {
         const poseData = {
             people: [{
                 pose_keypoints_2d: pose_keypoints_2d
-            }]
+            }],
+            canvas_width: 512,
+            canvas_height: 512,
         };
 
         // Create a blob and download
