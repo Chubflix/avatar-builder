@@ -3,11 +3,11 @@
 import { useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useQueueContext } from '../context/QueueContext';
-import { useQueue } from "@/app/hooks/queue";
 import LocationPicker from './LocationPicker';
 import MobileSlideout from './MobileSlideout';
 import './MobilePromptSlideout.css';
 import PromptAutocomplete from './PromptAutocomplete';
+import { ToggleSwitch } from '@/app/design-system/atoms/ToggleSwitch';
 
 function MobilePromptSlideout({ show, onClose, onGenerate }) {
     const { state, dispatch, actions } = useApp();
@@ -21,7 +21,8 @@ function MobilePromptSlideout({ show, onClose, onGenerate }) {
         folders,
         isGenerating,
         progress,
-        selectedModel
+        selectedModel,
+        tagAutocompleteEnabled
     } = state;
     const { count: queueCount } = useQueueContext();
 
@@ -58,6 +59,20 @@ function MobilePromptSlideout({ show, onClose, onGenerate }) {
                             value={positivePrompt}
                             onChange={(e) => dispatch({ type: actions.SET_POSITIVE_PROMPT, payload: e.target.value })}
                             placeholder="Enter your prompt..."
+                        />
+                    </div>
+
+                    {/* Auto Tagging Toggle Row */}
+                    <div className="control-row" style={{ alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0' }}>
+                        <label style={{ margin: 0, fontSize: '0.95rem' }}>Auto Tagging</label>
+                        <ToggleSwitch
+                            checked={tagAutocompleteEnabled}
+                            onChange={() => dispatch({
+                                type: actions.SET_TAG_AUTOCOMPLETE_ENABLED,
+                                payload: !tagAutocompleteEnabled
+                            })}
+                            title="Toggle auto tagging"
+                            ariaLabel="Toggle auto tagging"
                         />
                     </div>
 

@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import FormLabelInfo from '../FormLabelInfo';
 import PromptAutocomplete from '../PromptAutocomplete';
 import LocationPicker from '../LocationPicker';
+import { ToggleSwitch } from '@/app/design-system/atoms/ToggleSwitch';
 
 function BasicSettingsTab() {
     const { state, dispatch, actions } = useApp();
@@ -15,7 +16,8 @@ function BasicSettingsTab() {
         orientation,
         batchSize,
         selectedFolder,
-        folders
+        folders,
+        tagAutocompleteEnabled
     } = state;
 
     if (!config) return null;
@@ -41,6 +43,22 @@ function BasicSettingsTab() {
                     value={positivePrompt}
                     onSelect={(text) => dispatch({ type: actions.SET_POSITIVE_PROMPT, payload: text })}
                 />
+            </div>
+
+            {/* Auto Tagging Toggle */}
+            <div className="form-group">
+                <div className="form-row" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
+                    <label className="form-label" style={{ margin: 0 }}>Auto Tagging</label>
+                    <ToggleSwitch
+                        checked={tagAutocompleteEnabled}
+                        onChange={() => dispatch({
+                            type: actions.SET_TAG_AUTOCOMPLETE_ENABLED,
+                            payload: !tagAutocompleteEnabled
+                        })}
+                        title="Toggle auto tagging"
+                        ariaLabel="Toggle auto tagging"
+                    />
+                </div>
             </div>
 
             {/* Save to Folder */}
