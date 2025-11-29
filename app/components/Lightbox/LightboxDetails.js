@@ -93,7 +93,51 @@ export function LightboxDetails({ onSetModel, onCopyPositivePrompt, onCopyNegati
                     </>
                 )}
             </div>
-            <div className="settings-display">
+            {currentImage.tags && Object.keys(currentImage.tags).length > 0 && (
+                <div className="settings-display" style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+                    <div style={{ marginBottom: '0.75rem' }}><strong>Tags:</strong></div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                        {Object.entries(currentImage.tags)
+                            .filter(([_, probability]) => probability >= 0.25)
+                            .sort(([_, probabilityA], [__, probabilityB]) => probabilityB - probabilityA)
+                            .map(([name, probability]) => {
+                                const percentValue = Math.round(probability * 100);
+                                return (
+                                    <div
+                                        key={name}
+                                        title={`${name} (${percentValue}%)`}
+                                        style={{
+                                            position: 'relative',
+                                            padding: '0.15rem 0.3rem',
+                                            borderRadius: '0.25rem',
+                                            fontSize: '0.75rem',
+                                            backgroundColor: 'var(--bg-secondary)',
+                                            overflow: 'hidden',
+                                            border: '1px solid var(--border)',
+                                        }}
+                                    >
+                                        <div
+                                            style={{
+                                                position: 'absolute',
+                                                left: 0,
+                                                top: 0,
+                                                bottom: -30,
+                                                width: `${percentValue}%`,
+                                                backgroundColor: 'var(--border)',
+                                                opacity: 0.3,
+                                                zIndex: 0,
+                                            }}
+                                        />
+                                        <span style={{ position: 'relative', zIndex: 1 }}>{name}</span>
+                                    </div>
+                                );
+                            })}
+                    </div>
+                </div>
+            )}
+            <div className="settings-display" style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+                <div style={{ marginBottom: '0.75rem' }}><strong>Generation Details:</strong></div>
+
                 <div><strong>Model:</strong> <span className="selectable-setting" onClick={() => onSetModel(currentImage.model)} title="Set as current model">
                     {currentImage.model || 'N/A'}
                 </span></div>
