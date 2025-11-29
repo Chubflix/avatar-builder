@@ -1,0 +1,55 @@
+{
+  "prompt": "masterpiece, best quality, highly detailed, cinematic lighting, semi-realistic portrait, photorealistic skin texture, (no anime:1.2), (no cel-shading:1.1), <lora:RealisticSkin:0.9>, <lora:CinematicLighting:0.7>, (sitting pose):1.1",
+  "width": 832,
+  "height": 1216,
+  "steps": 35,
+  "sampler_name": "DPM++ 2M Karras",
+  "cfg_scale": 9.0,
+  "alwayson_scripts": {
+    "ControlNet": [{
+      "model": "illustrious_xl_controlnet_openpose.safetensors",
+      "preprocessor": "dw_openpose_full",
+      "json_payload": "{\"people\":[{\"pose_keypoints_2d\":[256,102.4,1,245.76,97.28,1,266.24,97.28,1,235.52,97.28,1,276.48,97.28,1,215.04,163.84,1,297.6,163.84,1,194.56,245.76,1,317.44,245.76,1,179.2,317.44,1,332.8,317.44,1,225.28,296.96,1,286.72,296.96,1,204.8,384,1,307.2,384,1,194.56,419.84,1,317.44,419.84]} ],\"canvas_width\":512,\"canvas_height\":512}",
+      "weight": 0.7,
+      "controlnet_res": 512,
+      "control_mode": 1,
+      "resize_mode": 0,
+      "scale_by": 1.0
+    }],
+    "Regional Prompter": {
+      "args": [
+        true,
+        false,
+        "Mask",
+        "",
+        0.5,
+        false,
+        "",
+        "Attention",
+        true,
+        [
+          {
+            "name": "hair",
+            "prompt": "long flowing pink hair, shiny strands, detailed hair physics, hair over shoulder, <lora:RealisticHairXL:0.8>",
+            "mask": "base64_mask_png_for_hair_region"
+          },
+          {
+            "name": "face",
+            "prompt": "detailed semi-realistic face, piercing blue eyes, soft smile, perfect skin pores, subtle makeup, <lora:PerfectFaceXL:1.0>",
+            "mask": "base64_mask_png_for_face_region"
+          },
+          {
+            "name": "body",
+            "prompt": "ornate silver warrior armor, engraved patterns, metallic reflections, leather straps, shoulder pauldrons, dynamic folds, <lora:DarkFantasyArmor:0.9>",
+            "mask": "base64_mask_png_for_body_region"
+          },
+          {
+            "name": "background",
+            "prompt": "mystical forest background, volumetric godrays filtering through canopy, ancient ruins, atmospheric fog, soft depth of field",
+            "mask": "base64_full_canvas_mask"
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -315,6 +315,13 @@ function MobileControls({ onGenerate, onResetDefaults }) {
                         <i className={`fa fa-${showMobileSettings ? 'times' : 'sliders'}`}></i>
                     </button>
                     <button
+                        className="mobile-character-studio-btn"
+                        onClick={() => dispatch({ type: actions.SET_SHOW_CHARACTER_STUDIO, payload: true })}
+                        title="Character Studio"
+                    >
+                        <i className="fa fa-user"></i>
+                    </button>
+                    <button
                         className="mobile-config-btn"
                         onClick={() => dispatch({ type: actions.SET_SHOW_CONFIG_MODAL, payload: true })}
                         title="Configuration"

@@ -37,6 +37,13 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
 
                 <div className="header-buttons">
                     <button
+                        className="icon-button character-studio-button"
+                        onClick={() => dispatch({ type: actions.SET_SHOW_CHARACTER_STUDIO, payload: true })}
+                        title="Character Studio"
+                    >
+                        <i className="fa fa-user"></i>
+                    </button>
+                    <button
                         className="icon-button queue-button"
                         onClick={() => dispatch({ type: actions.SET_SHOW_QUEUE_MANAGER, payload: true })}
                         title="Queue Manager"

@@ -23,6 +23,7 @@ import CharacterModal from './components/CharacterModal';
 import CharacterFolderSelector from './components/CharacterFolderSelector';
 import QueueManagerModal from './components/QueueManagerModal';
 import ConfigModal from './components/ConfigModal';
+import CharacterStudioModal from './components/CharacterStudioModal';
 
 // Import CSS
 import './folder-picker.css';
@@ -469,6 +470,8 @@ function AppContent() {
                 show={state.showConfigModal}
                 onClose={() => dispatch({ type: actions.SET_SHOW_CONFIG_MODAL, payload: false })}
             />
+
+            <CharacterStudioModal />
 
             {/* App Settings */}
             <AppSettings />

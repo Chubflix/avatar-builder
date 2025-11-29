@@ -1,0 +1,542 @@
+/* Character Studio Modal Overlay */
+.character-studio-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 0;
+  overflow-y: auto;
+}
+
+.character-studio-modal {
+  background: #1a1a1a;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.cs-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 16px 24px;
+  border-bottom: 1px solid #333;
+  position: sticky;
+  top: 0;
+  background: #1a1a1a;
+  z-index: 10;
+}
+
+.cs-close-btn {
+  background: transparent;
+  border: 1px solid #444;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 8px;
+  transition: all 0.2s;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.cs-close-btn:hover {
+  background: #333;
+  border-color: #666;
+}
+
+/* Canvas */
+.cs-canvas-container {
+  position: relative;
+  width: 100%;
+  height: 400px;
+  background: #0a0a0a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid #333;
+}
+
+.cs-canvas {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.cs-canvas-controls {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.cs-control-btn {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid #333;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cs-control-btn:hover {
+  background: rgba(100, 100, 100, 0.3);
+  border-color: #666;
+}
+
+.cs-control-btn.active {
+  background: rgba(100, 100, 100, 0.5);
+  border-color: #888;
+}
+
+/* Pose Gallery */
+.cs-pose-gallery-container {
+  padding: 24px;
+  border-bottom: 1px solid #333;
+}
+
+.cs-pose-gallery-container h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.cs-pose-gallery {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.cs-pose-gallery::-webkit-scrollbar {
+  height: 6px;
+}
+
+.cs-pose-gallery::-webkit-scrollbar-track {
+  background: #141414;
+}
+
+.cs-pose-gallery::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+
+.cs-pose-gallery::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+.cs-pose-card {
+  position: relative;
+  flex-shrink: 0;
+  width: 90px;
+  height: 120px;
+  background: #141414;
+  border: 2px solid #333;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.cs-pose-card:hover {
+  border-color: #666;
+  background: #1a1a1a;
+}
+
+.cs-pose-card.active {
+  border-color: #888;
+  background: rgba(100, 100, 100, 0.1);
+}
+
+.cs-pose-emoji {
+  font-size: 36px;
+}
+
+.cs-pose-name {
+  font-size: 12px;
+  color: #999;
+  text-align: center;
+}
+
+.cs-pose-checkmark {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  background: #4CAF50;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #fff;
+  font-weight: bold;
+}
+
+/* Region Editor */
+.cs-region-editor {
+  padding: 24px;
+  border-bottom: 1px solid #333;
+}
+
+.cs-region-editor h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.cs-region-item {
+  background: #141414;
+  border: 1px solid #333;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.cs-region-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.cs-region-header:hover {
+  background: #1a1a1a;
+}
+
+.cs-region-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cs-region-emoji {
+  font-size: 24px;
+}
+
+.cs-region-name {
+  font-size: 16px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.cs-region-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.cs-region-content {
+  padding: 0 16px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Tags */
+.cs-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cs-tag-chip {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 16px;
+  padding: 6px 14px;
+  font-size: 13px;
+  color: #999;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cs-tag-chip:hover {
+  background: #4CAF50;
+  border-color: #4CAF50;
+  color: #fff;
+}
+
+/* Prompt Input */
+.cs-prompt-input {
+  width: 100%;
+  background: #000;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: #fff;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.cs-prompt-input:focus {
+  outline: none;
+  border-color: #666;
+}
+
+.cs-prompt-input::placeholder {
+  color: #555;
+}
+
+/* LoRA Section */
+.cs-lora-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cs-lora-label {
+  font-size: 13px;
+  color: #999;
+  font-weight: 500;
+}
+
+.cs-lora-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cs-lora-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cs-lora-chip {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 16px;
+  padding: 6px 14px;
+  font-size: 13px;
+  color: #999;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 140px;
+}
+
+.cs-lora-chip:hover {
+  background: #9C27B0;
+  border-color: #9C27B0;
+  color: #fff;
+}
+
+.cs-lora-chip.active {
+  background: #9C27B0;
+  border-color: #9C27B0;
+  color: #fff;
+}
+
+.cs-lora-weight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.cs-lora-weight input[type="range"] {
+  flex: 1;
+  height: 4px;
+  background: #333;
+  border-radius: 2px;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.cs-lora-weight input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #9C27B0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.cs-lora-weight input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #9C27B0;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+.cs-lora-weight-value {
+  font-size: 13px;
+  color: #9C27B0;
+  font-weight: 500;
+  min-width: 30px;
+  text-align: right;
+}
+
+/* Footer */
+.cs-footer {
+  padding: 24px;
+  position: sticky;
+  bottom: 0;
+  background: #1a1a1a;
+  border-top: 1px solid #333;
+  display: flex;
+  gap: 12px;
+}
+
+.cs-generate-btn {
+  flex: 1;
+  background: #4CAF50;
+  border: none;
+  border-radius: 6px;
+  padding: 16px 24px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cs-generate-btn:hover {
+  background: #45a049;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.cs-generate-btn:active {
+  transform: translateY(0);
+}
+
+.cs-export-btn {
+  background: #2196F3;
+  border: none;
+  border-radius: 6px;
+  padding: 16px 24px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cs-export-btn:hover {
+  background: #1976D2;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+}
+
+.cs-export-btn:active {
+  transform: translateY(0);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+
+  .cs-header {
+    padding: 16px;
+  }
+
+  .cs-logo-text {
+    font-size: 24px;
+  }
+
+  .cs-subtitle {
+    font-size: 12px;
+  }
+
+  .cs-canvas-container {
+    height: 300px;
+  }
+
+  .cs-canvas-controls {
+    top: 12px;
+    right: 12px;
+    gap: 6px;
+  }
+
+  .cs-control-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+
+  .cs-pose-gallery-container,
+  .cs-region-editor,
+  .cs-footer {
+    padding: 16px;
+  }
+
+  .cs-pose-card {
+    width: 80px;
+    height: 100px;
+  }
+
+  .cs-pose-emoji {
+    font-size: 28px;
+  }
+
+  .cs-pose-name {
+    font-size: 11px;
+  }
+
+  .cs-region-header {
+    padding: 12px;
+  }
+
+  .cs-region-emoji {
+    font-size: 20px;
+  }
+
+  .cs-region-name {
+    font-size: 14px;
+  }
+
+  .cs-lora-chip {
+    min-width: 120px;
+    font-size: 12px;
+  }
+
+  .cs-generate-btn {
+    padding: 14px 20px;
+    font-size: 14px;
+  }
+}
