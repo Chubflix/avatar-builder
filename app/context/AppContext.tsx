@@ -10,8 +10,28 @@ export interface DefaultsConfig {
   batchSize: number;
 }
 
+export interface GeneratorConfig {
+    scheduler: string;
+    samplerName: string;
+}
+
+export interface AdetailerConfig {
+    model: string;
+    enabled: boolean;
+}
+
+export interface Dimension {
+    width: number;
+    height: number;
+}
+
 export interface Config {
   defaults: DefaultsConfig;
+  generation?: GeneratorConfig | null;
+  dimensions?: {
+      [key: Orientation | string]: Dimension
+  };
+  adetailer_list: AdetailerConfig[];
   // Allow extra keys without breaking
   [key: string]: any;
 }

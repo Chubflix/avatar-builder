@@ -2,8 +2,10 @@
 
 import React, {useState, useRef, useEffect} from 'react';
 import {useApp} from '../context/AppContext';
+import {useGeneration} from '../hooks';
 import './CharacterStudioModal.css';
 import {calculateRegions} from "@/app/utils/mask-calculator";
+import {generateMaskPNG, mergeMasks} from "@/app/utils/mask-generator";
 
 // OpenPose keypoint definitions (17 keypoints)
 const KEYPOINT_NAMES = [
@@ -221,6 +223,7 @@ function calculateRegionsFromPose(keypoints, width, height) {
 
 function CharacterStudioModal() {
     const {state, dispatch, actions} = useApp();
+    const {generateWithPayload} = useGeneration();
     const canvasRef = useRef(null);
     const [selectedPose, setSelectedPose] = useState('standing');
     const [showSkeleton, setShowSkeleton] = useState(true);
@@ -412,37 +415,151 @@ function CharacterStudioModal() {
         URL.revokeObjectURL(url);
     };
 
-    const handleGenerate = () => {
-        const payload = {
-            pose: selectedPose,
-            keypoints: PRESET_POSES[selectedPose].keypoints,
-            regions: Object.entries(regions).map(([key, region]) => {
-                const metadata = REGION_METADATA[key];
-                return {
-                    id: key,
-                    name: metadata?.name || key,
-                    prompt: regionPrompts[key] || metadata?.defaultPrompt || '',
-                    bounds: {
-                        x: region.x,
-                        y: region.y,
-                        width: region.w,
-                        height: region.h
-                    },
-                    bounds_px: {
-                        x: region.x_px,
-                        y: region.y_px,
-                        width: region.w_px,
-                        height: region.h_px
-                    },
-                    loras: Object.entries(regionLoras[key] || {})
-                        .filter(([_, weight]) => weight !== undefined)
-                        .map(([value, weight]) => ({value, weight}))
-                };
-            })
+    const handleGenerate = async () => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const width = 512;
+        const height = 512;
+
+        // Generate masks for each region
+        const regionMasks = {};
+
+        // Background - full canvas
+        if (regions.background) {
+            regionMasks.background = await generateMaskPNG([regions.background], width, height);
+        }
+
+        // Hair
+        if (regions.hair) {
+            regionMasks.hair = await generateMaskPNG([regions.hair], width, height);
+        }
+
+        // Face
+        if (regions.face) {
+            regionMasks.face = await generateMaskPNG([regions.face], width, height);
+        }
+
+        // Body - merge body + all limbs
+        const bodyParts = [
+            regions.body,
+            regions.left_upper_arm,
+            regions.left_forearm,
+            regions.right_upper_arm,
+            regions.right_forearm,
+            regions.left_upper_leg,
+            regions.left_lower_leg,
+            regions.right_upper_leg,
+            regions.right_lower_leg
+        ].filter(Boolean);
+
+        if (bodyParts.length > 0) {
+            regionMasks.body = await mergeMasks(bodyParts, width, height);
+        }
+
+        // Build Regional Prompter payload
+        const keypoints = PRESET_POSES[selectedPose].keypoints;
+        const pose_keypoints_2d = keypoints.flatMap(([x, y]) => [x * 512, y * 512, 1.0]);
+
+        // Format LoRAs as <lora:name:weight>
+        const formatPromptWithLoras = (basePrompt, loras) => {
+            const loraStrings = Object.entries(loras || {})
+                .filter(([_, weight]) => weight !== undefined)
+                .map(([value, weight]) => `<lora:${value}:${weight.toFixed(1)}>`);
+
+            if (loraStrings.length === 0) return basePrompt;
+            return `${basePrompt}, ${loraStrings.join(', ')}`;
         };
 
-        console.log('Character Studio Payload:', payload);
-        // TODO: Integrate with actual generation API
+        // Build regional prompts array
+        const regionalPrompts = [];
+
+        // Add regions in order: hair, face, body, background
+        const regionOrder = ['hair', 'face', 'body', 'background'];
+
+        regionOrder.forEach(key => {
+            if (regionMasks[key] && REGION_METADATA[key]) {
+                const metadata = REGION_METADATA[key];
+                const prompt = regionPrompts[key] || metadata.defaultPrompt;
+                const promptWithLoras = formatPromptWithLoras(prompt, regionLoras[key]);
+
+                regionalPrompts.push({
+                    name: key,
+                    prompt: promptWithLoras,
+                    mask: regionMasks[key]
+                });
+            }
+        });
+
+        // Build complete SD API payload
+        const sdPayload = {
+            prompt: "masterpiece, best quality, highly detailed",
+            negative_prompt: state.negativePrompt || "",
+            width: 832,
+            height: 1216,
+            batch_size: 1,
+            steps: 35,
+            sampler_name: state.config?.generation?.samplerName || "DPM++ 2M",
+            scheduler: state.config?.generation?.scheduler || "Karras",
+            cfg_scale: 9.0,
+            seed: -1,
+            alwayson_scripts: {
+                "ControlNet": [{
+                    model: "illustrious_xl_controlnet_openpose.safetensors",
+                    preprocessor: "dw_openpose_full",
+                    json_payload: JSON.stringify({
+                        people: [{
+                            pose_keypoints_2d: pose_keypoints_2d
+                        }],
+                        canvas_width: 512,
+                        canvas_height: 512
+                    }),
+                    weight: 0.7,
+                    controlnet_res: 512,
+                    control_mode: 1,
+                    resize_mode: 0,
+                    scale_by: 1.0
+                }],
+                "Regional Prompter": {
+                    args: [
+                        true,        // enabled
+                        false,       // debug mode
+                        "Mask",      // mode
+                        "",          // base ratio
+                        0.5,         // threshold
+                        false,       // use common prompt
+                        "",          // common negative
+                        "Attention", // mode
+                        true,        // use base prompt
+                        regionalPrompts
+                    ]
+                }
+            }
+        };
+
+        // Build job metadata
+        const jobMetadata = {
+            positivePrompt: "Character Studio: " + selectedPose,
+            negativePrompt: state.negativePrompt || "",
+            width: 832,
+            height: 1216,
+            batchSize: 1,
+            folder_id: state.selectedFolder || null,
+            generation_type: 'character_studio',
+            pose: selectedPose,
+            regional_prompts: regionalPrompts.map(r => ({
+                name: r.name,
+                prompt: r.prompt
+            }))
+        };
+
+        console.log('Submitting Character Studio job:', {sdPayload, jobMetadata});
+
+        // Submit to generation queue
+        await generateWithPayload(sdPayload, jobMetadata, '/sdapi/v1/txt2img');
+
+        // Close modal after submission
+        dispatch({type: actions.SET_SHOW_CHARACTER_STUDIO, payload: false});
     };
 
     if (!state.showCharacterStudio) return null;

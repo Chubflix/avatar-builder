@@ -197,6 +197,13 @@ class StableDiffusionAsyncAdapter {
         return this.submitJob('/sdapi/v1/img2img', payload);
     }
 
+    /**
+     * Generate with a fully custom payload (for advanced use cases like Regional Prompter)
+     */
+    async generateWithCustomPayload(payload: any, endpoint: string = '/sdapi/v1/txt2img') {
+        return this.submitJob(endpoint, payload);
+    }
+
     // Private helpers to keep payload close to A1111 schema
     #normalizeBase64(b64?: string) {
         if (!b64) return b64 as any;

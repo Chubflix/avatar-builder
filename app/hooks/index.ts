@@ -73,13 +73,116 @@ export function useFolders() {
 }
 
 /**
+ * Helper to create a job record in the database
+ */
+async function createJobRecord(jobPayload: any): Promise<string | null> {
+    try {
+        const jobResp = await fetch('/api/jobs', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(jobPayload)
+        });
+        if (jobResp.ok) {
+            const job = await jobResp.json();
+            return job.token;
+        }
+    } catch (_) {
+        // If job creation fails, continue without token
+    }
+    return null;
+}
+
+/**
+ * Helper to update job with UUID after submission
+ */
+async function updateJobWithUUID(webhookToken: string, jobId: string) {
+    try {
+        await fetch('/api/jobs', {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({token: webhookToken, job_uuid: jobId})
+        });
+    } catch (_) {
+        // non-fatal
+    }
+}
+
+/**
  * Hook for image generation
  */
 export function useGeneration() {
     const {state, dispatch, actions} = useApp();
     const {triggerQueuePolling} = useQueue();
 
-    // Submit generation job to SD API
+    /**
+     * Generate with a custom SD API payload
+     * Useful for advanced features like Regional Prompter
+     */
+    const generateWithPayload = useCallback(async (
+        sdPayload: any,
+        jobMetadata: {
+            positivePrompt: string;
+            negativePrompt?: string;
+            model?: string;
+            orientation?: string;
+            width: number;
+            height: number;
+            batchSize?: number;
+            folder_id?: string | null;
+            generation_type?: string;
+            [key: string]: any;
+        },
+        endpoint: string = '/sdapi/v1/txt2img'
+    ) => {
+        const {config, selectedModel, notificationsEnabled} = state;
+
+        try {
+            // Create job record with metadata
+            const webhookToken = await createJobRecord({
+                ...jobMetadata,
+                model: jobMetadata.model || selectedModel,
+                samplerName: sdPayload.sampler_name || config?.generation?.samplerName,
+                scheduler: sdPayload.scheduler || config?.generation?.scheduler,
+                steps: sdPayload.steps || config?.generation?.steps,
+                cfgScale: sdPayload.cfg_scale || config?.generation?.cfgScale,
+                seed: sdPayload.seed || -1,
+                batchSize: jobMetadata.batchSize || sdPayload.batch_size || 1,
+                folder_id: jobMetadata.folder_id || null
+            });
+
+            // Add webhook token to payload
+            const finalPayload = {
+                ...sdPayload,
+                __webhookAuthToken: webhookToken || undefined
+            };
+
+            // Submit to SD API
+            const result = await sdAPI.generateWithCustomPayload(finalPayload, endpoint);
+
+            // Handle async response
+            if (result && result.queued) {
+                const jobId = result.jobId || result.raw?.id || 'unknown';
+
+                // Update job with UUID
+                if (webhookToken && jobId && jobId !== 'unknown') {
+                    await updateJobWithUUID(webhookToken, jobId);
+                }
+
+                sendNotification(`Job queued (ID: ${jobId})`, 'info', dispatch, actions, notificationsEnabled);
+                notifyJobQueued(jobId);
+                triggerQueuePolling();
+
+                return {success: true, jobId, result};
+            }
+
+            return {success: false, error: 'No queued response'};
+        } catch (err: any) {
+            sendNotification('Generation failed: ' + err.message, 'error', dispatch, actions, notificationsEnabled);
+            return {success: false, error: err.message};
+        }
+    }, [state, dispatch, actions, triggerQueuePolling]);
+
+    // Submit generation job to SD API (original method)
     const generate = useCallback(async () => {
         const {
             config,
@@ -105,9 +208,6 @@ export function useGeneration() {
         }
 
         try {
-            // Set model
-            await sdAPI.setModel(selectedModel);
-
             // Build lora prompt additions
             const loraAdditions = buildLoraPrompt(config, loraSliders, loraToggles, loraStyle);
             const finalPrompt = positivePrompt + loraAdditions;
@@ -171,20 +271,7 @@ export function useGeneration() {
             };
 
             // Create a job record to receive a per-job webhook token
-            let webhookToken = null;
-            try {
-                const jobResp = await fetch('/api/jobs', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(jobPayload)
-                });
-                if (jobResp.ok) {
-                    const job = await jobResp.json();
-                    webhookToken = job.token;
-                }
-            } catch (_) {
-                // If job creation fails, continue without token (webhook will use global token if configured)
-            }
+            const webhookToken = await createJobRecord(jobPayload);
 
             // Submit job to SD API
             const result = initB64
@@ -240,24 +327,14 @@ export function useGeneration() {
             // If using async proxy adapter, result will be a queued job
             if (result && result.queued) {
                 const jobId = result.jobId || result.raw?.id || 'unknown';
-                // Store the job_uuid on the existing job row for traceability
+
+                // Update job with UUID
                 if (webhookToken && jobId && jobId !== 'unknown') {
-                    try {
-                        await fetch('/api/jobs', {
-                            method: 'PATCH',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({token: webhookToken, job_uuid: jobId})
-                        });
-                    } catch (_) {
-                        // non-fatal
-                    }
+                    await updateJobWithUUID(webhookToken, jobId);
                 }
+
                 sendNotification(`Job queued (ID: ${jobId})`, 'info', dispatch, actions, notificationsEnabled);
-
-                // Notify other devices via real-time that a job was queued
                 notifyJobQueued(jobId);
-
-                // Start polling the SD queue to track progress
                 triggerQueuePolling();
             }
         } catch (err) {
@@ -265,7 +342,7 @@ export function useGeneration() {
         }
     }, [state, dispatch, actions, triggerQueuePolling]);
 
-    return {generate};
+    return {generate, generateWithPayload};
 }
 
 /**
