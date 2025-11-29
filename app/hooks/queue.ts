@@ -2,9 +2,55 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { useQueueContext } from '../context/QueueContext';
+import type { Job, CategorizedJobs } from '../context/QueueContext';
 import sdAPI from '../utils/sd-api';
 import debug from '../utils/debug';
 import { getAblyRealtime } from '../lib/ably';
+
+/**
+ * Categorize jobs into active, pending, completed, error, and canceled buckets
+ */
+function categorizeJobs(jobsArray: Job[]): CategorizedJobs {
+    const now = Date.now();
+    const fiveMinutesAgo = now - 5 * 60 * 1000;
+
+    const categories: CategorizedJobs = {
+        active: null,
+        pending: [],
+        completed: [],
+        error: [],
+        canceled: []
+    };
+
+    jobsArray.forEach(job => {
+        const statusRaw = (job.job_status || job.status || job.state || 'queued') + '';
+        const status = statusRaw.toLowerCase();
+        const createdAt = job.created_at ? new Date(job.created_at).getTime() : now;
+
+        // Check if job is active (running)
+        const isActive = !['queued', 'pending', 'waiting', 'completed', 'error', 'failed', 'canceled', 'cancelled'].includes(status);
+
+        if (isActive && !categories.active) {
+            categories.active = job;
+        } else if (status === 'completed') {
+            if (createdAt >= fiveMinutesAgo) {
+                categories.completed.push(job);
+            }
+        } else if (status === 'error' || status === 'failed') {
+            if (createdAt >= fiveMinutesAgo) {
+                categories.error.push(job);
+            }
+        } else if (status === 'canceled' || status === 'cancelled') {
+            if (createdAt >= fiveMinutesAgo) {
+                categories.canceled.push(job);
+            }
+        } else {
+            categories.pending.push(job);
+        }
+    });
+
+    return categories;
+}
 
 /**
  * Hook to poll SD API jobs endpoint and keep queue count in sync.
@@ -13,7 +59,7 @@ import { getAblyRealtime } from '../lib/ably';
  */
 export function useQueue() {
     const { dispatch, actions } = useApp();
-    const { setCount, setWorkflows } = useQueueContext();
+    const { setCount, setWorkflows, setJobs } = useQueueContext();
     const pollerRef = useRef(null);
     const isPollingRef = useRef(false);
 
@@ -62,8 +108,16 @@ export function useQueue() {
             }
             list = arrays.flat().filter(Boolean);
 
+            // Filter out completed, error, and canceled jobs
+            const isActiveOrPending = (job: any) => {
+                const status = (job?.status || job?.state || job?.job_status || '').toString().toLowerCase();
+                return !['completed', 'error', 'failed', 'canceled', 'cancelled'].includes(status);
+            };
+
+            const activeList = list.filter(isActiveOrPending);
+
             // Determine queue count. If none found, try numeric counts
-            let count = Array.isArray(list) ? list.length : 0;
+            let count = Array.isArray(activeList) ? activeList.length : 0;
             if (count === 0 && jobs && typeof jobs === 'object') {
                 const j: any = jobs;
                 const numericCandidates = [j.count, j.total, j.queue_count, j.jobs_count];
@@ -77,10 +131,10 @@ export function useQueue() {
             let active: any;
             const isActive = (s: any) => {
                 const status = (s?.status || s?.state || s?.job_status || '').toString().toLowerCase();
-                return status && !['queued', 'pending', 'waiting'].includes(status);
+                return status && !['queued', 'pending', 'waiting', 'completed', 'error', 'failed', 'canceled', 'cancelled'].includes(status);
             };
 
-            active = (list || []).find(isActive) || null;
+            active = (activeList || []).find(isActive) || null;
 
             // Some shapes provide a separate current/active object
             if (!active && jobs && typeof jobs === 'object') {
@@ -128,10 +182,23 @@ export function useQueue() {
                 count = 1;
             }
 
-            return { count, progress };
+            // Categorize all jobs for the queue manager
+            const categorized = categorizeJobs(list);
+
+            return { count, progress, categorized };
         } catch (err) {
             debug.warn('SD-Queue', 'Failed to fetch jobs', err);
-            return { count: 0, progress: 0 };
+            return {
+                count: 0,
+                progress: 0,
+                categorized: {
+                    active: null,
+                    pending: [],
+                    completed: [],
+                    error: [],
+                    canceled: []
+                }
+            };
         }
     }, []);
 
@@ -152,10 +219,11 @@ export function useQueue() {
 
         const poll = async () => {
             try {
-                const { count, progress } = await getJobsInfo();
+                const { count, progress, categorized } = await getJobsInfo();
 
-                // Update queue count in context
+                // Update queue count and categorized jobs in context
                 setCount(count);
+                setJobs(categorized);
 
                 // Update generating state based on whether there are jobs
                 if (count > 0) {

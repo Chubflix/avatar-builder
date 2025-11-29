@@ -97,6 +97,7 @@
     gap: 0.75rem;
     font-size: 0.85rem;
     color: var(--text-secondary, #999);
+    flex-wrap: wrap;
 }
 
 .queue-job-status {
@@ -124,6 +125,183 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+}
+
+/* Active job section */
+.queue-active-section {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color, #333);
+}
+
+.queue-section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary, #fff);
+    margin: 0 0 1rem 0;
+}
+
+/* Workflow visualization - Desktop */
+.workflow-desktop {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.5rem 1rem;
+    background: var(--bg-tertiary, #1a1a1a);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    overflow-x: auto;
+}
+
+.workflow-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: var(--bg-secondary, #222);
+    border: 2px solid var(--border-color, #333);
+    border-radius: 8px;
+    min-width: 120px;
+    transition: all 0.3s ease;
+}
+
+.workflow-step.current {
+    border-color: var(--primary, #007aff);
+    background: rgba(0, 122, 255, 0.1);
+    box-shadow: 0 0 10px rgba(0, 122, 255, 0.3);
+}
+
+.workflow-step-name {
+    font-size: 0.9rem;
+    color: var(--text-primary, #fff);
+    text-align: center;
+    font-weight: 500;
+}
+
+.workflow-step.current .workflow-step-name {
+    color: var(--primary, #007aff);
+    font-weight: 600;
+}
+
+.workflow-step-progress-text {
+    font-size: 0.85rem;
+    color: var(--text-secondary, #999);
+    font-weight: 600;
+}
+
+.workflow-step.current .workflow-step-progress-text {
+    color: var(--primary, #007aff);
+}
+
+.workflow-connector {
+    width: 40px;
+    height: 2px;
+    background: var(--border-color, #333);
+    flex-shrink: 0;
+}
+
+/* Workflow visualization - Mobile */
+.workflow-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: var(--bg-tertiary, #1a1a1a);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.workflow-step-mobile {
+    padding: 1rem;
+    background: var(--bg-secondary, #222);
+    border: 2px solid var(--border-color, #333);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.workflow-step-mobile.current {
+    border-color: var(--primary, #007aff);
+    background: rgba(0, 122, 255, 0.1);
+}
+
+.workflow-step-mobile .workflow-step-name {
+    font-size: 0.95rem;
+    color: var(--text-primary, #fff);
+    font-weight: 500;
+    margin-bottom: 0.75rem;
+}
+
+.workflow-step-mobile.current .workflow-step-name {
+    color: var(--primary, #007aff);
+    font-weight: 600;
+}
+
+.workflow-step-progress {
+    position: relative;
+    height: 24px;
+    background: var(--bg-primary, #000);
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+}
+
+.workflow-step-progress-bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    background: var(--primary, #007aff);
+    transition: width 0.3s ease;
+    border-radius: 4px;
+}
+
+.workflow-step-progress .workflow-step-progress-text {
+    position: relative;
+    z-index: 1;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary, #fff);
+    padding-left: 0.5rem;
+}
+
+/* Tab view */
+.queue-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid var(--border-color, #333);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.queue-tab {
+    padding: 0.75rem 1.25rem;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--text-secondary, #999);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    margin-bottom: -2px;
+}
+
+.queue-tab:hover {
+    color: var(--text-primary, #fff);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.queue-tab.active {
+    color: var(--primary, #007aff);
+    border-bottom-color: var(--primary, #007aff);
+}
+
+.queue-tab-content {
+    min-height: 200px;
 }
 
 /* Dark theme adjustments */
@@ -161,5 +339,23 @@
 
     .queue-job-meta {
         font-size: 0.8rem;
+    }
+
+    .queue-active-section {
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+    }
+
+    .queue-section-title {
+        font-size: 1rem;
+    }
+
+    .queue-tabs {
+        gap: 0.25rem;
+    }
+
+    .queue-tab {
+        padding: 0.6rem 1rem;
+        font-size: 0.85rem;
     }
 }
