@@ -1,372 +1,84 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useQueueContext } from '../context/QueueContext';
-import LocationPicker from './LocationPicker';
-import LoraSettings from './LoraSettings';
-import './LoraSettings.css';
-import InpaintModal from './InpaintModal';
 import GenerateButton from "./GenerateButton";
-import FormLabelInfo from "./FormLabelInfo";
-import PromptAutocomplete from './PromptAutocomplete';
+import BasicSettingsTab from './tabs/BasicSettingsTab';
+import Img2ImgSettingsTab from './tabs/Img2ImgSettingsTab';
+import LoraSettingsTab from './tabs/LoraSettingsTab';
+import AdvancedSettingsTab from './tabs/AdvancedSettingsTab';
 
 function ControlsPanel({ onGenerate, onResetDefaults }) {
     const { state, dispatch, actions } = useApp();
-    const [showFolderSelector, setShowFolderSelector] = useState(false);
-    const [showLoraSettings, setShowLoraSettings] = useState(false);
-    const [showImg2ImgSettings, setShowImg2ImgSettings] = useState(false);
+    const [activeTab, setActiveTab] = useState('basic');
 
     const {
         config,
-        positivePrompt,
-        negativePrompt,
-        selectedModel,
-        orientation,
-        batchSize,
-        seed,
-        showAdvanced,
-        selectedFolder,
-        folders,
-        models,
-        isGenerating,
-        progress,
-        status,
-        locks
+        status
     } = state;
     const { count: queueCount } = useQueueContext();
 
-    const posRef = useRef(null);
-    const negRef = useRef(null);
-
     if (!config) return null;
+
+    const tabs = [
+        { id: 'basic', label: 'Basic', icon: 'fa-sliders' },
+        { id: 'img2img', label: 'Img2Img', icon: 'fa-image' },
+        { id: 'lora', label: 'Lora', icon: 'fa-magic' },
+        { id: 'advanced', label: 'Advanced', icon: 'fa-cogs' }
+    ];
 
     return (
         <div className="controls-panel desktop-only">
+            {/* Header with buttons */}
             <div className="controls-header">
-                <h2>Generation Settings</h2>
-                <button
-                    className="icon-button config-button"
-                    onClick={() => dispatch({ type: actions.SET_SHOW_CONFIG_MODAL, payload: true })}
-                    title="Configuration"
-                >
-                    <i className="fa fa-cog"></i>
-                </button>
-            </div>
-
-            {/* Positive Prompt */}
-            <div className="form-group">
-                <FormLabelInfo
-                    label="Positive Prompt"
-                    alt="Test"
-                    onClick={() => dispatch({ type: actions.SET_SHOW_PROMPT_MODAL, payload: true })}
-                />
-                <textarea
-                    className="form-textarea"
-                    ref={posRef}
-                    value={positivePrompt}
-                    onChange={(e) => dispatch({ type: actions.SET_POSITIVE_PROMPT, payload: e.target.value })}
-                    placeholder="masterpiece, best quality, 1girl, portrait..."
-                />
-                <PromptAutocomplete
-                    textareaRef={posRef}
-                    value={positivePrompt}
-                    onSelect={(text) => dispatch({ type: actions.SET_POSITIVE_PROMPT, payload: text })}
-                />
-            </div>
-
-            {/* Generate Button */}
-            <div className="form-group">
-                <GenerateButton onGenerate={onGenerate} />
-            </div>
-            {/* Save to Folder */}
-            <div className="form-group">
-                <label className="form-label">Save to Folder</label>
-                <button
-                    className="folder-select-display-btn"
-                    onClick={() => setShowFolderSelector(true)}
-                    type="button"
-                >
-                    <i className="fa fa-folder"></i>
-                    <span>
-                        {selectedFolder ? 
-                            folders.find(f => f.id === selectedFolder)?.name || 'Unfiled' 
-                            : 'Unfiled'}
-                    </span>
-                    <i className="fa fa-chevron-down"></i>
-                </button>
-            </div>
-
-            {/* Orientation & Batch Size */}
-            <div className="form-row">
-                <div className="form-group">
-                    <label className="form-label">Orientation</label>
-                    <div className="toggle-group">
-                        <button
-                            className={`toggle-option ${orientation === 'portrait' ? 'active' : ''}`}
-                            onClick={() => dispatch({ type: actions.SET_ORIENTATION, payload: 'portrait' })}
-                        >
-                            Portrait
-                        </button>
-                        <button
-                            className={`toggle-option ${orientation === 'landscape' ? 'active' : ''}`}
-                            onClick={() => dispatch({ type: actions.SET_ORIENTATION, payload: 'landscape' })}
-                        >
-                            Landscape
-                        </button>
-                    </div>
+                {/* Generate Button */}
+                <div>
+                    <GenerateButton onGenerate={onGenerate} />
                 </div>
-                <div className="form-group">
-                    <label className="form-label">Batch Size</label>
-                    <select
-                        className="form-select"
-                        value={batchSize}
-                        onChange={(e) => dispatch({ type: actions.SET_BATCH_SIZE, payload: parseInt(e.target.value) })}
+
+                <div className="header-buttons">
+                    <button
+                        className="icon-button queue-button"
+                        onClick={() => dispatch({ type: actions.SET_SHOW_QUEUE_MANAGER, payload: true })}
+                        title="Queue Manager"
                     >
-                        {[...Array(10)].map((_, i) => (
-                            <option key={i + 1} value={i + 1}>{i + 1}</option>
-                        ))}
-                    </select>
-                </div>
-            </div>
-
-            {/* Img2Img (and Inpaint) Section */}
-            <div
-                className={`collapsible-header ${showImg2ImgSettings ? 'open' : ''}`}
-                onClick={() => setShowImg2ImgSettings(!showImg2ImgSettings)}
-            >
-                <h3>img2img</h3>
-                <i className={`fa fa-chevron-${showImg2ImgSettings ? 'up' : 'down'}`}></i>
-            </div>
-            {showImg2ImgSettings && (
-                <div className={`collapsible-content ${showImg2ImgSettings ? 'open' : ''}`}>
-                    <div className="form-group">
-                        <label className="form-label">Init Image (optional)</label>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            className="form-input"
-                            onChange={async (e) => {
-                                const file = e.target.files && e.target.files[0];
-                                if (!file) return;
-                                const reader = new FileReader();
-                                reader.onload = () => {
-                                    // Store as data URL; sd-api will normalize if needed
-                                    dispatch({ type: actions.SET_INIT_IMAGE, payload: reader.result });
-                                    // When setting a new init image, clear any previous mask to avoid mismatch
-                                    dispatch({ type: actions.SET_MASK_IMAGE, payload: null });
-                                };
-                                reader.readAsDataURL(file);
-                            }}
-                        />
-                        {state.initImage && (
-                            <div className="image-preview">
-                                <img src={state.initImage} alt="Init Preview" style={{ maxWidth: '100%', maxHeight: 200, display: 'block', marginTop: 8 }} />
-                                <div className="lora-group" style={{ marginTop: 8 }}>
-                                    <div className="lora-slider-header">
-                                        <label className="lora-label">
-                                            <span>Denoising Strength</span>
-                                            <span
-                                                className="lora-doc-link"
-                                                title="Controls how much the output deviates from the source image. Lower = closer to original; higher = more creative changes."
-                                                style={{ cursor: 'help' }}
-                                            >
-                                                <i className="fa fa-question-circle"></i>
-                                            </span>
-                                        </label>
-                                        <span className="lora-slider-value">{state.denoisingStrength.toFixed(2)}</span>
-                                    </div>
-                                    <input
-                                        type="range"
-                                        className="lora-slider"
-                                        min={0}
-                                        max={1}
-                                        step={0.01}
-                                        value={state.denoisingStrength}
-                                        onChange={(e) => dispatch({ type: actions.SET_DENOISING_STRENGTH, payload: parseFloat(e.target.value) })}
-                                    />
-                                    <div className="lora-slider-labels">
-                                        <span className="lora-slider-label-min">Original</span>
-                                        <span className="lora-slider-label-max">Creative</span>
-                                    </div>
-                                </div>
-                                <button
-                                    className="btn btn-secondary"
-                                    type="button"
-                                    onClick={() => {
-                                        dispatch({ type: actions.SET_INIT_IMAGE, payload: null });
-                                        dispatch({ type: actions.SET_MASK_IMAGE, payload: null });
-                                    }}
-                                    style={{ marginTop: 8 }}
-                                >
-                                    <i className="fa fa-times"></i> Clear Init Image
-                                </button>
-                                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-                                    <button
-                                        className="btn btn-secondary"
-                                        type="button"
-                                        onClick={() => dispatch({ type: actions.SET_SHOW_INPAINT_MODAL, payload: true })}
-                                        title="Open inpaint mask editor"
-                                    >
-                                        <i className="fa fa-paint-brush"></i> Inpaint Mask
-                                    </button>
-                                    {state.maskImage ? (
-                                        <>
-                                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Mask set</span>
-                                            <button
-                                                className="btn btn-secondary"
-                                                type="button"
-                                                onClick={() => dispatch({ type: actions.SET_MASK_IMAGE, payload: null })}
-                                                title="Clear mask"
-                                            >
-                                                <i className="fa fa-eraser"></i> Clear Mask
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>No mask</span>
-                                    )}
-                                </div>
-                            </div>
+                        <i className="fa fa-code-fork"></i>
+                        {queueCount > 0 && (
+                            <span className="notification-badge">{queueCount}</span>
                         )}
-                        <p className="settings-hint">If an init image is provided, image-to-image will be used. Clear it to use text-to-image.</p>
-                    </div>
-                </div>
-            )}
-
-            {/* Inpaint Modal */}
-            <InpaintModal />
-
-            {/* Lora Settings */}
-            {config.loras && config.loras.length > 0 && (
-                <>
-                    <div
-                        className={`collapsible-header ${showLoraSettings ? 'open' : ''}`}
-                        onClick={() => setShowLoraSettings(!showLoraSettings)}
+                    </button>
+                    <button
+                        className="icon-button config-button"
+                        onClick={() => dispatch({ type: actions.SET_SHOW_CONFIG_MODAL, payload: true })}
+                        title="Configuration"
                     >
-                        <h3>Lora Settings</h3>
-                        <i className="fa fa-chevron-down"></i>
-                    </div>
-                    <div className={`collapsible-content ${showLoraSettings ? 'open' : ''}`}>
-                        <LoraSettings />
-                    </div>
-                </>
-            )}
-
-            {/* Advanced Settings */}
-            <div
-                className={`collapsible-header ${showAdvanced ? 'open' : ''}`}
-                onClick={() => dispatch({ type: actions.SET_SHOW_ADVANCED, payload: !showAdvanced })}
-            >
-                <h3>Advanced Settings</h3>
-                <i className="fa fa-chevron-down"></i>
-            </div>
-            <div className={`collapsible-content ${showAdvanced ? 'open' : ''}`}>
-                <div className="form-group">
-                    <label className="form-label">Negative Prompt</label>
-                    <textarea
-                        className="form-textarea"
-                        ref={negRef}
-                        value={negativePrompt}
-                        onChange={(e) => dispatch({ type: actions.SET_NEGATIVE_PROMPT, payload: e.target.value })}
-                        placeholder="lowres, bad anatomy, watermark..."
-                    />
-                    <PromptAutocomplete
-                        textareaRef={negRef}
-                        value={negativePrompt}
-                        onSelect={(text) => dispatch({ type: actions.SET_NEGATIVE_PROMPT, payload: text })}
-                    />
+                        <i className="fa fa-cog"></i>
+                    </button>
                 </div>
-
-                <div className="form-group">
-                    <label className="form-label">Model</label>
-                    <div className="input-with-button">
-                        <select
-                            className="form-select"
-                            value={selectedModel}
-                            onChange={(e) => dispatch({ type: actions.SET_SELECTED_MODEL, payload: e.target.value })}
-                        >
-                            {models.map(model => (
-                                <option key={model.model_name} value={model.model_name}>
-                                    {model.model_name}
-                                </option>
-                            ))}
-                        </select>
-                        <button
-                            className={`btn-input-action ${locks.model ? 'active' : ''}`.trim()}
-                            onClick={() => dispatch({ type: actions.TOGGLE_LOCK, payload: 'model' })}
-                            title="Lock selected model from changing"
-                            type="button"
-                        >
-                            <i className="fa fa-lock"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div className="form-group">
-                    <label className="form-label">
-                        Seed
-                        <span className="form-label-hint">-1 for random</span>
-                    </label>
-                    <div className="input-with-button">
-                        <input
-                            type="number"
-                            className="form-input"
-                            value={seed}
-                            onChange={(e) => dispatch({ type: actions.SET_SEED, payload: parseInt(e.target.value) || -1 })}
-                            min="-1"
-                        />
-                        <button
-                            className="btn-input-action"
-                            onClick={() => dispatch({ type: actions.SET_SEED, payload: -1 })}
-                            title="Random seed"
-                            type="button"
-                        >
-                            <i className="fa fa-random"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div className="form-group">
-                    <label className="form-label">Current Settings</label>
-                    <div className="settings-display">
-                        <div><strong>Sampler:</strong> {config.generation.samplerName}</div>
-                        <div><strong>Scheduler:</strong> {config.generation.scheduler}</div>
-                        <div><strong>Steps:</strong> {config.generation.steps}</div>
-                        <div><strong>CFG Scale:</strong> {config.generation.cfgScale}</div>
-                        <div><strong>ADetailer:</strong> {config.adetailer.enabled ? config.adetailer.model : 'Disabled'}</div>
-                        <div><strong>Dimensions:</strong> {config.dimensions[orientation].width}x{config.dimensions[orientation].height}</div>
-                        {state.initImage && (
-                            <div><strong>Mode:</strong> Img2Img (denoise {state.denoisingStrength.toFixed(2)})</div>
-                        )}
-                    </div>
-                    <p className="settings-hint">
-                        Edit config.json to change these values
-                    </p>
-                </div>
-
-                <button
-                    className="btn-reset"
-                    onClick={onResetDefaults}
-                    type="button"
-                >
-                    <i className="fa fa-refresh"></i>
-                    Reset to Defaults
-                </button>
             </div>
 
-            {isGenerating && (
-                <div className="progress-container" style={{ ['--progress']: `${progress}%` }}>
-                    <div className="progress-bar">
-                        <div
-                            className="progress-fill"
-                        ></div>
-                    </div>
-                    <div className="progress-text">{progress}% complete</div>
-                </div>
-            )}
-
-            <div className="queue-status" onClick={() => dispatch({ type: actions.SET_SHOW_QUEUE_MANAGER, payload: true })}>
-                {queueCount} {queueCount === 1 ? 'job' : 'jobs'} in queue
+            {/* Tab Navigation */}
+            <div className="tab-navigation">
+                {tabs.map(tab => (
+                    <button
+                        key={tab.id}
+                        className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+                        onClick={() => setActiveTab(tab.id)}
+                    >
+                        <i className={`fa ${tab.icon}`}></i>
+                        <span>{tab.label}</span>
+                    </button>
+                ))}
             </div>
 
+            {/* Tab Content */}
+            <div className="tab-container">
+                {activeTab === 'basic' && <BasicSettingsTab />}
+                {activeTab === 'img2img' && <Img2ImgSettingsTab />}
+                {activeTab === 'lora' && <LoraSettingsTab />}
+                {activeTab === 'advanced' && <AdvancedSettingsTab onResetDefaults={onResetDefaults} />}
+            </div>
+
+            {/* Status Message */}
             {status && (
                 <div className={`status-message ${status.type}`}>
                     <i className={`fa ${
@@ -377,24 +89,6 @@ function ControlsPanel({ onGenerate, onResetDefaults }) {
                     {status.message}
                 </div>
             )}
-
-            {/* Location Picker Modal */}
-            <LocationPicker
-                show={showFolderSelector}
-                onClose={() => setShowFolderSelector(false)}
-                onSelect={(folderId) => {
-                    dispatch({ type: actions.SET_SELECTED_FOLDER, payload: folderId });
-                    setShowFolderSelector(false);
-                }}
-                currentFolderId={selectedFolder}
-                currentCharacterId={
-                    selectedFolder
-                        ? folders.find(f => f.id === selectedFolder)?.character_id
-                        : null
-                }
-                title="Save to Folder"
-                mode="save"
-            />
         </div>
     );
 }

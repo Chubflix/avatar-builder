@@ -36,6 +36,8 @@
 
 html {
     scroll-behavior: smooth;
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
 }
 
 body {
@@ -44,6 +46,7 @@ body {
     color: var(--text-primary);
     line-height: 1.5;
     min-height: 100vh;
+    overflow-x: hidden;
 }
 
 /* iOS Safari - improved touch scrolling */
@@ -142,17 +145,14 @@ body {
 
 /* App Container */
 .app-container {
-    margin-top: 2rem;
-    display: grid;
-    grid-template-columns: 400px 1fr;
-    gap: 2rem;
-    min-height: calc(100vh - 8rem);
+    margin-top: 1rem;
+    min-height: 100vh;
+    padding-left: calc(400px + 2rem);
 }
 
 @media (max-width: 1024px) {
     .app-container {
-        grid-template-columns: 1fr;
-        gap: 1rem;
+        padding-left: 0;
     }
 }
 
@@ -210,13 +210,21 @@ body {
 
 /* Controls Panel (Desktop) */
 .controls-panel {
+    --cp-offset: 7rem;
     background: var(--bg-secondary);
     border-radius: 8px;
-    padding: 1.5rem;
+    padding: 1rem;
     border: 1px solid var(--border);
-    height: fit-content;
-    position: sticky;
-    top: 5rem;
+    position: fixed;
+    top: var(--cp-offset);
+    left: 0;
+    width: 400px;
+    height: calc(100vh - var(--cp-offset) - 2rem);
+    max-height: calc(100vh - var(--cp-offset) - 2rem);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    margin-left: max(2rem, calc((100vw - 1400px) / 2));
     /* z-index removed - creates stacking context that traps modals */
 }
 
@@ -233,7 +241,12 @@ body {
     margin: 0;
 }
 
-.controls-header .config-button {
+.controls-header .header-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.controls-header .icon-button {
     padding: 0.5rem;
     width: 36px;
     height: 36px;
@@ -246,16 +259,116 @@ body {
     color: var(--text-secondary, #999);
     cursor: pointer;
     transition: all 0.2s ease;
+    position: relative;
 }
 
-.controls-header .config-button:hover {
+.controls-header .icon-button:hover {
     background: var(--bg-secondary, #1a1a1a);
-    border-color: var(--primary, #007aff);
-    color: var(--primary, #007aff);
+    border-color: var(--accent);
+    color: var(--accent);
 }
 
-.controls-header .config-button i {
+.controls-header .icon-button i {
     font-size: 1rem;
+}
+
+/* iOS-style notification badge */
+.notification-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    background: var(--accent);
+    color: white;
+    border-radius: 9px;
+    font-size: 0.625rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--bg-secondary);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Tab Navigation */
+.tab-navigation {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+.tab-navigation::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+
+.tab-button {
+    flex: 0 0 auto;
+    min-width: max-content;
+    padding: 0.75rem 1rem;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    font-family: inherit;
+}
+
+.tab-button i {
+    font-size: 0.875rem;
+}
+
+.tab-button:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+
+.tab-button.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+/* Tab Container */
+.tab-container {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    min-height: 0; /* Important for flex children with overflow */
+}
+
+.tab-container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+
+.tab-content {
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Mobile Bottom Controls */
@@ -689,7 +802,6 @@ button::-moz-focus-inner {
     align-items: center;
     justify-content: center;
     gap: 0.75rem;
-    margin-top: 1.5rem;
 }
 
 .btn-generate:hover:not(:disabled) {
