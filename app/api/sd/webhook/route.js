@@ -72,7 +72,8 @@ export async function POST(request) {
             loras: job.payload?.loras || null,
             generationType: inferredType,
             parentImageId,
-            maskId: resolvedMaskId
+            maskId: resolvedMaskId,
+            tags: body?.tags || []
         };
 
         for (const [index, img] of images.entries()) {
@@ -81,8 +82,7 @@ export async function POST(request) {
                 supabase,
                 userId: job.user_id,
                 imageBase64: typeof img === 'string' ? img : img?.data || '',
-                meta: { ...meta, maskId: perMaskId, seed: meta.seed ? (Number(meta.seed) + index) : null },
-                tags: body?.tags || []
+                meta: { ...meta, maskId: perMaskId, seed: meta.seed ? (Number(meta.seed) + index) : null }
             });
         }
 
