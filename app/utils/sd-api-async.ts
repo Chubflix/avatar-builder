@@ -7,6 +7,7 @@
  */
 
 import debug from '../utils/debug';
+import { Workflow } from '../context/QueueContext';
 
 // Important: Next.js only inlines env vars when accessed via static references
 // like process.env.NEXT_PUBLIC_*. Avoid dynamic lookups on the client.
@@ -153,6 +154,14 @@ class StableDiffusionAsyncAdapter {
     async getJobs() {
         try {
             const resp = await fetch(`${this.baseUrl.replace(/\/$/, '')}/sdapi/v1/jobs`, { headers: this.getAuthHeaders() } as any);
+            if ((resp as any).ok) return await (resp as any).json();
+        } catch (_) {}
+        return [];
+    }
+
+    async getWorkflows(): Promise<Workflow[]> {
+        try {
+            const resp = await fetch(`${this.baseUrl.replace(/\/$/, '')}/sdapi/v1/workflows`, { headers: this.getAuthHeaders() } as any);
             if ((resp as any).ok) return await (resp as any).json();
         } catch (_) {}
         return [];

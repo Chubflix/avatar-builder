@@ -13,7 +13,7 @@ import { getAblyRealtime } from '../lib/ably';
  */
 export function useQueue() {
     const { dispatch, actions } = useApp();
-    const { setCount } = useQueueContext();
+    const { setCount, setWorkflows } = useQueueContext();
     const pollerRef = useRef(null);
     const isPollingRef = useRef(false);
 
@@ -43,7 +43,7 @@ export function useQueue() {
             };
 
             // Collect all job arrays from various shapes
-            let list: any[] = [];
+            let list: any[];
             let arrays: any[] = [];
             if (Array.isArray(jobs)) {
                 arrays = [jobs];
@@ -74,7 +74,7 @@ export function useQueue() {
             }
 
             // Determine the 'active' job
-            let active: any = null;
+            let active: any;
             const isActive = (s: any) => {
                 const status = (s?.status || s?.state || s?.job_status || '').toString().toLowerCase();
                 return status && !['queued', 'pending', 'waiting'].includes(status);
@@ -208,6 +208,22 @@ export function useQueue() {
             try { realtime.channels.release('queue'); } catch (_) { /* noop */ }
         };
     }, [triggerQueuePolling]);
+
+    // Fetch workflows on initialization
+    const fetchWorkflows = useCallback(async () => {
+        try {
+            const workflows = await sdAPI.getWorkflows();
+            setWorkflows(workflows);
+        } catch (err) {
+            debug.warn('SD-Queue', 'Failed to fetch workflows', err);
+            setWorkflows([]);
+        }
+    }, [setWorkflows]);
+
+    // Fetch workflows on initialization
+    useEffect(() => {
+        fetchWorkflows();
+    }, [fetchWorkflows]);
 
     // Clean up on unmount
     useEffect(() => {

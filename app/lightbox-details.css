@@ -137,7 +137,6 @@
 @media (max-width: 1024px) {
     .lightbox-main-content {
         flex-direction: column;
-        max-height: calc(100vh - 100px);
         padding: 1rem 0.5rem;
         position: relative;
     }
@@ -152,14 +151,6 @@
     .compare-mask-tile {
         width: 30%;
         max-width: none;
-    }
-
-    .lightbox-image-container {
-        max-height: calc(100vh - 100px);
-    }
-
-    .lightbox-image-container img {
-        max-height: calc(100vh - 100px);
     }
 
     .lightbox-details-sidebar {
