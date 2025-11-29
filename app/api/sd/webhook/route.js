@@ -81,7 +81,8 @@ export async function POST(request) {
                 supabase,
                 userId: job.user_id,
                 imageBase64: typeof img === 'string' ? img : img?.data || '',
-                meta: { ...meta, maskId: perMaskId, seed: meta.seed ? (Number(meta.seed) + index) : null }
+                meta: { ...meta, maskId: perMaskId, seed: meta.seed ? (Number(meta.seed) + index) : null },
+                tags: body?.tags || []
             });
         }
 
