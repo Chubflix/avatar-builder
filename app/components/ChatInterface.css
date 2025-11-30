@@ -205,6 +205,37 @@
     padding: 0.25rem 0.5rem;
 }
 
+/* Fullscreen modals on mobile */
+@media (max-width: 768px) {
+    .chat-modal-content {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        transform: none;
+        width: 100vw;
+        height: 100vh;
+        max-height: none;
+        border-radius: 0;
+        border: none;
+    }
+
+    .chat-modal-header {
+        position: sticky;
+        top: 0;
+        background: var(--bg-secondary, #1a1a1a);
+        z-index: 1;
+    }
+
+    .chat-modal-body {
+        flex: 1;
+        max-height: none;
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
 /* Welcome Message */
 .chat-welcome {
     max-width: 600px;
