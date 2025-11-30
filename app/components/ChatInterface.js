@@ -5,12 +5,14 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import './ChatInterface.css';
 import ChatImagesLightboxContainer from './ChatImagesLightboxContainer';
+import DocumentManager from './DocumentManager';
+import ChatSessionManager from './ChatSessionManager';
 
 /**
  * ChatInterface Component
  * ChatGPT-like interface for character sheet design assistance
  */
-export default function ChatInterface({ characterId, characterName, sessionId = null }) {
+export default function ChatInterface({ characterId, characterName, sessionId = null, onToggleCharacters, isCharactersOpen = true, onSessionChange }) {
     const [messages, setMessages] = useState([]);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -26,6 +28,11 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
     const inputRef = useRef(null);
     const fileInputRef = useRef(null);
 
+    // Modals and UI state
+    const [showDocsModal, setShowDocsModal] = useState(false);
+    const [showSessionsModal, setShowSessionsModal] = useState(false);
+    const [currentSessionName, setCurrentSessionName] = useState('');
+
     // Load chat history when character or session changes
     useEffect(() => {
         if (characterId) {
@@ -39,6 +46,28 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    // Load current session name when sessionId changes
+    useEffect(() => {
+        async function fetchSessionName() {
+            if (!characterId) { setCurrentSessionName(''); return; }
+            try {
+                const resp = await fetch(`/api/chat-sessions?character_id=${characterId}`);
+                if (!resp.ok) return;
+                const data = await resp.json();
+                if (sessionId) {
+                    const s = Array.isArray(data) ? data.find(x => x.id === sessionId) : null;
+                    setCurrentSessionName(s?.name || '');
+                } else {
+                    // if no session selected, show most recent or blank
+                    setCurrentSessionName('');
+                }
+            } catch (_) {
+                setCurrentSessionName('');
+            }
+        }
+        fetchSessionName();
+    }, [characterId, sessionId]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -572,18 +601,41 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
                     <i className="fa fa-robot"></i>
                     <div className="chat-header-text">
                         <h3>Character Sheet Assistant</h3>
-                        <p>Working on: {characterName || 'Character'}</p>
+                        <p>Working on: {characterName || 'Character'}{` - ${currentSessionName || 'Session'}`}</p>
                     </div>
                 </div>
-                {messages.length > 0 && (
+                <div className="chat-header-actions">
                     <button
-                        className="chat-clear-btn"
-                        onClick={handleClearChat}
-                        title="Clear chat history"
+                        className={`chat-toggle-characters-btn ${isCharactersOpen ? '' : 'off'}`}
+                        onClick={() => onToggleCharacters && onToggleCharacters()}
+                        title={isCharactersOpen ? 'Hide characters' : 'Show characters'}
                     >
-                        <i className="fa fa-trash"></i>
+                        <i className="fa fa-users"></i>
                     </button>
-                )}
+                    <button
+                        className="chat-header-btn"
+                        onClick={() => setShowSessionsModal(true)}
+                        title="Manage Chat Sessions"
+                    >
+                        <i className="fa fa-comments"></i>
+                    </button>
+                    <button
+                        className="chat-header-btn"
+                        onClick={() => setShowDocsModal(true)}
+                        title="Character Documents"
+                    >
+                        <i className="fa fa-file"></i>
+                    </button>
+                    {messages.length > 0 && (
+                        <button
+                            className="chat-clear-btn"
+                            onClick={handleClearChat}
+                            title="Clear chat history"
+                        >
+                            <i className="fa fa-trash"></i>
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Messages */}
@@ -769,6 +821,49 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
                 <div ref={messagesEndRef} />
             </div>
 
+            {/* Modals */}
+            {showDocsModal && (
+                <div className="chat-modal">
+                    <div className="chat-modal-backdrop" onClick={() => setShowDocsModal(false)}></div>
+                    <div className="chat-modal-content">
+                        <div className="chat-modal-header">
+                            <h3>Character Documents</h3>
+                            <button className="btn-close" onClick={() => setShowDocsModal(false)}>
+                                <i className="fa fa-times"></i>
+                            </button>
+                        </div>
+                        <div className="chat-modal-body">
+                            <DocumentManager characterId={characterId} characterName={characterName} />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showSessionsModal && (
+                <div className="chat-modal">
+                    <div className="chat-modal-backdrop" onClick={() => setShowSessionsModal(false)}></div>
+                    <div className="chat-modal-content">
+                        <div className="chat-modal-header">
+                            <h3>Chat Sessions</h3>
+                            <button className="btn-close" onClick={() => setShowSessionsModal(false)}>
+                                <i className="fa fa-times"></i>
+                            </button>
+                        </div>
+                        <div className="chat-modal-body">
+                            <ChatSessionManager
+                                characterId={characterId}
+                                characterName={characterName}
+                                currentSessionId={sessionId}
+                                onSessionChange={(sid) => {
+                                    onSessionChange && onSessionChange(sid);
+                                    setShowSessionsModal(false);
+                                }}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Error Message */}
             {error && (
                 <div className="chat-error">
@@ -802,22 +897,24 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
                         onChange={handleFileSelect}
                         style={{ display: 'none' }}
                     />
-                    <button
-                        className="chat-attach-btn"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isLoading}
-                        title="Attach character sheet (.yaml/.yml) or image (.png/.jpg/.jpeg/.webp)"
-                    >
-                        <i className="fa fa-paperclip"></i>
-                    </button>
-                    <button
-                        className="chat-attach-btn"
-                        onClick={openImagePicker}
-                        disabled={isLoading}
-                        title="Pick from character images"
-                    >
-                        <i className="fa fa-image"></i>
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}>
+                        <button
+                            className="chat-attach-btn"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isLoading}
+                            title="Attach character sheet (.yaml/.yml) or image (.png/.jpg/.jpeg/.webp)"
+                        >
+                            <i className="fa fa-paperclip"></i>
+                        </button>
+                        <button
+                            className="chat-attach-btn"
+                            onClick={openImagePicker}
+                            disabled={isLoading}
+                            title="Pick from character images"
+                        >
+                            <i className="fa fa-image"></i>
+                        </button>
+                    </div>
                     <textarea
                         ref={inputRef}
                         className="chat-input"
@@ -839,9 +936,7 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
                 </div>
             </div>
 
-            <div className="chat-footer">
-                <p>AI-powered character sheet assistant using Deepseek</p>
-            </div>
+            {/* Footer removed to save vertical space */}
 
             {showImagePicker && !isPickerLoading && !pickerError && (
                 <ChatImagesLightboxContainer

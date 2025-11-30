@@ -8,8 +8,6 @@ import AppSettings from '../components/AppSettings';
 import PWAManager from '../components/PWAManager';
 import CharacterList from '../components/CharacterList';
 import ChatInterface from '../components/ChatInterface';
-import DocumentManager from '../components/DocumentManager';
-import ChatSessionManager from '../components/ChatSessionManager';
 import './character-creator.css';
 
 function CharacterCreatorContent() {
@@ -19,6 +17,7 @@ function CharacterCreatorContent() {
     const [selectedCharacterName, setSelectedCharacterName] = useState(null);
     const [currentSessionId, setCurrentSessionId] = useState(null);
     const [characters, setCharacters] = useState([]);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     useEffect(() => {
         async function initialize() {
@@ -64,6 +63,10 @@ function CharacterCreatorContent() {
         setCurrentSessionId(sessionId);
     };
 
+    const handleToggleSidebar = () => {
+        setIsSidebarOpen(prev => !prev);
+    };
+
     if (isLoadingConfig) {
         return (
             <>
@@ -87,7 +90,7 @@ function CharacterCreatorContent() {
             />
 
             <div className="character-creator-layout">
-                <div className="character-creator-sidebar">
+                <div className={`character-creator-sidebar ${isSidebarOpen ? '' : 'collapsed'}`}>
                     <CharacterList
                         selectedCharacterId={selectedCharacterId}
                         onSelectCharacter={handleSelectCharacter}
@@ -95,20 +98,13 @@ function CharacterCreatorContent() {
                     />
                 </div>
                 <div className="character-creator-main">
-                    <DocumentManager
-                        characterId={selectedCharacterId}
-                        characterName={selectedCharacterName}
-                    />
-                    <ChatSessionManager
-                        characterId={selectedCharacterId}
-                        characterName={selectedCharacterName}
-                        currentSessionId={currentSessionId}
-                        onSessionChange={handleSessionChange}
-                    />
                     <ChatInterface
                         characterId={selectedCharacterId}
                         characterName={selectedCharacterName}
                         sessionId={currentSessionId}
+                        onToggleCharacters={handleToggleSidebar}
+                        isCharactersOpen={isSidebarOpen}
+                        onSessionChange={handleSessionChange}
                     />
                 </div>
             </div>
