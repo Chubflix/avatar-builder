@@ -114,6 +114,14 @@ export default function ChatInterface({ characterId, characterName, characterAva
     useEffect(() => {
         async function fetchSessionName() {
             if (!characterId) { setCurrentSessionName(''); return; }
+
+            // Handle pending new session
+            if (sessionId === '__NEW_SESSION__') {
+                setCurrentSessionName('New Session');
+                setMessages([]); // Clear messages for new session
+                return;
+            }
+
             try {
                 const resp = await fetch(`/api/chat-sessions?character_id=${characterId}`);
                 if (!resp.ok) return;
@@ -277,6 +285,11 @@ export default function ChatInterface({ characterId, characterName, characterAva
             }
 
             const data = await response.json();
+
+            // If session was auto-created, switch to it
+            if (data.session_id && sessionId === '__NEW_SESSION__' && onSessionChange) {
+                onSessionChange(data.session_id);
+            }
 
             // Add assistant response to UI
             const assistantMessage = (data && (data.message || data.description))

@@ -341,6 +341,42 @@ export async function chat(
 
 
 /**
+ * Generate a short session title from a user message
+ * Uses the LLM to create a concise, descriptive title (max 6 words)
+ */
+export async function generateSessionTitle(userMessage: string): Promise<string> {
+  try {
+    const model = createDeepseekLLM();
+
+    const response = await model.invoke([
+      {
+        role: 'system',
+        content: 'You generate short, descriptive titles for chat conversations. Return ONLY the title, maximum 6 words, no quotes or punctuation at the end.',
+      },
+      {
+        role: 'user',
+        content: `Generate a short title (max 6 words) for a conversation that starts with: "${userMessage.substring(0, 200)}"`,
+      },
+    ]);
+
+    const title = typeof response.content === 'string'
+      ? response.content.trim()
+      : String(response.content).trim();
+
+    // Fallback if title is too long or empty
+    if (!title || title.length > 60) {
+      return userMessage.substring(0, 40).trim() + (userMessage.length > 40 ? '...' : '');
+    }
+
+    return title;
+  } catch (error) {
+    console.error('Error generating session title:', error);
+    // Fallback to truncated message
+    return userMessage.substring(0, 40).trim() + (userMessage.length > 40 ? '...' : '');
+  }
+}
+
+/**
  * Utility function to estimate token count (rough approximation)
  * Useful for managing context window
  */

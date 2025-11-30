@@ -205,7 +205,12 @@ export default function ChatSessionManager({ characterId, characterName, current
                             {!isCreating && !isEditing && (
                                 <button
                                     className="session-add-btn"
-                                    onClick={() => setIsCreating(true)}
+                                    onClick={() => {
+                                        // Trigger new session with special ID
+                                        if (onSessionChange) {
+                                            onSessionChange('__NEW_SESSION__');
+                                        }
+                                    }}
                                 >
                                     <i className="fa fa-plus"></i>
                                     New Chat Session

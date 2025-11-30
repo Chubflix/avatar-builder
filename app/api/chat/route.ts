@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAuthClient } from '@/app/lib/supabase-server';
-import { chat, trimConversationHistory, ChatMessage } from '@/app/lib/ai';
+import { chat, trimConversationHistory, ChatMessage, generateSessionTitle } from '@/app/lib/ai';
 import { publishRealtimeEvent } from '@/app/lib/ably';
 import { parseCharacterSheetFile } from '@/app/tools';
 
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       body = await request.json();
     }
 
-    const { character_id, message, session_id = null, include_history = true } = body;
+    let { character_id, message, session_id = null, include_history = true } = body;
 
     // Validate input
     if (!character_id) {
@@ -71,8 +71,48 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Character not found' }, { status: 404 });
     }
 
+    // Handle new session creation with auto-generated title
+    if (session_id === '__NEW_SESSION__') {
+      try {
+        // Generate session title from the first message
+        const sessionTitle = await generateSessionTitle(message.trim());
+
+        // Create the session
+        const { data: newSession, error: sessionError } = await supabase
+          .from('character_chat_sessions')
+          .insert({
+            character_id,
+            user_id: user.id,
+            name: sessionTitle,
+            description: null,
+          })
+          .select()
+          .single();
+
+        if (sessionError) throw sessionError;
+
+        // Use the newly created session ID
+        session_id = newSession.id;
+
+        // Publish realtime event
+        try {
+          await publishRealtimeEvent('chat-sessions', 'session_created', {
+            character_id,
+            user_id: user.id,
+            session_id: newSession.id,
+          });
+        } catch (e: any) {
+          console.warn('Failed to publish realtime event:', e?.message);
+        }
+      } catch (error: any) {
+        console.error('Error creating session:', error);
+        // Continue without session if creation fails
+        session_id = null;
+      }
+    }
+
     // Verify session belongs to user and character (if provided)
-    if (session_id) {
+    if (session_id && session_id !== '__NEW_SESSION__') {
       const { data: session, error: sessionError } = await supabase
         .from('character_chat_sessions')
         .select('id, character_id')
@@ -234,6 +274,7 @@ export async function POST(request: NextRequest) {
       message: cleanContent,
       metadata,
       message_id: assistantMsg?.id,
+      session_id, // Return session_id so frontend can update if it was auto-created
     });
   } catch (error: any) {
     console.error('Chat API error:', error);
