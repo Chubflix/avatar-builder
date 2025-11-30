@@ -2,6 +2,7 @@ import sdAPI from "@/app/utils/sd-api";
 import {buildLoraPrompt} from "@/app/utils/lora-builder";
 import {attachJobUuid, createJob} from "@/actions/jobs";
 import {notifyJobQueued} from "@/app/utils/queue-notifications";
+import {notifyQueue} from "@/actions/queue";
 
 interface GenerateImageParams {
     config: any;
@@ -129,7 +130,7 @@ export async function generateImage(params: GenerateImageParams): Promise<{ jobI
 
             // Clean notification handling
             onNotification?.(`Job queued (ID: ${jobId})`, 'info');
-            (onJobQueued) ? onJobQueued(jobId) : await notifyJobQueued(jobId);
+            (onJobQueued) ? onJobQueued(jobId) : await notifyQueue('job_queued', { jobId });
             return {jobId, success: true};
         }
         return {success: true};
