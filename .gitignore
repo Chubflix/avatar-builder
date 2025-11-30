@@ -32,3 +32,6 @@ avatar-data/
 
 *storybook.log
 storybook-static
+
+# yarn project
+package-lock.json
