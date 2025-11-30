@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAuthClient } from '@/app/lib/supabase-server';
-import { parseAndStoreCharacterSheet } from '@/src/tools/parse_character_sheet';
+import { parseAndStoreCharacterSheet } from '@/app/tools/parse_character_sheet';
 
 export async function POST(request: NextRequest) {
   try {

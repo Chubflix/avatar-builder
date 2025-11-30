@@ -3,21 +3,21 @@
  * Uses modern LangChain tool() function with context injection
  */
 
-import { tool } from '@langchain/core/tools';
-import { z } from 'zod';
+import {tool} from '@langchain/core/tools';
+import {z} from 'zod';
 import {
-  getGreetings,
-  getGreetingsCount,
-  getPersonality,
-  getAppearance,
-  getAllDescriptions,
-  addGreeting,
-  updateGreeting,
-  deleteGreeting,
-  updateDescription,
-  analyzeImageAppearance,
-  generateAvatar,
-} from '@/src/tools';
+    addGreeting,
+    analyzeImageAppearance,
+    deleteGreeting,
+    generateAvatar,
+    getAllDescriptions,
+    getAppearance,
+    getGreetings,
+    getGreetingsCount,
+    getPersonality,
+    updateDescription,
+    updateGreeting,
+} from '@/app/tools';
 
 /**
  * Context schema for tool runtime
@@ -361,6 +361,8 @@ export function createCharacterTools() {
     ) => {
       const { supabase, characterId } = context;
 
+      console.log('Generating avatar with:', { prompt, orientation, confirmed });
+
       // Load user chat image settings
       let chatImgSettings: any = {};
       try {
@@ -380,13 +382,12 @@ export function createCharacterTools() {
 
       const positivePrefix = (chatImgSettings?.positive_prefix || '').trim();
       const negativePrefix = (chatImgSettings?.negative_prefix || '').trim();
-      const style = (chatImgSettings?.style || '').trim();
       const model = (chatImgSettings?.model || '').trim();
 
       const finalOrientation: 'portrait' | 'landscape' | 'square' =
         orientation === 'landscape' || orientation === 'square' ? orientation : 'portrait';
 
-      const finalPositive = [positivePrefix, prompt, style]
+      const finalPositive = [positivePrefix, prompt]
         .filter(Boolean)
         .join(' ')
         .trim();
@@ -416,23 +417,14 @@ export function createCharacterTools() {
         );
       }
 
-      // Commit mode - call avatar generation API
-      const result = await generateAvatar(characterId, finalPositive, {
-        orientation: finalOrientation,
-        negativePrompt: finalNegative,
-      });
+      console.log('Generating avatar with:', { model, orientation, finalPositive });
 
-      return JSON.stringify(
-        {
-          ok: true,
-          url: result?.url,
-          id: result?.id,
-          filename: result?.filename,
-          metadata: result?.metadata,
-        },
-        null,
-        2
-      );
+      // Commit mode - call avatar generation API
+        // Return only the queue/job ID as a simple string
+      return await generateAvatar(characterId, finalPositive, {
+          orientation: finalOrientation,
+          negativePrompt: finalNegative,
+      });
     },
     {
       name: 'generate_chat_image',

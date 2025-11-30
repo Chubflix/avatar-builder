@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAuthClient } from '@/app/lib/supabase-server';
-import { analyzeImageAppearance } from '@/src/tools/analyze_image_appearance';
+import { analyzeImageAppearance } from '@/app/tools/analyze_image_appearance';
 
 function isHttpUrl(value: string | null | undefined) {
   if (!value) return false;

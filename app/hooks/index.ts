@@ -2,12 +2,12 @@
 import {useCallback} from 'react';
 import {useApp} from '../context/AppContext';
 import sdAPI from '../utils/sd-api';
-import {folderAPI, imageAPI} from '../utils/backend-api';
+import {folderAPI} from '../utils/backend-api';
 import debug from '../utils/debug';
 import {sendNotification} from '../utils/notifications';
-import {buildLoraPrompt} from '../utils/lora-builder';
 import {useQueue} from './queue';
 import {notifyJobQueued} from '../utils/queue-notifications';
+import {generateImage} from "@/app/utils/generate";
 
 /**
  * Hook for managing folders
@@ -99,170 +99,35 @@ export function useGeneration() {
             maskImage
         } = state;
 
-        if (!config || !positivePrompt.trim()) {
-            dispatch({type: actions.SET_STATUS, payload: {type: 'error', message: 'Please enter a positive prompt'}});
-            return;
-        }
+        return await generateImage({
+            config,
+            positivePrompt,
+            selectedModel,
+            negativePrompt,
+            orientation,
+            batchSize,
+            seed,
+            selectedFolder,
+            loraSliders,
+            loraToggles,
+            loraStyle,
+            initImage,
+            denoisingStrength,
+            maskImage,
 
-        try {
-            // Set model
-            await sdAPI.setModel(selectedModel);
-
-            // Build lora prompt additions
-            const loraAdditions = buildLoraPrompt(config, loraSliders, loraToggles, loraStyle);
-            const finalPrompt = positivePrompt + loraAdditions;
-
-            // Determine ADetailer settings from the adetailer_list (not the single legacy field)
-            const adList = Array.isArray((config as any).adetailer_list) ? (config as any).adetailer_list : [];
-            const enabledModels: string[] = adList
-                .filter((i: any) => i && i.enabled && typeof i.model === 'string' && i.model.trim().length > 0)
-                .map((i: any) => i.model.trim());
-            const adetailerEnabledFromList = enabledModels.length > 0;
-            const adetailerModelFromList = enabledModels[0] || null;
-
-            // If using inpaint (initImage + maskImage), ensure mask exists in DB and S3 and get mask_id
-            let maskId = null;
-            const initB64 = typeof initImage === 'string' ? initImage : (initImage?.base64 || null);
-            const maskB64 = typeof maskImage === 'string' ? maskImage : (maskImage?.base64 || null);
-            const maskIdInput = typeof maskImage === 'object' ? (maskImage?.id || null) : null;
-            if (initB64 && maskB64) {
-                try {
-                    const resp = await fetch('/api/masks', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({id: maskIdInput || undefined, base64: maskB64})
-                    });
-                    if (resp.ok) {
-                        const saved = await resp.json();
-                        maskId = saved.id;
-                    }
-                } catch (_) {
-                    // Non-fatal: generation can still proceed; webhook just won't attach a mask
-                }
-            }
-
-            // Prepare original metadata payload to persist with the queued job
-            const dims = config.dimensions[orientation];
-            const jobPayload = {
-                positivePrompt,
-                negativePrompt,
-                model: selectedModel,
-                orientation,
-                width: dims.width,
-                height: dims.height,
-                batchSize,
-                samplerName: config.generation.samplerName,
-                scheduler: config.generation.scheduler,
-                steps: config.generation.steps,
-                cfgScale: config.generation.cfgScale,
-                seed,
-                adetailerEnabled: adetailerEnabledFromList,
-                adetailerModel: adetailerModelFromList,
-                adetailerModels: enabledModels,
-                folder_id: selectedFolder || null,
-                loras: {
-                    sliders: loraSliders,
-                    toggles: loraToggles,
-                    style: loraStyle
-                },
-                generation_type: initB64 ? (maskB64 ? 'inpaint' : 'img2img') : 'txt2img',
-                parent_image_id: null, // TODO: set when restoring from an image
-                mask_id: maskId || null,
-            };
-
-            // Create a job record to receive a per-job webhook token
-            let webhookToken = null;
-            try {
-                const jobResp = await fetch('/api/jobs', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(jobPayload)
-                });
-                if (jobResp.ok) {
-                    const job = await jobResp.json();
-                    webhookToken = job.token;
-                }
-            } catch (_) {
-                // If job creation fails, continue without token (webhook will use global token if configured)
-            }
-
-            // Submit job to SD API
-            const result = initB64
-                ? (maskB64
-                    ? await sdAPI.inpaintImage({
-                        initImage: initB64,
-                        maskImage: maskB64,
-                        prompt: finalPrompt,
-                        negativePrompt,
-                        width: dims.width,
-                        height: dims.height,
-                        batchSize,
-                        samplerName: config.generation.samplerName,
-                        scheduler: config.generation.scheduler,
-                        steps: config.generation.steps,
-                        cfgScale: config.generation.cfgScale,
-                        seed,
-                        denoisingStrength: typeof denoisingStrength === 'number' ? denoisingStrength : 0.5,
-                        adetailerModels: enabledModels,
-                        __webhookAuthToken: webhookToken || undefined
-                    })
-                    : await sdAPI.generateImageFromImage({
-                        initImage: initB64,
-                        prompt: finalPrompt,
-                        negativePrompt,
-                        width: dims.width,
-                        height: dims.height,
-                        batchSize,
-                        samplerName: config.generation.samplerName,
-                        scheduler: config.generation.scheduler,
-                        steps: config.generation.steps,
-                        cfgScale: config.generation.cfgScale,
-                        seed,
-                        denoisingStrength: typeof denoisingStrength === 'number' ? denoisingStrength : 0.5,
-                        adetailerModels: enabledModels,
-                        __webhookAuthToken: webhookToken || undefined
-                    }))
-                : await sdAPI.generateImage({
-                    prompt: finalPrompt,
-                    negativePrompt,
-                    width: dims.width,
-                    height: dims.height,
-                    batchSize,
-                    samplerName: config.generation.samplerName,
-                    scheduler: config.generation.scheduler,
-                    steps: config.generation.steps,
-                    cfgScale: config.generation.cfgScale,
-                    seed,
-                    adetailerModels: enabledModels,
-                    __webhookAuthToken: webhookToken || undefined
-                });
-
-            // If using async proxy adapter, result will be a queued job
-            if (result && result.queued) {
-                const jobId = result.jobId || result.raw?.id || 'unknown';
-                // Store the job_uuid on the existing job row for traceability
-                if (webhookToken && jobId && jobId !== 'unknown') {
-                    try {
-                        await fetch('/api/jobs', {
-                            method: 'PATCH',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({token: webhookToken, job_uuid: jobId})
-                        });
-                    } catch (_) {
-                        // non-fatal
-                    }
-                }
-                sendNotification(`Job queued (ID: ${jobId})`, 'info', dispatch, actions, notificationsEnabled);
-
-                // Notify other devices via real-time that a job was queued
+            onJobQueued: (jobId) => {
                 notifyJobQueued(jobId);
-
-                // Start polling the SD queue to track progress
                 triggerQueuePolling();
+            },
+
+            onNotification: (message, type) => {
+                sendNotification(message, type, dispatch, actions, notificationsEnabled);
+            },
+
+            onError: (error) => {
+                sendNotification(error, 'error', dispatch, actions, notificationsEnabled);
             }
-        } catch (err) {
-            sendNotification('Generation failed: ' + err.message, 'error', dispatch, actions, notificationsEnabled);
-        }
+        });
     }, [state, dispatch, actions, triggerQueuePolling]);
 
     return {generate};

@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAuthClient } from '@/app/lib/supabase-server';
 import { chat, trimConversationHistory, ChatMessage } from '@/app/lib/ai';
 import { publishRealtimeEvent } from '@/app/lib/ably';
-import { parseCharacterSheetFile } from '@/src/tools';
+import { parseCharacterSheetFile } from '@/app/tools';
 
 /**
  * POST /api/chat

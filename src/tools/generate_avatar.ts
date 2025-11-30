@@ -1,27 +1,25 @@
 /**
- * Generate an avatar for a character using the Avatar Builder API
- * This tool integrates with the existing Next.js Avatar Builder application
+ * Generate an avatar for a character using the queue-aware generator
+ * This now delegates to app/utils/generate.ts which handles queuing and callbacks
  */
 
+import {generateImage} from '@/app/utils/generate';
+import {folderAPI} from '@/app/utils/backend-api';
+import {Config} from "@/app/context/AppContext";
+import {getConfig} from '@/actions/config';
+import {getUserSettings} from "@/actions/settings";
+import {createFolder, getFolders} from "@/actions/folders";
+
+
 export interface AvatarGenerationOptions {
-  description: string;
-  orientation?: 'portrait' | 'landscape' | 'square';
-  batchSize?: number;
-  enhanceFace?: boolean;
-  negativePrompt?: string;
+    description: string;
+    orientation?: 'portrait' | 'landscape' | 'square';
+    batchSize?: number;
+    enhanceFace?: boolean;
+    negativePrompt?: string;
 }
 
-export interface GeneratedAvatar {
-  id: string;
-  filename: string;
-  url: string;
-  folderId?: string;
-  metadata: {
-    prompt: string;
-    negativePrompt: string;
-    settings: Record<string, any>;
-  };
-}
+// Legacy type no longer used; generateAvatar now returns only the queue/job ID
 
 /**
  * Generate an avatar image for a character
@@ -31,56 +29,94 @@ export interface GeneratedAvatar {
  * @returns The generated avatar information
  */
 export async function generateAvatar(
-  characterId: string,
-  description: string,
-  options: Partial<AvatarGenerationOptions> = {}
-): Promise<GeneratedAvatar> {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    characterId: string,
+    description: string,
+    options: Partial<AvatarGenerationOptions> = {}
+): Promise<string> {
+    // Load user settings (model/style, generation, adetailer) and dimensions from config
+    let userSettings: any = {};
+    let dimensions: any = {
+        portrait: {width: 832, height: 1216},
+        landscape: {width: 1216, height: 832},
+        square: {width: 1024, height: 1024},
+    };
+    try {
+        userSettings = await getUserSettings();
+    } catch (_) {}
 
-  const payload = {
-    characterId,
-    description,
-    orientation: options.orientation || 'portrait',
-    batchSize: options.batchSize || 1,
-    enhanceFace: options.enhanceFace !== false,
-    negativePrompt: options.negativePrompt || ''
-  };
+    let cfg: Config = {defaults: {orientation: 'portrait'} as any, dimensions: dimensions as any};
 
-  const response = await fetch(`${baseUrl}/api/generate-avatar`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  });
+    try {
+        cfg = await getConfig();
+        if (cfg?.dimensions) dimensions = cfg.dimensions;
+    } catch (_) {}
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-    throw new Error(`Failed to generate avatar: ${error.message}`);
-  }
+    const loras = cfg?.loras || [];
 
-  const data = await response.json();
-  return data;
-}
 
-/**
- * Generate multiple avatar variations for a character
- * @param characterId - The UUID of the character
- * @param description - Description for the avatar generation prompt
- * @param count - Number of variations to generate
- * @param options - Additional generation options
- * @returns Array of generated avatars
- */
-export async function generateAvatarVariations(
-  characterId: string,
-  description: string,
-  count: number = 4,
-  options: Partial<AvatarGenerationOptions> = {}
-): Promise<GeneratedAvatar[]> {
-  const batchOptions = {
-    ...options,
-    batchSize: Math.min(count, 10) // Limit to 10 per batch
-  };
+    const orientation = options.orientation || cfg.defaults.orientation;
+    const batchSize = options.batchSize || 1;
+    const negativePrompt = options.negativePrompt || (userSettings?.chat_img_settings?.negative_prefix || '');
 
-  return generateAvatar(characterId, description, batchOptions) as any;
+    // Compose generation config from user settings
+    const generation = {
+        samplerName: userSettings?.generation_settings?.samplerName || 'DPM++ 2M',
+        scheduler: userSettings?.generation_settings?.scheduler || 'Karras',
+        steps: userSettings?.generation_settings?.steps ?? 25,
+        cfgScale: userSettings?.generation_settings?.cfgScale ?? 7,
+    };
+    const adetailer_list = Array.isArray(userSettings?.adetailer_settings)
+        ? userSettings.adetailer_settings
+        : [];
+    const selectedModel = (userSettings?.chat_img_settings?.model || '').trim();
+
+    // Ensure there is a character folder named "Avatar"
+    let folderId: string | null;
+    try {
+        const folders = await getFolders({characterId});
+        const avatarFolder = Array.isArray(folders)
+            ? folders.find((f: any) => f?.name === 'Avatar')
+            : null;
+        if (avatarFolder?.id) {
+            folderId = avatarFolder.id;
+        } else {
+            const created = await createFolder({name: 'Avatar', description: null, character_id: characterId});
+            folderId = created?.id || null;
+        }
+    } catch (e: Error | any) {
+        // If folder operations fail, proceed without a folder
+        folderId = null;
+    }
+
+    const config = {generation, adetailer_list, dimensions, loras};
+
+    // Submit job via new generator (handles queueing)
+    const payload = {
+        config,
+        positivePrompt: description,
+        selectedModel: selectedModel,
+        negativePrompt,
+        orientation,
+        batchSize,
+        seed: Math.floor(Math.random() * 2_000_000_000),
+        selectedFolder: folderId,
+        characterId,
+        loraSliders: {},
+        loraToggles: {},
+        loraStyle: userSettings?.chat_img_settings?.style || '',
+        initImage: null,
+        denoisingStrength: 0.5,
+        maskImage: null,
+    };
+
+    console.log('Generating avatar with payload:', payload);
+
+    const {jobId, success} = await generateImage(payload);
+
+    if (!success) {
+        throw new Error('Failed to queue avatar generation');
+    }
+
+    // Return only the queue/job ID
+    return jobId || 'queued';
 }

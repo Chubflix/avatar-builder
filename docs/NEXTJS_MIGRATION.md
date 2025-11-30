@@ -34,7 +34,7 @@ avatar-builder/
 ├── data/                    # Data directory (generated images, DB)
 ├── config.json              # Configuration file
 ├── package.json             # Dependencies
-└── next.config.js           # Next.js configuration
+└── next.config.ts           # Next.js configuration
 ```
 
 ### Important: Stable Diffusion API Calls

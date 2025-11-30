@@ -64,9 +64,7 @@ export {
 // Avatar Generation
 export {
   generateAvatar,
-  generateAvatarVariations,
   type AvatarGenerationOptions,
-  type GeneratedAvatar
 } from './generate_avatar';
 
 // Character Sheet YAML Parser
