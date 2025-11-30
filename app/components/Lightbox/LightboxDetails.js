@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLightbox } from '../../context/LightboxContext';
+import '../../lightbox-details.css';
 
 /**
  * LightboxDetails - Generation details sidebar

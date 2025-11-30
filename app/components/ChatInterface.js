@@ -13,7 +13,7 @@ import { getAblyRealtime } from '@/app/lib/ably';
  * ChatInterface Component
  * ChatGPT-like interface for character sheet design assistance
  */
-export default function ChatInterface({ characterId, characterName, sessionId = null, onToggleCharacters, isCharactersOpen = true, onSessionChange }) {
+export default function ChatInterface({ characterId, characterName, characterAvatarUrl = null, sessionId = null, onToggleCharacters, isCharactersOpen = true, onSessionChange }) {
     const [messages, setMessages] = useState([]);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -36,6 +36,7 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
     const [showDocsModal, setShowDocsModal] = useState(false);
     const [showSessionsModal, setShowSessionsModal] = useState(false);
     const [currentSessionName, setCurrentSessionName] = useState('');
+    const [userAvatarUrl, setUserAvatarUrl] = useState(null);
 
     // Load chat history when character or session changes
     useEffect(() => {
@@ -50,6 +51,25 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    // Load current user gravatar (for user message icon)
+    useEffect(() => {
+        let isMounted = true;
+        async function fetchMe() {
+            try {
+                const resp = await fetch('/api/me');
+                if (!resp.ok) return;
+                const data = await resp.json();
+                if (isMounted && data?.gravatar) {
+                    setUserAvatarUrl(data.gravatar);
+                }
+            } catch (_) {
+                // ignore
+            }
+        }
+        fetchMe();
+        return () => { isMounted = false; };
+    }, []);
 
     // Realtime subscription: listen for chat message updates (images attached, etc.)
     useEffect(() => {
@@ -720,9 +740,20 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
                                 key={message.id || index}
                                 className={`chat-message ${message.role}`}
                             >
-                                <div className="chat-message-icon">
+                                <div className={`chat-message-icon ${
+                                    (message.role === 'assistant' && characterAvatarUrl) ||
+                                    (message.role === 'user' && userAvatarUrl)
+                                        ? 'has-avatar'
+                                        : ''
+                                }`}>
                                     {message.role === 'user' ? (
-                                        <i className="fa fa-user"></i>
+                                        userAvatarUrl ? (
+                                            <img src={userAvatarUrl} alt="Your avatar" />
+                                        ) : (
+                                            <i className="fa fa-user"></i>
+                                        )
+                                    ) : characterAvatarUrl ? (
+                                        <img onClick={() => handleOpenMessageImage([{url: characterAvatarUrl}])} src={characterAvatarUrl} alt="Character avatar" />
                                     ) : (
                                         <i className="fa fa-robot"></i>
                                     )}
@@ -877,8 +908,12 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
                         ))}
                         {isLoading && (
                             <div className="chat-message assistant">
-                                <div className="chat-message-icon">
-                                    <i className="fa fa-robot"></i>
+                                <div className={`chat-message-icon ${characterAvatarUrl ? 'has-avatar' : ''}`}>
+                                    {characterAvatarUrl ? (
+                                        <img src={characterAvatarUrl} alt="Character avatar" />
+                                    ) : (
+                                        <i className="fa fa-robot"></i>
+                                    )}
                                 </div>
                                 <div className="chat-message-content">
                                     <div className="chat-typing-indicator">

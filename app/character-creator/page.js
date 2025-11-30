@@ -18,6 +18,7 @@ function CharacterCreatorContent() {
     const [currentSessionId, setCurrentSessionId] = useState(null);
     const [characters, setCharacters] = useState([]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [selectedCharacterAvatarUrl, setSelectedCharacterAvatarUrl] = useState(null);
 
     useEffect(() => {
         async function initialize() {
@@ -50,6 +51,7 @@ function CharacterCreatorContent() {
                 const character = data.find(c => c.id === characterId);
                 if (character) {
                     setSelectedCharacterName(character.name);
+                    setSelectedCharacterAvatarUrl(character.avatar_url || null);
                 }
             })
             .catch(err => console.error('Error fetching character details:', err));
@@ -57,6 +59,7 @@ function CharacterCreatorContent() {
 
     const handleCreateCharacter = (character) => {
         setSelectedCharacterName(character.name);
+        setSelectedCharacterAvatarUrl(character.avatar_url || null);
     };
 
     const handleSessionChange = (sessionId) => {
@@ -101,6 +104,7 @@ function CharacterCreatorContent() {
                     <ChatInterface
                         characterId={selectedCharacterId}
                         characterName={selectedCharacterName}
+                        characterAvatarUrl={selectedCharacterAvatarUrl}
                         sessionId={currentSessionId}
                         onToggleCharacters={handleToggleSidebar}
                         isCharactersOpen={isSidebarOpen}

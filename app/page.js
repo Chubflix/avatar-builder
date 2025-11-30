@@ -28,7 +28,6 @@ import ConfigModal from './components/ConfigModal';
 // Import CSS
 import './folder-picker.css';
 import './folder-styles.css';
-import './lightbox-details.css';
 
 function AppContent() {
     const { state, dispatch, actions, loadSettings } = useApp();

@@ -314,6 +314,11 @@ export async function chat(
       if (jobId) break;
     }
 
+    // Override content with custom message if image generation was triggered
+    const finalContent = jobId
+      ? 'Image generation has been queued successfully! I\'ll update this message when the image is ready.'
+      : content;
+
     const metadata: ChatResponse['metadata'] = {
       sources: sources.map((doc) => ({
         id: doc.id,
@@ -325,7 +330,7 @@ export async function chat(
     };
 
     return {
-      content,
+      content: finalContent,
       metadata,
     };
   } catch (error: any) {
