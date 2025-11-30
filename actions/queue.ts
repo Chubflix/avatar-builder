@@ -3,7 +3,6 @@
 /**
  * Server action: notifyQueue
  * Publishes a queue-related realtime event via Ably REST.
- * Prefer using this action over the legacy /api/queue/notify endpoint.
  */
 import { getAblyRest } from '@/app/lib/ably';
 

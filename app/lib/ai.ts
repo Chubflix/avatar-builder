@@ -277,16 +277,27 @@ export async function chat(
         : JSON.stringify(lastMessage.content);
 
     // Extract jobId from tool calls if generate_chat_image was used
-    let jobId = null;
-    for (const msg of response.messages) {
-      // Check for tool messages
-      if (msg.tool_calls && Array.isArray(msg.tool_calls)) {
+    // LangChain BaseMessage type does not include tool_calls/tool_call_id in its base shape,
+    // but providers (OpenAI-compatible) attach them at runtime on AIMessage/ToolMessage.
+    // We add narrow type-guards here to keep compile-time safety.
+    type ToolCall = { id: string; name?: string };
+    type WithToolCalls = { tool_calls?: ToolCall[] };
+    type WithToolCallId = { tool_call_id?: string; content?: any };
+
+    const hasToolCalls = (m: unknown): m is WithToolCalls =>
+      !!m && Array.isArray((m as any).tool_calls);
+    const hasToolCallId = (m: unknown): m is WithToolCallId =>
+      !!m && typeof (m as any).tool_call_id === 'string';
+
+    let jobId: string | null = null;
+    for (const msg of (response.messages as unknown[])) {
+      if (hasToolCalls(msg) && Array.isArray(msg.tool_calls)) {
         for (const toolCall of msg.tool_calls) {
-          if (toolCall.name === 'generate_chat_image') {
-            // Find the corresponding tool response
-            const toolResponse = response.messages.find(
-              (m) => m.tool_call_id === toolCall.id
-            );
+          if (toolCall?.name === 'generate_chat_image') {
+            // Find the corresponding tool response by tool_call_id
+            const toolResponse = (response.messages as unknown[]).find(
+              (m) => hasToolCallId(m) && (m as any).tool_call_id === toolCall.id
+            ) as WithToolCallId | undefined;
             if (toolResponse && toolResponse.content) {
               const toolContent = typeof toolResponse.content === 'string'
                 ? toolResponse.content
