@@ -6,10 +6,19 @@ import { QueueProvider } from '../context/QueueContext';
 import Navbar from '../components/Navbar';
 import AppSettings from '../components/AppSettings';
 import PWAManager from '../components/PWAManager';
+import CharacterList from '../components/CharacterList';
+import ChatInterface from '../components/ChatInterface';
+import DocumentManager from '../components/DocumentManager';
+import ChatSessionManager from '../components/ChatSessionManager';
+import './character-creator.css';
 
 function CharacterCreatorContent() {
     const { state, dispatch, actions } = useApp();
     const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+    const [selectedCharacterId, setSelectedCharacterId] = useState(null);
+    const [selectedCharacterName, setSelectedCharacterName] = useState(null);
+    const [currentSessionId, setCurrentSessionId] = useState(null);
+    const [characters, setCharacters] = useState([]);
 
     useEffect(() => {
         async function initialize() {
@@ -31,14 +40,38 @@ function CharacterCreatorContent() {
         initialize();
     }, [dispatch, actions]);
 
+    const handleSelectCharacter = (characterId) => {
+        setSelectedCharacterId(characterId);
+        setCurrentSessionId(null); // Reset session when changing characters
+
+        // Fetch character details to get the name
+        fetch('/api/characters')
+            .then(res => res.json())
+            .then(data => {
+                const character = data.find(c => c.id === characterId);
+                if (character) {
+                    setSelectedCharacterName(character.name);
+                }
+            })
+            .catch(err => console.error('Error fetching character details:', err));
+    };
+
+    const handleCreateCharacter = (character) => {
+        setSelectedCharacterName(character.name);
+    };
+
+    const handleSessionChange = (sessionId) => {
+        setCurrentSessionId(sessionId);
+    };
+
     if (isLoadingConfig) {
         return (
             <>
                 <Navbar onSettingsClick={() => {}} />
-                <div className="main-container">
-                    <div className="empty-state">
-                        <div className="spinner" style={{ margin: '0 auto' }}></div>
-                        <p style={{ marginTop: '1rem' }}>Loading configuration...</p>
+                <div className="character-creator-layout">
+                    <div className="character-creator-loading">
+                        <div className="spinner"></div>
+                        <p>Loading configuration...</p>
                     </div>
                 </div>
             </>
@@ -53,30 +86,30 @@ function CharacterCreatorContent() {
                 onSettingsClick={() => dispatch({ type: actions.SET_SHOW_APP_SETTINGS, payload: true })}
             />
 
-            <div className="main-container">
-                <div className="app-container">
-                    <div className="character-creator-container">
-                        <h1 style={{
-                            fontSize: '2rem',
-                            fontWeight: '700',
-                            marginBottom: '2rem',
-                            color: 'var(--text-primary)'
-                        }}>
-                            Character Creator
-                        </h1>
-                        <p style={{
-                            color: 'var(--text-secondary)',
-                            fontSize: '1.125rem',
-                            marginBottom: '2rem'
-                        }}>
-                            Create and manage your characters here.
-                        </p>
-                        <div className="empty-state">
-                            <p style={{ color: 'var(--text-muted)' }}>
-                                Character creation tools coming soon...
-                            </p>
-                        </div>
-                    </div>
+            <div className="character-creator-layout">
+                <div className="character-creator-sidebar">
+                    <CharacterList
+                        selectedCharacterId={selectedCharacterId}
+                        onSelectCharacter={handleSelectCharacter}
+                        onCreateCharacter={handleCreateCharacter}
+                    />
+                </div>
+                <div className="character-creator-main">
+                    <DocumentManager
+                        characterId={selectedCharacterId}
+                        characterName={selectedCharacterName}
+                    />
+                    <ChatSessionManager
+                        characterId={selectedCharacterId}
+                        characterName={selectedCharacterName}
+                        currentSessionId={currentSessionId}
+                        onSessionChange={handleSessionChange}
+                    />
+                    <ChatInterface
+                        characterId={selectedCharacterId}
+                        characterName={selectedCharacterName}
+                        sessionId={currentSessionId}
+                    />
                 </div>
             </div>
 

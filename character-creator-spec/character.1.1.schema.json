@@ -1,0 +1,358 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ChubAI Character Sheet Schema v1.1",
+  "description": "Schema for character.sheet.yaml files in the ChubAI Character Creation Project",
+  "type": "object",
+  "required": ["meta", "changelog", "character"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "description": "Metadata about the character sheet format and timestamps",
+      "required": ["format_version", "created_at", "last_modified"],
+      "properties": {
+        "format_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+$",
+          "description": "Schema version (e.g., '1.1')"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of initial creation"
+        },
+        "last_modified": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of last modification"
+        }
+      },
+      "additionalProperties": false
+    },
+    "changelog": {
+      "type": "array",
+      "description": "Version history and changes to the character",
+      "items": {
+        "type": "object",
+        "required": ["date", "version", "changes"],
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Date of changes in YYYY-MM-DD format"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version number or identifier"
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of changes made in this version"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "character": {
+      "type": "object",
+      "description": "Complete character definition including description, greetings, and behavior",
+      "required": [
+        "title",
+        "tagline",
+        "tags",
+        "description",
+        "system_prompt",
+        "initial_greeting"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Character name and archetype (e.g., 'Erin Takahashi - Professional Assistant')"
+        },
+        "short_name": {
+          "type": "string",
+          "description": "Shortened or nickname version of character name"
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "Brief identifier or tagline for the character"
+        },
+        "in_chat_name": {
+          "type": "string",
+          "description": "Name displayed in chat interface"
+        },
+        "tagline": {
+          "type": "string",
+          "description": "1-2 sentence summary of the character and scenario"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Category tags for the character (e.g., Female, Modern, Slice of Life)"
+        },
+        "description": {
+          "type": "object",
+          "description": "Detailed character information organized by section",
+          "required": ["rundown", "appearance", "personality"],
+          "properties": {
+            "rundown": {
+              "type": "object",
+              "description": "Quick reference facts about the character",
+              "required": [
+                "name",
+                "age"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Full character name"
+                },
+                "age": {
+                  "type": "string",
+                  "description": "Character's age (can be number or range)"
+                },
+                "gender": {
+                  "type": "string",
+                  "description": "Character's gender"
+                },
+                "species": {
+                  "type": "string",
+                  "description": "Character's species (Human, Elf, etc.)"
+                },
+                "hair": {
+                  "type": "string",
+                  "description": "Hair color and style"
+                },
+                "eyes": {
+                  "type": "string",
+                  "description": "Eye color and characteristics"
+                },
+                "ethnicity": {
+                  "type": "string",
+                  "description": "Ethnic or cultural background"
+                },
+                "style": {
+                  "type": "string",
+                  "description": "Clothing and fashion style"
+                },
+                "build": {
+                  "type": "string",
+                  "description": "Physical build and body type"
+                },
+                "setting": {
+                  "type": "string",
+                  "description": "Story world or setting"
+                }
+              },
+              "additionalProperties": true
+            },
+            "appearance": {
+              "type": "string",
+              "description": "Detailed physical appearance description"
+            },
+            "profession": {
+              "type": "string",
+              "description": "Occupation, work environment, and professional skills"
+            },
+            "relation_to_user": {
+              "type": "string",
+              "description": "How the character relates to {{user}}"
+            },
+            "personality": {
+              "type": "string",
+              "description": "Core personality traits, emotional patterns, values"
+            },
+            "traits_and_quirks": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Notable behaviors, habits, and characteristics"
+            },
+            "background": {
+              "type": "string",
+              "description": "Character history and formative experiences"
+            }
+          },
+          "additionalProperties": false
+        },
+        "scenario": {
+          "type": "string",
+          "description": "The current circumstances and context of the conversation and the characters."
+        },
+        "system_prompt": {
+          "type": "string",
+          "description": "AI behavioral instructions and formatting rules"
+        },
+        "post_history_instructions": {
+          "type": "string",
+          "description": "Character-specific post-history instructions meant to replace or supplement the PHI set by the user. Only used if 'Use V2 Spec.' is enabled. Include {{original}} if you want to supplement the PHI instead of replace it."
+        },
+        "characters_note": {
+          "type": "object",
+          "description": "Prompt to be placed within x position of the chat history, where x is the depth.",
+          "required": ["prompt", "depth"],
+          "properties": {
+            "prompt": {
+              "type": "string",
+              "description": "Instructional prompt"
+            },
+            "depth": {
+              "type": "number",
+              "description": "Depth of the prompt in the chat history"
+            }
+          },
+          "additionalProperties": false
+        },
+        "avatars": {
+          "type": "array",
+          "description": "Image generation prompts for character avatars",
+          "items": {
+            "type": "object",
+            "required": ["prompt"],
+            "properties": {
+              "prompt": {
+                "type": "string",
+                "description": "Detailed image generation prompt"
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Tags describing the avatar variant (e.g., 'main', 'casual')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "example_dialogs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Example dialogue exchanges demonstrating character voice"
+        },
+        "initial_greeting": {
+          "type": "object",
+          "description": "The default opening scenario for the character",
+          "required": ["title", "description", "content"],
+          "properties": {
+            "title": {
+              "type": "string",
+              "description": "Title of the greeting scenario"
+            },
+            "description": {
+              "type": "string",
+              "description": "Brief 1-sentence description"
+            },
+            "is_nsfw": {
+              "type": "boolean",
+              "description": "Whether this greeting contains NSFW content"
+            },
+            "pov": {
+              "type": "string",
+              "enum": ["any", "male", "female"],
+              "description": "Intended POV for this greeting"
+            },
+            "has_image": {
+              "type": "boolean",
+              "description": "Whether a custom image exists for this greeting"
+            },
+            "avatar_prompt": {
+              "type": ["string", "null"],
+              "description": "Scene-specific image generation prompt (optional)"
+            },
+            "content": {
+              "type": "string",
+              "description": "The greeting text with {{char}} and {{user}} placeholders"
+            }
+          },
+          "additionalProperties": false
+        },
+        "alternative_greetings": {
+          "type": "array",
+          "description": "Additional greeting scenarios beyond the initial greeting",
+          "items": {
+            "type": "object",
+            "required": ["title", "description", "content"],
+            "properties": {
+              "title": {
+                "type": "string",
+                "description": "Title of the alternate greeting scenario"
+              },
+              "description": {
+                "type": "string",
+                "description": "Brief 1-sentence description"
+              },
+              "is_nsfw": {
+                "type": "boolean",
+                "description": "Whether this greeting contains NSFW content"
+              },
+              "pov": {
+                "type": "string",
+                "enum": ["any", "male", "female"],
+                "description": "Intended POV for this greeting"
+              },
+              "has_image": {
+                "type": "boolean",
+                "description": "Whether a custom image exists for this greeting"
+              },
+              "avatar_prompt": {
+                "type": ["string", "null"],
+                "description": "Scene-specific image generation prompt (optional)"
+              },
+              "content": {
+                "type": "string",
+                "description": "The greeting text with {{char}} and {{user}} placeholders"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "chubAI": {
+      "type": "object",
+      "description": "ChubAI platform integration metadata",
+      "properties": {
+        "character_id": {
+          "type": "string",
+          "description": "ChubAI character ID"
+        },
+        "character_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Full URL to character on ChubAI"
+        },
+        "avatar_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to character avatar on ChubAI CDN"
+        },
+        "avatar_wide_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to wide avatar variant on ChubAI CDN"
+        },
+        "last_synced": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last sync timestamp with ChubAI"
+        },
+        "sync_status": {
+          "type": "string",
+          "enum": ["up-to-date", "needs-update", "conflict", "never-synced"],
+          "description": "Current sync status"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

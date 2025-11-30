@@ -1,0 +1,170 @@
+---
+# ChubAI Character Sheet v1.1
+# This is the main character sheet file: character.sheet.yaml
+# Creator notes should be placed in note.md
+
+meta:
+  format_version: "1.1"
+  created_at: "2025-11-17T00:00:00Z"
+  last_modified: "2025-11-17T00:00:00Z"
+
+changelog:
+  - date: "2025-11-17"
+    version: "1.0"
+    changes:
+      - "Initial character creation"
+      - "Added 3 alternative greetings"
+      - "Created avatar prompts"
+
+character:
+  # Basic Information
+  title: "Character Name - Archetype/Role"
+  short_name: "Nick"
+  subtitle: "CHAR-1234: Brief identifier"
+  in_chat_name: "Character Name"
+  
+  tagline: |
+    Brief 1-2 sentence summary of the character and their primary scenario or conflict.
+  
+  tags:
+    - Female
+    - Modern
+    - Slice of Life
+    - Professional
+  
+  # Detailed Character Information
+  description:
+    rundown:
+      name: "Character Full Name"
+      age: "28"
+      gender: "Female"
+      species: "Human"
+      hair: "Description of hair"
+      eyes: "Eye description"
+      ethnicity: "Ethnic background"
+      style: "Clothing and style description"
+      build: "Physical build"
+      setting: "Story/world setting"
+    
+    appearance: |
+      Detailed physical appearance description. Multiple paragraphs if needed.
+    
+    profession: |
+      Occupation, work environment, professional skills and approach.
+    
+    relation_to_user: |
+      How the character relates to {{user}}. Their working/personal relationship context.
+    
+    personality: |
+      Core personality traits, emotional patterns, social behavior, values.
+    
+    traits_and_quirks:
+      - "Notable behavior or habit"
+      - "Unique characteristic"
+      - "Quirk or pattern"
+    
+    background: |
+      Character history, formative experiences, what shaped them into who they are.
+  
+  # Avatar Generation Prompts
+  avatars:
+    - prompt: |
+        Main avatar generation prompt with detailed visual description, setting, mood, lighting.
+      tags: ["main", "professional", "neutral"]
+    
+    - prompt: |
+        Alternative avatar prompt for different mood or setting.
+      tags: ["casual", "relaxed"]
+  
+  # Example Dialog Exchanges
+  # language=Markdown
+  example_dialogs:
+    - |
+      <START>
+      "Example dialogue from the character."
+      *Action or reaction in asterisks.*
+    
+    - |
+      <START>
+      *Character performs an action.*
+      "Another example of how they speak and what they say."
+  
+  # Scenario (Context and Circumstances)
+  # language=Markdown
+  scenario: |
+    The current circumstances and context for {{char}} and {{user}}.
+    Describe the situation, setting, and any relevant background.
+  
+  # System Prompt (AI Instructions)
+  # language=Markdown
+  system_prompt: |
+    You are {{char}}, [brief description]. [Core traits]. [Communication style].
+    
+    [Detailed behavioral instructions, formatting requirements, critical rules.]
+    
+    CRITICAL: Never speak, think, or act on behalf of {{user}}.
+  
+  # Post-History Instructions (Optional)
+  # Only used if 'Use V2 Spec.' is enabled in the frontend
+  # language=Markdown
+  post_history_instructions: |
+    {{original}}
+    Additional instructions to be appended after the chat history.
+    Use {{original}} to include the user's default PHI settings.
+  
+  # Character's Note (Optional)
+  # Injects a prompt at a specific depth in the chat history
+  characters_note:
+    prompt: |
+      [Important reminder about {{char}}'s current state or situation]
+    depth: 4  # How many messages back to inject this prompt
+  
+  # Initial Greeting
+  initial_greeting:
+    title: "Opening Scenario Title"
+    description: "Brief 1-sentence description of the scenario"
+    is_nsfw: false
+    pov: "any"  # Options: any, male, female
+    has_image: false
+    avatar_prompt: null  # Or string with scene-specific image prompt
+    # language=Markdown
+    content: |
+      *Opening narration setting the scene. Physical details, atmosphere, context.*
+      
+      *{{char}}'s action or observation.*
+      
+      "Dialogue from {{char}}."
+      
+      *More narration establishing the situation and inviting {{user}} to respond.*
+  
+  # Alternative Greetings
+  alternative_greetings:
+    - title: "Alternative Scenario 1"
+      description: "Brief description of this alternate opening"
+      is_nsfw: false
+      pov: "any"
+      has_image: true  # This greeting has a custom image
+      avatar_prompt: |
+        Scene-specific image generation prompt for this greeting scenario.
+      # language=Markdown
+      content: |
+        *Alternative opening scenario content.*
+    
+    - title: "Alternative Scenario 2"
+      description: "Another alternate opening"
+      is_nsfw: false
+      pov: "female"  # This greeting assumes female {{user}}
+      has_image: false
+      avatar_prompt: null
+      # language=Markdown
+      content: |
+        *Second alternative scenario content.*
+
+# ChubAI Platform Integration (optional)
+chubAI:
+  character_id: "username/character-name-id"
+  character_url: "https://chub.ai/characters/username/character-name-id"
+  avatar_url: "https://avatars.charhub.io/avatars/username/character-name-id/chara_card_v2.png"
+  avatar_wide_url: "https://avatars.charhub.io/avatars/uploads/images/gallery/file/..."
+  last_synced: "2025-11-15T18:17:01Z"
+  sync_status: "up-to-date"  # Options: up-to-date, needs-update, conflict, never-synced
