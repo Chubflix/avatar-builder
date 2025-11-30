@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import HelpModal from './HelpModal';
+import ChatImageSettingsModal from './ChatImageSettingsModal';
 import MobileSlideout from './MobileSlideout';
 import './AppSettings.css';
 import { ToggleSwitch } from '@/app/design-system/atoms/ToggleSwitch';
@@ -10,6 +11,7 @@ import { ToggleSwitch } from '@/app/design-system/atoms/ToggleSwitch';
 export default function AppSettings() {
     const { state, dispatch, actions } = useApp();
     const [showHelp, setShowHelp] = useState(false);
+    const [showChatImgSettings, setShowChatImgSettings] = useState(false);
 
     const handleToggleNotifications = () => {
         dispatch({
@@ -95,6 +97,16 @@ export default function AppSettings() {
                 />
             </div>
 
+            <div className="setting-item">
+                <div className="setting-label">
+                    <i className="fa fa-image"></i>
+                    <span>Chat Image Generation</span>
+                </div>
+                <button className="btn" onClick={() => setShowChatImgSettings(true)}>
+                    Configure…
+                </button>
+            </div>
+
             <div className="settings-footer">
                 <button className="help-link" onClick={() => setShowHelp(true)}>
                     <i className="fa fa-question-circle"></i>
@@ -132,6 +144,7 @@ export default function AppSettings() {
             </MobileSlideout>
 
             <HelpModal show={showHelp} onClose={() => setShowHelp(false)} />
+            <ChatImageSettingsModal show={showChatImgSettings} onClose={() => setShowChatImgSettings(false)} />
         </>
     );
 }

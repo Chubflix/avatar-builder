@@ -111,7 +111,7 @@ app/
 │   │   └── [id]/route.ts            # Individual document operations
 │   └── characters/route.js          # Character CRUD endpoints (existing)
 └── lib/
-    ├── langchain.ts                 # LangChain service with RAG
+    ├── ai.ts                 # LangChain service with RAG
     └── embeddings.ts                # Embeddings and vector search service
 
 supabase/
@@ -379,7 +379,7 @@ Delete a document.
 
 ## LangChain Service
 
-The `app/lib/langchain.ts` file provides the core chat functionality:
+The `app/lib/ai.ts` file provides the core chat functionality:
 
 ### Main Functions
 

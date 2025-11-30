@@ -29,17 +29,29 @@ export async function deleteGreeting(supabase: SupabaseClient, greetingId: strin
   }
 
   // Reorder remaining greetings to fill the gap
-  const { error: reorderError } = await supabase
-    .from('character_greetings')
-    .update({
-      greeting_order: supabase.sql`greeting_order - 1`
-    })
-    .eq('character_id', greeting.character_id)
-    .gt('greeting_order', greeting.greeting_order);
+  try {
+    // Fetch all greetings with a greater order and decrement them locally
+    const { data: toShift, error: fetchToShiftErr } = await supabase
+      .from('character_greetings')
+      .select('id, greeting_order')
+      .eq('character_id', greeting.character_id)
+      .gt('greeting_order', greeting.greeting_order)
+      .order('greeting_order', { ascending: true });
 
-  if (reorderError) {
+    if (!fetchToShiftErr && Array.isArray(toShift) && toShift.length > 0) {
+      // Update each affected row; do in parallel but limited payload per request
+      await Promise.all(
+        toShift.map((row) =>
+          supabase
+            .from('character_greetings')
+            .update({ greeting_order: row.greeting_order - 1 })
+            .eq('id', row.id)
+        )
+      );
+    }
+  } catch (reorderErr) {
     // Non-critical error, log it but don't fail
-    console.error('Failed to reorder greetings after deletion:', reorderError);
+    console.error('Failed to reorder greetings after deletion:', reorderErr);
   }
 
   return { success: true };

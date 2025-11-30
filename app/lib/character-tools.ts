@@ -16,6 +16,7 @@ import {
   deleteGreeting,
   updateDescription,
   analyzeImageAppearance,
+  generateAvatar,
 } from '@/src/tools';
 
 /**
@@ -344,6 +345,110 @@ export function createCharacterTools() {
     }
   );
 
+  // Generate chat image with confirmation flow
+  const generateChatImageTool = tool(
+    async (
+      {
+        prompt,
+        orientation,
+        confirmed,
+      }: {
+        prompt: string;
+        orientation?: 'portrait' | 'landscape' | 'square';
+        confirmed?: boolean;
+      },
+      { context }: any
+    ) => {
+      const { supabase, characterId } = context;
+
+      // Load user chat image settings
+      let chatImgSettings: any = {};
+      try {
+        const { data: auth } = await supabase.auth.getUser();
+        const userId = auth?.user?.id;
+        if (userId) {
+          const { data } = await supabase
+            .from('user_settings')
+            .select('chat_img_settings')
+            .eq('user_id', userId)
+            .single();
+          chatImgSettings = data?.chat_img_settings || {};
+        }
+      } catch (_) {
+        // ignore and use defaults
+      }
+
+      const positivePrefix = (chatImgSettings?.positive_prefix || '').trim();
+      const negativePrefix = (chatImgSettings?.negative_prefix || '').trim();
+      const style = (chatImgSettings?.style || '').trim();
+      const model = (chatImgSettings?.model || '').trim();
+
+      const finalOrientation: 'portrait' | 'landscape' | 'square' =
+        orientation === 'landscape' || orientation === 'square' ? orientation : 'portrait';
+
+      const finalPositive = [positivePrefix, prompt, style]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+      const finalNegative = [negativePrefix]
+        .filter(Boolean)
+        .join(', ')
+        .trim();
+
+      if (!confirmed) {
+        // Preview mode - do not generate, just show what would be used
+        return JSON.stringify(
+          {
+            preview: true,
+            inputs: {
+              model: model || undefined,
+              orientation: finalOrientation,
+            },
+            composed_prompts: {
+              positive: finalPositive,
+              negative: finalNegative,
+            },
+            message:
+              "To generate, respond with 'confirm' or call generate_chat_image with confirmed=true",
+          },
+          null,
+          2
+        );
+      }
+
+      // Commit mode - call avatar generation API
+      const result = await generateAvatar(characterId, finalPositive, {
+        orientation: finalOrientation,
+        negativePrompt: finalNegative,
+      });
+
+      return JSON.stringify(
+        {
+          ok: true,
+          url: result?.url,
+          id: result?.id,
+          filename: result?.filename,
+          metadata: result?.metadata,
+        },
+        null,
+        2
+      );
+    },
+    {
+      name: 'generate_chat_image',
+      description:
+        'Generate an image from the chat. First call WITHOUT confirmed to preview the composed prompts and settings, then WITH confirmed=true to generate. Supports orientation portrait or landscape.',
+      schema: z.object({
+        prompt: z.string().min(1).describe('The prompt to generate the image from'),
+        orientation: z
+          .enum(['portrait', 'landscape'])
+          .optional()
+          .describe('Desired image orientation. Default is portrait.'),
+        confirmed: z.boolean().optional().default(false),
+      }),
+    }
+  );
+
   return [
     getGreetingsCountTool,
     getAllGreetingsTool,
@@ -356,5 +461,6 @@ export function createCharacterTools() {
     updateDescriptionTool,
     deleteGreetingTool,
     analyzeImageAppearanceTool,
+    generateChatImageTool,
   ];
 }

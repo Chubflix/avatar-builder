@@ -184,6 +184,24 @@ export async function parseAndStoreCharacterSheet(
     finalCharacterId = data.id;
   }
 
+  // Ensure we have a definite character ID (TypeScript narrowing and runtime safety)
+  if (!finalCharacterId) {
+    // As a fallback, try to resolve by slug + user_id (should rarely happen)
+    const { data: resolved } = await supabase
+      .from('characters')
+      .select('id')
+      .eq('slug', slug)
+      .eq('user_id', userId)
+      .single();
+    if (resolved?.id) {
+      finalCharacterId = resolved.id as string;
+    } else {
+      throw new Error('Failed to resolve character ID after create/update');
+    }
+  }
+
+  const finalCharacterIdStr: string = finalCharacterId as string;
+
   // Store description sections
   const descriptionSections = [];
 
@@ -217,7 +235,7 @@ export async function parseAndStoreCharacterSheet(
     });
   }
 
-  const descriptions = await updateDescriptions(supabase, finalCharacterId, descriptionSections);
+  const descriptions = await updateDescriptions(supabase, finalCharacterIdStr, descriptionSections);
 
   // Store greetings (initial + alternatives)
   const greetings = [
@@ -250,10 +268,10 @@ export async function parseAndStoreCharacterSheet(
     );
   }
 
-  const storedGreetings = await addGreetings(supabase, finalCharacterId, greetings);
+  const storedGreetings = await addGreetings(supabase, finalCharacterIdStr, greetings);
 
   return {
-    characterId: finalCharacterId,
+    characterId: finalCharacterIdStr,
     name,
     slug,
     greetingsCount: storedGreetings.length,

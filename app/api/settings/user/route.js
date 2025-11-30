@@ -31,7 +31,9 @@ export async function GET(request) {
                     user_id: user.id,
                     generation_settings: {},
                     // Store as an array of items (model + enabled)
-                    adetailer_settings: []
+                    adetailer_settings: [],
+                    // Chat image generation settings (model, style, prefixes)
+                    chat_img_settings: {}
                 })
                 .select()
                 .single();
@@ -122,6 +124,14 @@ export async function PATCH(request) {
             mergedSettings.generation_settings = {
                 ...existing.generation_settings,
                 ...updates.generation_settings
+            };
+        }
+
+        // Merge chat image settings JSONB field
+        if (updates.chat_img_settings && existing?.chat_img_settings) {
+            mergedSettings.chat_img_settings = {
+                ...existing.chat_img_settings,
+                ...updates.chat_img_settings
             };
         }
 
