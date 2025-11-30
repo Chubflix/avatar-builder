@@ -4,11 +4,11 @@
  * Includes RAG (Retrieval-Augmented Generation) using Supabase vector database
  */
 
-import { ChatOpenAI } from '@langchain/openai';
-import { createAgent } from 'langchain';
-import { searchSimilarDocuments, type DocumentSearchResult } from './embeddings';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { createCharacterTools, contextSchema } from '@/app/lib/character-tools';
+import {ChatOpenAI} from '@langchain/openai';
+import {createAgent} from 'langchain';
+import {type DocumentSearchResult, searchSimilarDocuments} from './embeddings';
+import type {SupabaseClient} from '@supabase/supabase-js';
+import {contextSchema, createCharacterTools} from '@/app/lib/character-tools';
 
 export type ChatRole = 'user' | 'assistant' | 'system';
 
@@ -28,6 +28,8 @@ export interface ChatResponse {
       total_tokens?: number;
     };
     sources?: any[]; // For future RAG implementation
+    jobId?: string;
+    images?: {id: string, url: string}[];
   };
 }
 
@@ -184,14 +186,12 @@ export async function createChatAgent(contextStr: string) {
   const systemPromptWithContext = SYSTEM_PROMPT.replace('{context}', contextStr);
 
   // Create the agent using modern createAgent API
-  const agent = createAgent({
-    model,
-    tools,
-    systemPrompt: systemPromptWithContext,
-    contextSchema, // ✅ Inject schema for runtime context
+    return createAgent({
+      model,
+      tools,
+      systemPrompt: systemPromptWithContext,
+      contextSchema, // ✅ Inject schema for runtime context
   });
-
-  return agent;
 }
 
 /**

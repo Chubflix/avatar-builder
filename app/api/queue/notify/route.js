@@ -1,10 +1,11 @@
 /**
  * API Route: POST /api/queue/notify
- * Publishes queue events via Ably (server-side)
+ * DEPRECATED: Logic moved to server action actions/queue.ts (notifyQueue)
+ * This endpoint now delegates to the server action and will be removed in a future release.
  */
 
 import { NextResponse } from 'next/server';
-import { getAblyRest } from '@/app/lib/ably';
+import { notifyQueue } from '@/actions/queue';
 
 export async function POST(request) {
     try {
@@ -17,23 +18,15 @@ export async function POST(request) {
             );
         }
 
-        // Publish via Ably REST API (server-side with full permissions)
-        const ably = getAblyRest();
-        if (!ably) {
-            console.warn('[Queue-Notify] Ably REST client not configured');
-            return NextResponse.json(
-                { success: false, message: 'Ably not configured' },
-                { status: 200 }
-            );
-        }
+        // Delegate to server action (deprecated API shim)
+        const result = await notifyQueue(eventType, data || {});
 
-        const channel = ably.channels.get('queue');
-        await channel.publish(eventType, {
-            timestamp: Date.now(),
-            ...data
-        });
-
-        return NextResponse.json({ success: true });
+        const res = NextResponse.json(result.success ? { success: true } : result, { status: result.success ? 200 : 500 });
+        // Mark as deprecated for clients/proxies
+        res.headers.set('Deprecation', 'true');
+        res.headers.set('Link', '</actions/queue.ts>; rel="successor-version"');
+        res.headers.set('Warning', '299 - "POST /api/queue/notify is deprecated; use actions/queue.notifyQueue"');
+        return res;
     } catch (error) {
         console.error('[Queue-Notify] Error publishing event:', error);
         return NextResponse.json(

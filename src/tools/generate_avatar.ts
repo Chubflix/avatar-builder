@@ -4,7 +4,6 @@
  */
 
 import {generateImage} from '@/app/utils/generate';
-import {folderAPI} from '@/app/utils/backend-api';
 import {Config} from "@/app/context/AppContext";
 import {getConfig} from '@/actions/config';
 import {getUserSettings} from "@/actions/settings";

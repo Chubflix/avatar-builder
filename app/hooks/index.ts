@@ -77,7 +77,6 @@ export function useFolders() {
  */
 export function useGeneration() {
     const {state, dispatch, actions} = useApp();
-    const {triggerQueuePolling} = useQueue();
 
     // Submit generation job to SD API
     const generate = useCallback(async () => {
@@ -117,7 +116,6 @@ export function useGeneration() {
 
             onJobQueued: (jobId) => {
                 notifyJobQueued(jobId);
-                triggerQueuePolling();
             },
 
             onNotification: (message, type) => {
@@ -128,7 +126,7 @@ export function useGeneration() {
                 sendNotification(error, 'error', dispatch, actions, notificationsEnabled);
             }
         });
-    }, [state, dispatch, actions, triggerQueuePolling]);
+    }, [state, dispatch, actions]);
 
     return {generate};
 }

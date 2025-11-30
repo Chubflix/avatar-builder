@@ -7,6 +7,7 @@ import { useQueueContext } from '../context/QueueContext';
 import QueueManagerView from './QueueManagerView';
 import sdAPI from '../utils/sd-api';
 import './QueueManagerModal.css';
+import {notifyQueue} from "@/actions/queue";
 
 /**
  * Modal wrapper component that handles wiring between context and view
@@ -49,14 +50,10 @@ function QueueManagerModal({ show, onClose }) {
             if (result.success) {
                 // Broadcast deletion via server-side API
                 try {
-                    await fetch('/api/queue/notify', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            eventType: 'job_deleted',
-                            data: { jobId }
-                        })
-                    });
+                    await notifyQueue({
+                        eventType: 'job_deleted',
+                        data: { jobId }
+                    })
                 } catch (broadcastError) {
                     console.warn('[Queue] Failed to broadcast job_deleted:', broadcastError);
                 }
