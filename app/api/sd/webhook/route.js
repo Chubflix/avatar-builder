@@ -129,7 +129,7 @@ async function updateChatMessge(job, savedImages) {
             // Build images array to attach
             const newImages = (savedImages || []).map((img) => ({
                 id: img.id,
-                url: img.url || null,
+                url: getImageUrl(img.storage_path) || img.url || null,
             })).filter(x => x && x.id && x.url);
 
             // Merge existing metadata

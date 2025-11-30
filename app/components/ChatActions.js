@@ -11,7 +11,7 @@ import { useLightbox } from '@/app/context/LightboxContext';
 export default function ChatActions({ onAttach }) {
     const { currentImage } = useLightbox();
 
-    if (!currentImage) return null;
+    if (!currentImage || typeof onAttach !== 'function') return null;
 
     const handleAttach = () => {
         if (typeof onAttach === 'function') {

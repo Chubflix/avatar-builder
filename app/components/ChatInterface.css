@@ -540,6 +540,38 @@
     color: var(--text-muted, #888);
 }
 
+/* Message Images */
+.chat-message-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.chat-message-image-thumbnail {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid var(--border-color, #333);
+    transition: all 0.2s ease;
+}
+
+.chat-message-image-thumbnail:hover {
+    border-color: var(--primary-color, #e50914);
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(229, 9, 20, 0.3);
+}
+
+.chat-message-image-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
 /* Typing Indicator */
 .chat-typing-indicator {
     display: flex;

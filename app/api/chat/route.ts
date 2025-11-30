@@ -183,6 +183,24 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    // Extract jobId from response content or metadata
+    let jobId = response.metadata?.jobId || null;
+
+    // Also try to extract from content if present (fallback)
+    if (!jobId) {
+      const jobIdMatch = response.content.match(/\[JOB_ID:([^\]]+)\]/);
+      jobId = jobIdMatch ? jobIdMatch[1] : null;
+    }
+
+    // Remove the jobId marker from the content for cleaner display
+    const cleanContent = response.content.replace(/\[JOB_ID:[^\]]+\]/g, '').trim();
+
+    // Add jobId to metadata if present
+    const metadata = {
+      ...(response.metadata || {}),
+      ...(jobId ? { jobId } : {}),
+    };
+
     // Save assistant response to database
     const { data: assistantMsg, error: assistantMsgError } = await supabase
       .from('chat_messages')
@@ -191,8 +209,8 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         session_id,
         role: 'assistant',
-        content: response.content,
-        metadata: response.metadata || {},
+        content: cleanContent,
+        metadata,
       })
       .select()
       .single();
@@ -213,8 +231,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      message: response.content,
-      metadata: response.metadata,
+      message: cleanContent,
+      metadata,
       message_id: assistantMsg?.id,
     });
   } catch (error: any) {

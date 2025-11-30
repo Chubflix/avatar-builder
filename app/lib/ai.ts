@@ -276,6 +276,33 @@ export async function chat(
         ? lastMessage.content
         : JSON.stringify(lastMessage.content);
 
+    // Extract jobId from tool calls if generate_chat_image was used
+    let jobId = null;
+    for (const msg of response.messages) {
+      // Check for tool messages
+      if (msg.tool_calls && Array.isArray(msg.tool_calls)) {
+        for (const toolCall of msg.tool_calls) {
+          if (toolCall.name === 'generate_chat_image') {
+            // Find the corresponding tool response
+            const toolResponse = response.messages.find(
+              (m) => m.tool_call_id === toolCall.id
+            );
+            if (toolResponse && toolResponse.content) {
+              const toolContent = typeof toolResponse.content === 'string'
+                ? toolResponse.content
+                : JSON.stringify(toolResponse.content);
+              const match = toolContent.match(/\[JOB_ID:([^\]]+)\]/);
+              if (match) {
+                jobId = match[1];
+                break;
+              }
+            }
+          }
+        }
+      }
+      if (jobId) break;
+    }
+
     const metadata: ChatResponse['metadata'] = {
       sources: sources.map((doc) => ({
         id: doc.id,
@@ -283,6 +310,7 @@ export async function chat(
         similarity: doc.similarity,
         content: doc.content.substring(0, 200) + '...', // Truncate for metadata
       })),
+      ...(jobId ? { jobId } : {}),
     };
 
     return {

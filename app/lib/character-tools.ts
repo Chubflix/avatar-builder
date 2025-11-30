@@ -420,11 +420,13 @@ export function createCharacterTools() {
       console.log('Generating avatar with:', { model, orientation, finalPositive });
 
       // Commit mode - call avatar generation API
-        // Return only the queue/job ID as a simple string
-      return await generateAvatar(characterId, finalPositive, {
+      const jobId = await generateAvatar(characterId, finalPositive, {
           orientation: finalOrientation,
           negativePrompt: finalNegative,
       });
+
+      // Return structured message with jobId marker for extraction
+      return `Image generation has been queued! [JOB_ID:${jobId}]`;
     },
     {
       name: 'generate_chat_image',

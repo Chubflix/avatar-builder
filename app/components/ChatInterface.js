@@ -7,6 +7,7 @@ import './ChatInterface.css';
 import ChatImagesLightboxContainer from './ChatImagesLightboxContainer';
 import DocumentManager from './DocumentManager';
 import ChatSessionManager from './ChatSessionManager';
+import { getAblyRealtime } from '@/app/lib/ably';
 
 /**
  * ChatInterface Component
@@ -24,6 +25,9 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
     const [pickerImages, setPickerImages] = useState([]);
     const [isPickerLoading, setIsPickerLoading] = useState(false);
     const [pickerError, setPickerError] = useState(null);
+    const [showMessageImageLightbox, setShowMessageImageLightbox] = useState(false);
+    const [messageImages, setMessageImages] = useState([]);
+    const [messageImageIndex, setMessageImageIndex] = useState(0);
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -46,6 +50,45 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    // Realtime subscription: listen for chat message updates (images attached, etc.)
+    useEffect(() => {
+        const realtime = getAblyRealtime?.();
+        if (!realtime) return;
+        const channel = realtime.channels.get('chat-messages');
+        const onMessageUpdated = (evt) => {
+            try {
+                const data = evt?.data || {};
+                if (!data?.message_id) return;
+                setMessages((prev) => {
+                    const idx = prev.findIndex((m) => m.id === data.message_id);
+                    if (idx === -1) return prev;
+                    const prevMsg = prev[idx];
+                    const existingMeta = (prevMsg.metadata && typeof prevMsg.metadata === 'object') ? prevMsg.metadata : {};
+                    const prevImages = Array.isArray(existingMeta.images) ? existingMeta.images : [];
+                    const incoming = Array.isArray(data.images) ? data.images : [];
+                    const mergedById = new Map();
+                    for (const it of [...prevImages, ...incoming]) {
+                        if (it?.id) mergedById.set(it.id, it);
+                    }
+                    const mergedImages = Array.from(mergedById.values());
+                    const newMeta = {
+                        ...existingMeta,
+                        images: mergedImages,
+                        generation_complete: data.generation_complete ?? existingMeta.generation_complete ?? true,
+                    };
+                    const updated = [...prev];
+                    updated[idx] = { ...prevMsg, metadata: newMeta };
+                    return updated;
+                });
+            } catch (_) {}
+        };
+        channel.subscribe('message_updated', onMessageUpdated);
+        return () => {
+            try { channel.unsubscribe('message_updated', onMessageUpdated); } catch (_) {}
+            try { realtime.channels.release('chat-messages'); } catch (_) {}
+        };
+    }, []);
 
     // Load current session name when sessionId changes
     useEffect(() => {
@@ -579,6 +622,18 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
         }
     };
 
+    const handleOpenMessageImage = (images, index = 0) => {
+        setMessageImages(images);
+        setMessageImageIndex(index);
+        setShowMessageImageLightbox(true);
+    };
+
+    const handleCloseMessageImageLightbox = () => {
+        setShowMessageImageLightbox(false);
+        setMessageImages([]);
+        setMessageImageIndex(0);
+    };
+
     if (!characterId) {
         return (
             <div className="chat-interface">
@@ -736,6 +791,24 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
                                                     message.content
                                                 )}
                                             </div>
+                                            {message.metadata?.images && message.metadata.images.length > 0 && (
+                                                <div className="chat-message-images">
+                                                    {message.metadata.images.map((img, idx) => (
+                                                        <div
+                                                            key={img.id || idx}
+                                                            className="chat-message-image-thumbnail"
+                                                            onClick={() => handleOpenMessageImage(message.metadata.images, idx)}
+                                                            title="Click to view full size"
+                                                        >
+                                                            <img
+                                                                src={img.url}
+                                                                alt={`Generated image ${idx + 1}`}
+                                                                loading="lazy"
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                             <div className="chat-message-actions">
                                                 <button
                                                     className="chat-message-action-btn"
@@ -945,6 +1018,16 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
                     initialIndex={0}
                     onClose={closeImagePicker}
                     onAttach={handleSelectImageFromPicker}
+                />
+            )}
+
+            {showMessageImageLightbox && (
+                <ChatImagesLightboxContainer
+                    show={showMessageImageLightbox}
+                    images={messageImages}
+                    initialIndex={messageImageIndex}
+                    onClose={handleCloseMessageImageLightbox}
+                    onAttach={null}
                 />
             )}
 
