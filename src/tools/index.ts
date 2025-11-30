@@ -88,6 +88,11 @@ export {
   type DocumentChunk
 } from './search_world_rules';
 
+// Image analysis (Vision)
+export {
+  analyzeImageAppearance
+} from './analyze_image_appearance';
+
 /**
  * Tool Usage Examples:
  *

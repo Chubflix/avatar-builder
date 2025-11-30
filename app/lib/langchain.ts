@@ -75,6 +75,8 @@ You have access to TOOLS that allow you to interact with the character's data:
 - get_personality: View the character's personality description
 - get_appearance: View the character's appearance description
 - get_all_descriptions: View all description sections
+- get_all_descriptions: View all description sections
+- analyze_image_appearance: Analyze an image URL and return only the visible physical appearance (no database writes)
 - add_greeting: Create a new greeting for the character
 - update_greeting: Modify an existing greeting
 - update_description: Update description sections (personality, appearance, etc.)

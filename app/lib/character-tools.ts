@@ -15,6 +15,7 @@ import {
   updateGreeting,
   deleteGreeting,
   updateDescription,
+  analyzeImageAppearance,
 } from '@/src/tools';
 
 /**
@@ -283,6 +284,29 @@ export function createCharacterTools() {
     }
   );
 
+  // Analyze image appearance (Vision)
+  const analyzeImageAppearanceTool = tool(
+    async (
+      { image }: { image: string },
+      { context }: any
+    ) => {
+      const { characterId } = context;
+      const { description } = await analyzeImageAppearance({ imageUrl: image, characterId });
+      return description;
+    },
+    {
+      name: 'analyze_image_appearance',
+      description:
+        'Analyze an image and return only the visible physical appearance of the character. Supports HTTP(S) URLs or data:image/*;base64 URLs. Do not write anything to the database.',
+      schema: z.object({
+        image: z
+          .string()
+          .min(1)
+          .describe('Image reference to analyze: either a direct HTTP(S) URL or a data:image/*;base64 URL'),
+      }),
+    }
+  );
+
   return [
     getGreetingsCountTool,
     getAllGreetingsTool,
@@ -294,5 +318,6 @@ export function createCharacterTools() {
     updateGreetingTool,
     updateDescriptionTool,
     deleteGreetingTool,
+    analyzeImageAppearanceTool,
   ];
 }

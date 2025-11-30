@@ -125,22 +125,7 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
             const isYamlFile = currentFile && !isImageFile;
             const isImageUrl = !currentFile && looksLikeUrl(userMessage.content);
 
-            if (isImageFile) {
-                // Analyze image appearance (no DB updates)
-                const formData = new FormData();
-                formData.append('character_id', characterId);
-                formData.append('file', currentFile);
-                response = await fetch('/api/analyze-image', {
-                    method: 'POST',
-                    body: formData,
-                });
-            } else if (isImageUrl) {
-                response = await fetch('/api/analyze-image', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ character_id: characterId, imageUrl: userMessage.content.trim() }),
-                });
-            } else if (isYamlFile) {
+            if (isYamlFile) {
                 // Existing YAML flow
                 const formData = new FormData();
                 formData.append('character_id', characterId);
@@ -157,9 +142,29 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
                 });
             } else {
                 // Standard chat JSON
+                let messageToSend = userMessage.content;
+                if (isImageFile) {
+                    // Upload image to S3 chat/ and send its URL to avoid context bloat
+                    const uploadFd = new FormData();
+                    uploadFd.append('character_id', characterId);
+                    uploadFd.append('file', currentFile);
+
+                    const uploadRes = await fetch('/api/chat/upload-image', {
+                        method: 'POST',
+                        body: uploadFd,
+                    });
+                    if (!uploadRes.ok) {
+                        const errData = await uploadRes.json().catch(() => ({}));
+                        throw new Error(errData.error || 'Failed to upload image');
+                    }
+                    const { url } = await uploadRes.json();
+                    if (!url) throw new Error('Upload returned no URL');
+                    messageToSend = `${inputValue.trim() ? inputValue.trim() + '\n\n' : ''}Describe the visible appearance of this image:\n${url}`;
+                }
+
                 const requestBody = {
                     character_id: characterId,
-                    message: userMessage.content,
+                    message: messageToSend,
                     include_history: true,
                 };
 
@@ -248,7 +253,7 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
     };
 
     const handleSelectImageFromPicker = async (image) => {
-        // When selecting, create a user-side message to show intent, then call analyze-image
+        // When selecting, create a user-side message and let the chat agent use the tool
         const url = image?.url;
         if (!url) return;
         const userMessage = {
@@ -261,14 +266,20 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
         setIsLoading(true);
         setError(null);
         try {
-            const response = await fetch('/api/analyze-image', {
+            const requestBody = {
+                character_id: characterId,
+                message: userMessage.content,
+                include_history: true,
+            };
+            if (sessionId) requestBody.session_id = sessionId;
+            const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ character_id: characterId, imageUrl: url }),
+                body: JSON.stringify(requestBody),
             });
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to analyze image');
+                throw new Error(errorData.error || 'Failed to send message');
             }
             const data = await response.json();
             const assistantMessage = (data && (data.message || data.description))
@@ -286,7 +297,7 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
                 throw new Error('Unexpected response format');
             }
         } catch (err) {
-            console.error('Error analyzing selected image:', err);
+            console.error('Error sending selected image to chat:', err);
             setError(err.message);
             // Remove the user message if failed
             setMessages((prev) => prev.slice(0, -1));
