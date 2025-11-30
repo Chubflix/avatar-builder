@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient, saveGeneratedImage } from '@/app/lib/supabase-server';
+import { getImageUrl } from '@/app/lib/s3-server';
+import { publishRealtimeEvent } from '@/app/lib/ably';
 
 export async function POST(request) {
     // Verify auth header – in this flow, the proxy sends back the per-job token
@@ -76,14 +78,16 @@ export async function POST(request) {
             tags: body?.tags || []
         };
 
+        const savedImages = [];
         for (const [index, img] of images.entries()) {
             let perMaskId = meta.maskId || null;
-            await saveGeneratedImage({
+            const saved = await saveGeneratedImage({
                 supabase,
                 userId: job.user_id,
                 imageBase64: typeof img === 'string' ? img : img?.data || '',
                 meta: { ...meta, maskId: perMaskId, seed: meta.seed ? (Number(meta.seed) + index) : null }
             });
+            if (saved) savedImages.push(saved);
         }
 
         // Mark job as completed
@@ -95,9 +99,86 @@ export async function POST(request) {
             })
             .eq('id', job.id);
 
-        return NextResponse.json({ ok: true });
+        await updateChatMessge(job, savedImages);
+
+        return NextResponse.json({ ok: true, images: (savedImages || []).map(i => ({ id: i.id, url: getImageUrl(i.storage_path) || i.url })) });
     } catch (error) {
         console.error('[SD Webhook] Error handling payload:', error);
         return NextResponse.json({ error: 'Bad Request' }, { status: 400 });
+    }
+}
+
+async function updateChatMessge(job, savedImages) {
+    const supabase = createServiceClient();
+
+    // Update chat message if this job was triggered from chat
+    try {
+        // Find the chat message linked to this job (using job_uuid which is stored in metadata)
+        const { data: msg, error: msgErr } = await supabase
+            .from('chat_messages')
+            .select('id, content, metadata')
+            .eq('metadata->>jobId', job.job_uuid)
+            .eq('user_id', job.user_id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (!msg || msgErr) {
+            console.log('[SD Webhook] No chat message found for job:', job.job_uuid);
+        } else {
+            // Build images array to attach
+            const newImages = (savedImages || []).map((img) => ({
+                id: img.id,
+                url: img.url || null,
+            })).filter(x => x && x.id && x.url);
+
+            // Merge existing metadata
+            const existingMeta = (msg.metadata && typeof msg.metadata === 'object') ? msg.metadata : {};
+            const prevImages = Array.isArray(existingMeta.images) ? existingMeta.images : [];
+            const mergedById = new Map();
+            for (const it of [...prevImages, ...newImages]) {
+                if (it?.id) mergedById.set(it.id, it);
+            }
+            const mergedImages = Array.from(mergedById.values());
+
+            const updatedMeta = {
+                ...existingMeta,
+                generation_complete: true,
+                images: mergedImages,
+            };
+
+            const alreadyHasNote = typeof msg.content === 'string' && msg.content.includes('Image was successfully created');
+            const newContent = alreadyHasNote ? msg.content : `${msg.content || ''}\n\n**Image was successfully created ✅**`;
+
+            const { data: updated, error: upErr } = await supabase
+                .from('chat_messages')
+                .update({
+                    content: newContent,
+                    metadata: updatedMeta,
+                })
+                .eq('id', msg.id)
+                .select('id')
+                .single();
+
+            // Realtime publish so chat can update if visible
+            try {
+                await publishRealtimeEvent('chat-messages', 'message_updated', {
+                    message_id: msg.id,
+                    user_id: job.user_id,
+                    job_id: job.id,
+                    images: newImages,
+                    generation_complete: true,
+                });
+            } catch (e) {
+                console.warn('[Realtime] Failed to publish chat message update:', e?.message || e);
+            }
+
+            if (upErr) {
+                console.warn('[SD Webhook] Failed to update chat message metadata:', upErr?.message);
+            }
+        }
+    } catch (error) {
+        // Silently fail if no chat message found (job might not be from chat)
+        console.log('[SD Webhook] No chat message found for job:', job.job_uuid);
     }
 }
