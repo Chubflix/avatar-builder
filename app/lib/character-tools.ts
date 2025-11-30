@@ -218,29 +218,66 @@ export function createCharacterTools() {
         greetingId,
         title,
         content,
+        confirmed,
       }: {
         greetingId: string;
         title?: string;
         content?: string;
+        confirmed?: boolean;
       },
       { context }: any
     ) => {
       const { supabase } = context;
+
+      // If not confirmed, return a preview of the changes without saving
+      if (!confirmed) {
+        const { data: current, error } = await supabase
+          .from('character_greetings')
+          .select('*')
+          .eq('id', greetingId)
+          .single();
+
+        if (error) {
+          throw new Error(`Failed to fetch current greeting: ${error.message}`);
+        }
+
+        const proposed: Record<string, any> = {};
+        if (typeof title !== 'undefined') proposed.title = title;
+        if (typeof content !== 'undefined') proposed.content = content;
+
+        return JSON.stringify(
+          {
+            preview: true,
+            current: {
+              title: current?.title,
+              content: current?.content,
+            },
+            proposed,
+            message:
+              "To save, respond with 'confirm' or call update_greeting with confirmed=true",
+          },
+          null,
+          2
+        );
+      }
+
+      // Confirmed: perform the update
       const updates: any = {};
-      if (title) updates.title = title;
-      if (content) updates.content = content;
+      if (typeof title !== 'undefined') updates.title = title;
+      if (typeof content !== 'undefined') updates.content = content;
 
       await updateGreeting(supabase, greetingId, updates);
-      return `Successfully updated greeting ${greetingId}.`;
+      return `✅ Saved!`;
     },
     {
       name: 'update_greeting',
       description:
-        'Update an existing greeting. Requires the greeting ID which you can get from get_all_greetings.',
+        'Update an existing greeting. First call WITHOUT confirmed to preview, then WITH confirmed=true to save. Requires the greeting ID which you can get from get_all_greetings.',
       schema: z.object({
         greetingId: z.string().uuid().describe('The UUID of the greeting to update'),
         title: z.string().optional().describe('New title for the greeting'),
         content: z.string().optional().describe('New content for the greeting'),
+        confirmed: z.boolean().optional().default(false),
       }),
     }
   );

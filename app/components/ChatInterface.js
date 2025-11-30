@@ -525,6 +525,31 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
         }
     };
 
+    // Copy a message's raw content (preserve markdown, avoid rendered HTML)
+    const handleCopyMessage = async (message) => {
+        try {
+            const text = typeof message?.content === 'string' ? message.content : '';
+            if (!text) return;
+            if (navigator?.clipboard?.writeText) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.setAttribute('readonly', '');
+                textarea.style.position = 'absolute';
+                textarea.style.left = '-9999px';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+            }
+        } catch (e) {
+            console.error('Failed to copy message:', e);
+            setError('Failed to copy message');
+        }
+    };
+
     if (!characterId) {
         return (
             <div className="chat-interface">
@@ -660,6 +685,14 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
                                                 )}
                                             </div>
                                             <div className="chat-message-actions">
+                                                <button
+                                                    className="chat-message-action-btn"
+                                                    onClick={() => handleCopyMessage(message)}
+                                                    title="Copy message"
+                                                    disabled={isLoading}
+                                                >
+                                                    <i className="fa fa-copy"></i>
+                                                </button>
                                                 {message.role === 'user' && (
                                                     <button
                                                         className="chat-message-action-btn"

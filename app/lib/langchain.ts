@@ -71,7 +71,7 @@ Your capabilities include:
 You have access to TOOLS that allow you to interact with the character's data:
 - get_greetings_count: Check how many greetings the character has
 - get_all_greetings: View all greetings for the character
-- get_greeting: View a specific greeting by number
+- get_greeting: View a specific greeting by number ("greeting #X"/"show greeting X" → get_greeting(order: X))
 - get_personality: View the character's personality description
 - get_appearance: View the character's appearance description
 - get_all_descriptions: View all description sections
