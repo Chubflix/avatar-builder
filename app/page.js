@@ -11,6 +11,7 @@ import debug from './utils/debug';
 import { sendNotification } from './utils/notifications';
 
 // Components
+import Navbar from './components/Navbar';
 import ControlsPanel from './components/ControlsPanel';
 import GalleryWithLightboxContainer from './components/GalleryWithLightboxContainer';
 import FolderModal from './components/FolderModal';
@@ -350,12 +351,7 @@ function AppContent() {
     if (isLoadingConfig) {
         return (
             <>
-                <nav className="nav">
-                    <div className="nav-content">
-                        <a href="../" className="nav-brand">Chubflix</a>
-                        <span className="nav-title">Avatar Builder</span>
-                    </div>
-                </nav>
+                <Navbar onSettingsClick={() => {}} />
                 <div className="main-container">
                     <div className="empty-state">
                         <div className="spinner" style={{ margin: '0 auto' }}></div>
@@ -372,21 +368,9 @@ function AppContent() {
             <PWAManager />
 
             {/* Navigation */}
-            <nav className="nav">
-                <div className="nav-content">
-                    <a href="../" className="nav-brand">Chubflix</a>
-                    <div className="nav-right">
-                        <span className="nav-title">Avatar Builder</span>
-                        <button
-                            className="btn-settings"
-                            onClick={() => dispatch({ type: actions.SET_SHOW_APP_SETTINGS, payload: true })}
-                            title="Settings"
-                        >
-                            <i className="fa fa-cog"></i>
-                        </button>
-                    </div>
-                </div>
-            </nav>
+            <Navbar
+                onSettingsClick={() => dispatch({ type: actions.SET_SHOW_APP_SETTINGS, payload: true })}
+            />
 
             {/* Main Container */}
             <div className="main-container">
