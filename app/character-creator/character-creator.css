@@ -89,6 +89,7 @@
         bottom: 0;
         width: 100%;
         z-index: 101;
+        height: calc(100vh - 190px);
     }
 
     .character-creator-sidebar.collapsed {
