@@ -321,6 +321,7 @@ function QueueManagerView({
                 {isMobile && activeTab === 'progress' && active && (
                     <div className="queue-manager-list">
                         {renderWorkflowVisualization(active)}
+                        {renderJobItem(active)}
                     </div>
                 )}
 
