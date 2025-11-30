@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import './ChatInterface.css';
+import ChatImagesLightboxContainer from './ChatImagesLightboxContainer';
 
 /**
  * ChatInterface Component
@@ -17,6 +18,10 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
     const [attachedFile, setAttachedFile] = useState(null);
     const [editingMessageId, setEditingMessageId] = useState(null);
     const [editingContent, setEditingContent] = useState('');
+    const [showImagePicker, setShowImagePicker] = useState(false);
+    const [pickerImages, setPickerImages] = useState([]);
+    const [isPickerLoading, setIsPickerLoading] = useState(false);
+    const [pickerError, setPickerError] = useState(null);
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -61,11 +66,11 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
     const handleFileSelect = (e) => {
         const file = e.target.files?.[0];
         if (file) {
-            // Validate file type
-            const validTypes = ['.yaml', '.yml'];
+            // Validate file type (allow YAML and common image types)
+            const validExtensions = ['.yaml', '.yml', '.png', '.jpg', '.jpeg', '.webp'];
             const extension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-            if (!validTypes.includes(extension)) {
-                setError('Please select a .yaml or .yml character sheet file');
+            if (!validExtensions.includes(extension)) {
+                setError('Please select a .yaml, .yml, or image file (png, jpg, jpeg, webp)');
                 return;
             }
             setAttachedFile(file);
@@ -79,6 +84,13 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
             fileInputRef.current.value = '';
         }
     };
+
+    const isImageExtension = (name) => {
+        const ext = name?.substring(name.lastIndexOf('.')).toLowerCase();
+        return ['.png', '.jpg', '.jpeg', '.webp'].includes(ext);
+    };
+
+    const looksLikeUrl = (text) => /^https?:\/\//i.test(text?.trim());
 
     const handleSendMessage = async () => {
         if ((!inputValue.trim() && !attachedFile) || !characterId || isLoading) {
@@ -109,8 +121,27 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
         try {
             let response;
 
-            if (currentFile) {
-                // Send as FormData when there's a file
+            const isImageFile = currentFile && isImageExtension(currentFile.name);
+            const isYamlFile = currentFile && !isImageFile;
+            const isImageUrl = !currentFile && looksLikeUrl(userMessage.content);
+
+            if (isImageFile) {
+                // Analyze image appearance (no DB updates)
+                const formData = new FormData();
+                formData.append('character_id', characterId);
+                formData.append('file', currentFile);
+                response = await fetch('/api/analyze-image', {
+                    method: 'POST',
+                    body: formData,
+                });
+            } else if (isImageUrl) {
+                response = await fetch('/api/analyze-image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ character_id: characterId, imageUrl: userMessage.content.trim() }),
+                });
+            } else if (isYamlFile) {
+                // Existing YAML flow
                 const formData = new FormData();
                 formData.append('character_id', characterId);
                 formData.append('message', inputValue.trim() || 'Updating character with attached sheet');
@@ -125,7 +156,7 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
                     body: formData,
                 });
             } else {
-                // Send as JSON when there's no file
+                // Standard chat JSON
                 const requestBody = {
                     character_id: characterId,
                     message: userMessage.content,
@@ -151,15 +182,21 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
             const data = await response.json();
 
             // Add assistant response to UI
-            const assistantMessage = {
-                id: data.message_id,
-                role: 'assistant',
-                content: data.message,
-                metadata: data.metadata,
-                created_at: new Date().toISOString(),
-            };
+            const assistantMessage = (data && (data.message || data.description))
+                ? {
+                    id: data.message_id || undefined,
+                    role: 'assistant',
+                    content: data.message || data.description,
+                    metadata: data.metadata,
+                    created_at: new Date().toISOString(),
+                }
+                : null;
 
-            setMessages((prev) => [...prev, assistantMessage]);
+            if (assistantMessage) {
+                setMessages((prev) => [...prev, assistantMessage]);
+            } else {
+                throw new Error('Unexpected response format');
+            }
         } catch (err) {
             console.error('Error sending message:', err);
             setError(err.message);
@@ -179,6 +216,83 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             handleSendMessage();
+        }
+    };
+
+    // Image picker helpers
+    const openImagePicker = async () => {
+        if (!characterId) return;
+        try {
+            setPickerError(null);
+            setIsPickerLoading(true);
+            setShowImagePicker(true);
+            const res = await fetch(`/api/images?character_id=${characterId}&limit=100`);
+            if (!res.ok) {
+                throw new Error('Failed to load images');
+            }
+            const data = await res.json();
+            setPickerImages(Array.isArray(data.images) ? data.images : []);
+        } catch (e) {
+            console.error('Error loading images for picker:', e);
+            setPickerError(e.message || 'Failed to load images');
+        } finally {
+            setIsPickerLoading(false);
+        }
+    };
+
+    const closeImagePicker = () => {
+        setShowImagePicker(false);
+        setPickerImages([]);
+        setIsPickerLoading(false);
+        setPickerError(null);
+    };
+
+    const handleSelectImageFromPicker = async (image) => {
+        // When selecting, create a user-side message to show intent, then call analyze-image
+        const url = image?.url;
+        if (!url) return;
+        const userMessage = {
+            role: 'user',
+            content: `Describe the visible appearance of this image:\n${url}`,
+            created_at: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, userMessage]);
+        closeImagePicker();
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await fetch('/api/analyze-image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ character_id: characterId, imageUrl: url }),
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to analyze image');
+            }
+            const data = await response.json();
+            const assistantMessage = (data && (data.message || data.description))
+                ? {
+                    id: data.message_id || undefined,
+                    role: 'assistant',
+                    content: data.message || data.description,
+                    metadata: data.metadata,
+                    created_at: new Date().toISOString(),
+                }
+                : null;
+            if (assistantMessage) {
+                setMessages((prev) => [...prev, assistantMessage]);
+            } else {
+                throw new Error('Unexpected response format');
+            }
+        } catch (err) {
+            console.error('Error analyzing selected image:', err);
+            setError(err.message);
+            // Remove the user message if failed
+            setMessages((prev) => prev.slice(0, -1));
+        } finally {
+            setIsLoading(false);
+            inputRef.current?.focus();
         }
     };
 
@@ -640,7 +754,7 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
                     <input
                         ref={fileInputRef}
                         type="file"
-                        accept=".yaml,.yml"
+                        accept=".yaml,.yml,.png,.jpg,.jpeg,.webp"
                         onChange={handleFileSelect}
                         style={{ display: 'none' }}
                     />
@@ -648,9 +762,17 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
                         className="chat-attach-btn"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isLoading}
-                        title="Attach character sheet (.yaml/.yml)"
+                        title="Attach character sheet (.yaml/.yml) or image (.png/.jpg/.jpeg/.webp)"
                     >
                         <i className="fa fa-paperclip"></i>
+                    </button>
+                    <button
+                        className="chat-attach-btn"
+                        onClick={openImagePicker}
+                        disabled={isLoading}
+                        title="Pick from character images"
+                    >
+                        <i className="fa fa-image"></i>
                     </button>
                     <textarea
                         ref={inputRef}
@@ -676,6 +798,42 @@ export default function ChatInterface({ characterId, characterName, sessionId = 
             <div className="chat-footer">
                 <p>AI-powered character sheet assistant using Deepseek</p>
             </div>
+
+            {showImagePicker && !isPickerLoading && !pickerError && (
+                <ChatImagesLightboxContainer
+                    show={showImagePicker}
+                    images={pickerImages}
+                    initialIndex={0}
+                    onClose={closeImagePicker}
+                    onAttach={handleSelectImageFromPicker}
+                />
+            )}
+
+            {/* Keep lightweight state handling for error/loading during fetch */}
+            {showImagePicker && (isPickerLoading || pickerError) && (
+                <div className="chat-image-picker-overlay" onClick={(e) => {
+                    if (e.target.classList.contains('chat-image-picker-overlay')) closeImagePicker();
+                }}>
+                    <div className="chat-image-picker-modal">
+                        <div className="chat-image-picker-header">
+                            <h4>Select an image</h4>
+                            <button className="chat-remove-file-btn" onClick={closeImagePicker} title="Close">
+                                <i className="fa fa-times"></i>
+                            </button>
+                        </div>
+                        {pickerError ? (
+                            <div className="chat-error" style={{ margin: '8px 0' }}>
+                                <i className="fa fa-exclamation-circle"></i>
+                                <span>{pickerError}</span>
+                            </div>
+                        ) : (
+                            <div className="chat-typing-indicator" style={{ padding: 16 }}>
+                                <span></span><span></span><span></span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
