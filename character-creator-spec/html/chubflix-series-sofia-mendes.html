@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sofia Mendes – Chubflix</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css"
+          integrity="sha256-XoaMnoYC5TH6/+ihMEnospgm0J1PM/nioxbOUdnM8HY=" crossorigin="anonymous">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #141414;
+            --bg-card: #1a1a1a;
+            --bg-hover: #252525;
+            --text-primary: #ffffff;
+            --text-secondary: #a3a3a3;
+            --text-muted: #737373;
+            --accent: #e50914;
+            --accent-hover: #f40612;
+            --border: #2a2a2a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 1.25rem 3rem;
+            z-index: 1000;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-brand {
+            font-size: 1.75rem;
+            font-weight: 900;
+            color: var(--accent);
+            text-decoration: none;
+            letter-spacing: -0.02em;
+            text-transform: uppercase;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2.5rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-cta {
+            background: var(--accent);
+            color: var(--text-primary);
+            padding: 0.6rem 1.25rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: background 0.2s ease;
+        }
+
+        .nav-cta:hover {
+            background: var(--accent-hover);
+        }
+
+        @media (max-width: 768px) {
+            .nav {
+                padding: 1rem 1.5rem;
+            }
+            .nav-links {
+                gap: 1rem;
+            }
+        }
+
+        /* Hero Section */
+        .hero {
+            position: relative;
+            min-height: 70vh;
+            display: flex;
+            align-items: flex-end;
+            padding: 0 3rem 4rem;
+            overflow: hidden;
+        }
+
+        .hero-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                linear-gradient(to top, var(--bg-primary) 0%, transparent 50%),
+                linear-gradient(to right, var(--bg-primary) 0%, transparent 60%);
+            z-index: 1;
+        }
+
+        .hero-image {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 60%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center top;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            max-width: 600px;
+            padding-top: 8rem;
+        }
+
+        .hero-meta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .hero-badge {
+            background: var(--accent);
+            color: var(--text-primary);
+            padding: 0.3rem 0.75rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            border-radius: 3px;
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .hero-stats span {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 900;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: 0.5rem;
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-description {
+            font-size: 1rem;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: var(--accent);
+            color: var(--text-primary);
+            padding: 0.875rem 1.75rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: scale(1.02);
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            padding: 0.875rem 1.75rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .hero {
+                padding: 0 1.5rem 3rem;
+                min-height: 60vh;
+            }
+            .hero-image {
+                width: 100%;
+                opacity: 0.3;
+            }
+            .hero-bg {
+                background: 
+                    linear-gradient(to top, var(--bg-primary) 0%, transparent 70%),
+                    linear-gradient(to right, var(--bg-primary) 0%, transparent 100%);
+            }
+        }
+
+        /* Tags */
+        .tags-section {
+            padding: 2rem 3rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tags-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .tag {
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            padding: 0.4rem 0.8rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+
+        @media (max-width: 768px) {
+            .tags-section {
+                padding: 1.5rem;
+            }
+        }
+
+        /* About Section */
+        .about {
+            padding: 4rem 3rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .about-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+        }
+
+        @media (max-width: 900px) {
+            .about-content {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+            }
+        }
+
+        .about-main h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+        }
+
+        .about-main p {
+            font-size: 0.95rem;
+            line-height: 1.8;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .about-sidebar h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .about-detail {
+            margin-bottom: 1.5rem;
+        }
+
+        .about-detail-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .about-detail-value {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+        }
+
+        @media (max-width: 768px) {
+            .about {
+                padding: 3rem 1.5rem;
+            }
+        }
+
+        /* Episodes Section */
+        .episodes {
+            padding: 4rem 3rem;
+        }
+
+        .episodes-header {
+            max-width: 1400px;
+            margin: 0 auto 2rem;
+        }
+
+        .episodes-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .phase {
+            max-width: 1400px;
+            margin: 0 auto 3rem;
+        }
+
+        .phase:last-child {
+            margin-bottom: 0;
+        }
+
+        .phase-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .phase-number {
+            background: var(--accent);
+            color: var(--text-primary);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .phase-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+        }
+
+        .phase-meta {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-left: auto;
+        }
+
+        .episodes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1rem;
+        }
+
+        .episode-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1.25rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .episode-card:hover {
+            background: var(--bg-hover);
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .episode-number {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .episode-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .episode-description {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin-bottom: 0.75rem;
+        }
+
+        .episode-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 768px) {
+            .episodes {
+                padding: 3rem 1.5rem;
+            }
+            .episodes-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Emotional Arcs */
+        .arcs {
+            padding: 4rem 3rem;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+        }
+
+        .arcs-content {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .arcs-content h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+        }
+
+        .arcs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .arc-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1.5rem;
+        }
+
+        .arc-card h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .arc-progression {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .arc-step {
+            font-size: 0.8rem;
+            padding: 0.3rem 0.6rem;
+            background: var(--bg-hover);
+            border-radius: 3px;
+            color: var(--text-secondary);
+        }
+
+        .arc-arrow {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        @media (max-width: 768px) {
+            .arcs {
+                padding: 3rem 1.5rem;
+            }
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 6rem 3rem;
+            text-align: center;
+            background: 
+                radial-gradient(ellipse at center, rgba(229, 9, 20, 0.1) 0%, transparent 70%);
+        }
+
+        .cta-section h2 {
+            font-size: clamp(2rem, 5vw, 3rem);
+            font-weight: 900;
+            margin-bottom: 1rem;
+        }
+
+        .cta-section p {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            max-width: 500px;
+            margin: 0 auto 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .cta-section {
+                padding: 4rem 1.5rem;
+            }
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            padding: 3rem;
+            text-align: center;
+        }
+
+        .footer-brand {
+            font-size: 1.25rem;
+            font-weight: 900;
+            color: var(--accent);
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: color 0.2s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .footer-copyright {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 768px) {
+            .footer {
+                padding: 2rem 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-content">
+            <a href="chubflix-landing.html" class="nav-brand">Chubflix</a>
+            <div class="nav-links">
+                <a href="chubflix-landing.html" class="nav-link">Home</a>
+                <a href="chubflix-browse.html" class="nav-cta">Browse All</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <img src="https://avatars.charhub.io/avatars/ricktap/sofia-mendes-the-adventurous-stewardess-520cc6602e8c/chara_card_v2.png" alt="Sofia Mendes" class="hero-image">
+        <div class="hero-bg"></div>
+        <div class="hero-content">
+            <div class="hero-meta">
+                <span class="hero-badge">Series</span>
+                <div class="hero-stats">
+                    <span><i class="fa fa-film"></i> 16 Episodes</span>
+                    <span><i class="fa fa-th-list"></i> 4 Phases</span>
+                </div>
+            </div>
+            <h1>Sofia Mendes</h1>
+            <p class="hero-subtitle">The Adventurous Stewardess</p>
+            <p class="hero-description">
+                A vibrant Portuguese-American flight attendant exploring polyamory with intention and heart. 
+                Watch her balance passionate enthusiasm with thoughtful patience as she navigates a triad 
+                relationship—learning that compersion takes practice, not just belief.
+            </p>
+            <div class="hero-actions">
+                <a href="https://chub.ai/characters/ricktap/sofia-mendes-the-adventurous-stewardess-520cc6602e8c" class="btn-primary" target="_blank">
+                    <i class="fa fa-play"></i>
+                    Start Episode 1
+                </a>
+                <a href="#episodes" class="btn-secondary">
+                    <i class="fa fa-list"></i>
+                    View All Episodes
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tags -->
+    <section class="tags-section">
+        <div class="tags-container">
+            <span class="tag">Polyamory</span>
+            <span class="tag">Romance</span>
+            <span class="tag">Flight Attendant</span>
+            <span class="tag">Portuguese</span>
+            <span class="tag">Slice of Life</span>
+            <span class="tag">Affectionate</span>
+            <span class="tag">Open Relationship</span>
+            <span class="tag">Female</span>
+            <span class="tag">AnyPOV</span>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section class="about">
+        <div class="about-content">
+            <div class="about-main">
+                <h2>About This Series</h2>
+                <p>
+                    Sofia's story begins three dates in—she slipped you her number when you were her passenger, 
+                    drawn to your shyness. What you don't know yet is that she shares her life with Christine, 
+                    her partner of years. This isn't a secret she's hiding; it's a life she's inviting you into.
+                </p>
+                <p>
+                    The series explores polyamory with emotional authenticity: the joy of compersion, the 
+                    unexpected sting of jealousy, the logistics of loving multiple people, and the vulnerability 
+                    required to build something unconventional. Sofia's natural impulse is to rush toward what 
+                    she wants—she's learning to slow down and let foundations form.
+                </p>
+                <p>
+                    You're the first partner Sofia and Christine have considered truly integrating into their 
+                    shared life as a triad, rather than keeping separate. The story follows that integration 
+                    from first discovery through commitment rings on a one-year anniversary.
+                </p>
+            </div>
+            <div class="about-sidebar">
+                <h3>Series Details</h3>
+                <div class="about-detail">
+                    <div class="about-detail-label">Core Struggle</div>
+                    <div class="about-detail-value">Balancing passionate enthusiasm with thoughtful patience in polyamorous relationships</div>
+                </div>
+                <div class="about-detail">
+                    <div class="about-detail-label">Setting</div>
+                    <div class="about-detail-value">Modern apartment, airports, beaches, everyday life</div>
+                </div>
+                <div class="about-detail">
+                    <div class="about-detail-label">Relationship Dynamic</div>
+                    <div class="about-detail-value">Triad with Christine—you develop individual relationships with both</div>
+                </div>
+                <div class="about-detail">
+                    <div class="about-detail-label">Tone</div>
+                    <div class="about-detail-value">Warm, tactile, emotionally authentic with realistic challenges</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Episodes Section -->
+    <section class="episodes" id="episodes">
+        <div class="episodes-header">
+            <h2>Episodes</h2>
+        </div>
+
+        <!-- Phase 1 -->
+        <div class="phase">
+            <div class="phase-header">
+                <span class="phase-number">1</span>
+                <span class="phase-title">Meeting & Discovery</span>
+                <span class="phase-meta">Episodes 1-4</span>
+            </div>
+            <div class="episodes-grid">
+                <div class="episode-card">
+                    <div class="episode-number">Episode 1</div>
+                    <div class="episode-title">End of 3rd Date: First Night Together</div>
+                    <div class="episode-description">Sofia invites you to her apartment after your third date. Building chemistry and intimate connection.</div>
+                    <div class="episode-meta">
+                        <span>Sofia only</span>
+                    </div>
+                </div>
+                <div class="episode-card">
+                    <div class="episode-number">Episode 2</div>
+                    <div class="episode-title">Next Morning: Discovery</div>
+                    <div class="episode-description">You wake to find Sofia kissing another woman in the kitchen. Christine briefly greets you before leaving, and Sofia explains her polyamorous lifestyle.</div>
+                    <div class="episode-meta">
+                        <span>Christine brief</span>
+                    </div>
+                </div>
+                <div class="episode-card">
+                    <div class="episode-number">Episode 3</div>
+                    <div class="episode-title">Week 2: Christine Joins for Dinner</div>
+                    <div class="episode-description">Christine joins a casual date night to get to know you. First real interaction between all three.</div>
+                    <div class="episode-meta">
+                        <span>All three</span>
+                    </div>
+                </div>
+                <div class="episode-card">
+                    <div class="episode-number">Episode 4</div>
+                    <div class="episode-title">Week 3: How Was Your Date?</div>
+                    <div class="episode-description">You and Christine return from your first date alone. Sofia eagerly asks for every detail—compersion in action.</div>
+                    <div class="episode-meta">
+                        <span>Sofia only</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 2 -->
+        <div class="phase">
+            <div class="phase-header">
+                <span class="phase-number">2</span>
+                <span class="phase-title">Integration & Challenges</span>
+                <span class="phase-meta">Episodes 5-8</span>
+            </div>
+            <div class="episodes-grid">
+                <div class="episode-card">
+                    <div class="episode-number">Episode 5</div>
+                    <div class="episode-title">Week 4: The Invitation</div>
+                    <div class="episode-description">Sofia and Christine invite you into a vulnerable conversation about becoming a triad.</div>
+                    <div class="episode-meta">
+                        <span>All three</span>
+                    </div>
+                </div>
+                <div class="episode-card">
+                    <div class="episode-number">Episode 6</div>
+                    <div class="episode-title">Month 2: The Jealousy She Didn't Expect</div>
+                    <div class="episode-description">Sofia struggles when she realizes your connection with Christine exists separate from her.</div>
+                    <div class="episode-meta">
+                        <span>Sofia only</span>
+                    </div>
+                </div>
+                <div class="episode-card">
+                    <div class="episode-number">Episode 7</div>
+                    <div class="episode-title">Month 2: The Scheduling Conflict</div>
+                    <div class="episode-description">Sofia is torn between promises to you and Christine, realizing she can't be in two places at once.</div>
+                    <div class="episode-meta">
+                        <span>Sofia only</span>
+                    </div>
+                </div>
+                <div class="episode-card">
+                    <div class="episode-number">Episode 8</div>
+                    <div class="episode-title">Month 3: The Ex Who Doesn't Understand</div>
+                    <div class="episode-description">Sofia receives a judgmental text from her ex-boyfriend and needs your support.</div>
+                    <div class="episode-meta">
+                        <span>Sofia only</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 3 -->
+        <div class="phase">
+            <div class="phase-header">
+                <span class="phase-number">3</span>
+                <span class="phase-title">Deepening Bonds</span>
+                <span class="phase-meta">Episodes 9-12</span>
+            </div>
+            <div class="episodes-grid">
+                <div class="episode-card">
+                    <div class="episode-number">Episode 9</div>
+                    <div class="episode-title">Month 3: Beach Day with All Three</div>
+                    <div class="episode-description">A relaxed day at the beach. No drama—just the three of you enjoying each other.</div>
+                    <div class="episode-meta">
+                        <span>All three</span>
+                    </div>
+                </div>
+                <div class="episode-card">
+                    <div class="episode-number">Episode 10</div>
+                    <div class="episode-title">Month 4: Flight Attendant Life</div>
+                    <div class="episode-description">You pick Sofia up from the airport after a brutal flight. She's depleted and needs care.</div>
+                    <div class="episode-meta">
+                        <span>Sofia only</span>
+                    </div>
+                </div>
+                <div class="episode-card">
+                    <div class="episode-number">Episode 11</div>
+                    <div class="episode-title">Month 4: Cooking Portuguese Food</div>
+                    <div class="episode-description">Sofia teaches you and Christine to make traditional Portuguese dishes, sharing her culture.</div>
+                    <div class="episode-meta">
+                        <span>All three</span>
+                    </div>
+                </div>
+                <div class="episode-card">
+                    <div class="episode-number">Episode 12</div>
+                    <div class="episode-title">Month 5: No Guilt Needed</div>
+                    <div class="episode-description">Sofia comes home to find you and Christine in an intimate moment—and feels only joy.</div>
+                    <div class="episode-meta">
+                        <span>Sofia only</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 4 -->
+        <div class="phase">
+            <div class="phase-header">
+                <span class="phase-number">4</span>
+                <span class="phase-title">Commitment & Future</span>
+                <span class="phase-meta">Episodes 13-16</span>
+            </div>
+            <div class="episodes-grid">
+                <div class="episode-card">
+                    <div class="episode-number">Episode 13</div>
+                    <div class="episode-title">Month 5: The Serious Relationship Talk</div>
+                    <div class="episode-description">Sofia calls a relationship meeting to ask if everyone is truly committed.</div>
+                    <div class="episode-meta">
+                        <span>All three</span>
+                    </div>
+                </div>
+                <div class="episode-card">
+                    <div class="episode-number">Episode 14</div>
+                    <div class="episode-title">Month 6: Moving In Together</div>
+                    <div class="episode-description">The triad officially moves in together—excitement mixed with practical reality.</div>
+                    <div class="episode-meta">
+                        <span>All three</span>
+                    </div>
+                </div>
+                <div class="episode-card">
+                    <div class="episode-number">Episode 15</div>
+                    <div class="episode-title">Month 8: Christine's Crisis</div>
+                    <div class="episode-description">Christine is struggling, and Sofia asks for your help supporting her.</div>
+                    <div class="episode-meta">
+                        <span>Sofia only</span>
+                    </div>
+                </div>
+                <div class="episode-card">
+                    <div class="episode-number">Episode 16</div>
+                    <div class="episode-title">Month 12: One Year Anniversary</div>
+                    <div class="episode-description">One year since you moved in. Sofia proposes commitment rings for all three.</div>
+                    <div class="episode-meta">
+                        <span>All three</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Emotional Arcs -->
+    <section class="arcs">
+        <div class="arcs-content">
+            <h2>Emotional Arcs</h2>
+            <div class="arcs-grid">
+                <div class="arc-card">
+                    <h3>Compersion</h3>
+                    <div class="arc-progression">
+                        <span class="arc-step">Shown (Ep 4)</span>
+                        <span class="arc-arrow">→</span>
+                        <span class="arc-step">Tested (Ep 6)</span>
+                        <span class="arc-arrow">→</span>
+                        <span class="arc-step">Earned (Ep 12)</span>
+                    </div>
+                </div>
+                <div class="arc-card">
+                    <h3>Challenges</h3>
+                    <div class="arc-progression">
+                        <span class="arc-step">Jealousy (Ep 6)</span>
+                        <span class="arc-arrow">→</span>
+                        <span class="arc-step">Logistics (Ep 7)</span>
+                        <span class="arc-arrow">→</span>
+                        <span class="arc-step">External (Ep 8)</span>
+                    </div>
+                </div>
+                <div class="arc-card">
+                    <h3>Vulnerability</h3>
+                    <div class="arc-progression">
+                        <span class="arc-step">Explaining (Ep 2)</span>
+                        <span class="arc-arrow">→</span>
+                        <span class="arc-step">Struggling (Ep 6-7)</span>
+                        <span class="arc-arrow">→</span>
+                        <span class="arc-step">Exhausted (Ep 10)</span>
+                        <span class="arc-arrow">→</span>
+                        <span class="arc-step">Caretaking (Ep 15)</span>
+                    </div>
+                </div>
+                <div class="arc-card">
+                    <h3>Commitment</h3>
+                    <div class="arc-progression">
+                        <span class="arc-step">Invitation (Ep 5)</span>
+                        <span class="arc-arrow">→</span>
+                        <span class="arc-step">Serious Talk (Ep 13)</span>
+                        <span class="arc-arrow">→</span>
+                        <span class="arc-step">Moving In (Ep 14)</span>
+                        <span class="arc-arrow">→</span>
+                        <span class="arc-step">Anniversary (Ep 16)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <h2>Start Sofia's Story</h2>
+        <p>Begin from Episode 1 or jump into any scene that interests you.</p>
+        <a href="https://chub.ai/characters/ricktap/sofia-mendes-the-adventurous-stewardess-520cc6602e8c" class="btn-primary" target="_blank">
+            <i class="fa fa-play"></i>
+            Start Watching
+        </a>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-brand">Chubflix</div>
+        <div class="footer-links">
+            <a href="chubflix-landing.html">Home</a>
+            <a href="chubflix-browse.html">Browse All</a>
+            <a href="https://chub.ai/users/ricktap" target="_blank">Chub.AI</a>
+            <a href="https://github.com/ricktap" target="_blank">GitHub</a>
+        </div>
+        <div class="footer-copyright">
+            &copy; 2025 Chubflix by ricktap. All characters are works of fiction.
+        </div>
+    </footer>
+</body>
+</html>

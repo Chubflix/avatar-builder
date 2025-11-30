@@ -13,24 +13,24 @@ import {contextSchema, createCharacterTools} from '@/app/lib/character-tools';
 export type ChatRole = 'user' | 'assistant' | 'system';
 
 export interface ChatMessage {
-  role: ChatRole;
-  content: string;
-  metadata?: Record<string, any>;
+    role: ChatRole;
+    content: string;
+    metadata?: Record<string, any>;
 }
 
 export interface ChatResponse {
-  content: string;
-  metadata?: {
-    model?: string;
-    usage?: {
-      prompt_tokens?: number;
-      completion_tokens?: number;
-      total_tokens?: number;
+    content: string;
+    metadata?: {
+        model?: string;
+        usage?: {
+            prompt_tokens?: number;
+            completion_tokens?: number;
+            total_tokens?: number;
+        };
+        sources?: any[]; // For future RAG implementation
+        jobId?: string;
+        images?: { id: string, url: string }[];
     };
-    sources?: any[]; // For future RAG implementation
-    jobId?: string;
-    images?: {id: string, url: string}[];
-  };
 }
 
 /**
@@ -38,23 +38,26 @@ export interface ChatResponse {
  * Deepseek is OpenAI-compatible, so we use ChatOpenAI with custom base URL
  */
 export function createDeepseekLLM() {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  const baseURL = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1';
-  const modelName = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+    const baseURL = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1';
+    const modelName = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
 
-  if (!apiKey) {
-    throw new Error('DEEPSEEK_API_KEY environment variable is not set');
-  }
+    if (!apiKey) {
+        throw new Error('DEEPSEEK_API_KEY environment variable is not set');
+    }
 
-  return new ChatOpenAI({
-    apiKey: apiKey,
-    configuration: {
-      baseURL: baseURL,
-    },
-    model: modelName,
-    temperature: 0.7,
-    streaming: false,
-  });
+    return new ChatOpenAI({
+        apiKey: apiKey,
+        configuration: {
+            baseURL: baseURL,
+        },
+        model: modelName,
+        temperature: 0.5,
+        streaming: false,
+        topP: 0.9,
+        frequencyPenalty: 0.1,
+        presencePenalty: 0.0,
+    });
 }
 
 /**
@@ -83,8 +86,14 @@ You have access to TOOLS that allow you to interact with the character's data:
 - update_greeting: Modify an existing greeting
 - update_description: Update description sections (personality, appearance, etc.)
 - delete_greeting: Remove a greeting
+- generate_chat_image: Generate a character sheet image with a prompt. Always use donbooru tags with underscores like 'dark_hair, blue_shoes'
 
 IMPORTANT: When a user asks about the character's existing data (like "how many greetings does this character have?" or "what's their personality?"), you MUST use the appropriate tool to retrieve the current information from the database. DO NOT guess or make assumptions about the character's data.
+
+CRITICAL TOOL RULES:
+- NEVER invent job IDs or fake tool responses
+- If tool wasn't called, do NOT mention job IDs or image generation status
+- When repeating prompts, ALWAYS call the tool again with new params
 
 You also have access to character-specific documents and notes that have been saved for this character. When relevant documents are provided in the context, use them to inform your suggestions and maintain consistency with existing character information.
 
@@ -116,10 +125,10 @@ Always maintain a helpful, encouraging tone and adapt to the user's level of det
  * Convert chat messages to LangChain message format for createAgent
  */
 function convertToLangChainMessages(messages: ChatMessage[]): Array<{ role: string; content: string }> {
-  return messages.map((msg) => ({
-    role: msg.role,
-    content: msg.content,
-  }));
+    return messages.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+    }));
 }
 
 /**
@@ -127,49 +136,49 @@ function convertToLangChainMessages(messages: ChatMessage[]): Array<{ role: stri
  * Searches both character-specific AND global documents (rulebooks, lore, etc.)
  */
 async function retrieveContext(
-  supabase: SupabaseClient,
-  characterId: string,
-  userId: string,
-  query: string
+    supabase: SupabaseClient,
+    characterId: string,
+    userId: string,
+    query: string
 ): Promise<{ context: string; sources: DocumentSearchResult[] }> {
-  try {
-    // Search for similar documents (includes both character-specific AND global docs)
-    const results = await searchSimilarDocuments({
-      supabase,
-      query,
-      characterId,
-      userId,
-      matchThreshold: 0.5,
-      matchCount: 3,
-    });
+    try {
+        // Search for similar documents (includes both character-specific AND global docs)
+        const results = await searchSimilarDocuments({
+            supabase,
+            query,
+            characterId,
+            userId,
+            matchThreshold: 0.5,
+            matchCount: 3,
+        });
 
-    if (results.length === 0) {
-      return {
-        context: '',
-        sources: [],
-      };
+        if (results.length === 0) {
+            return {
+                context: '',
+                sources: [],
+            };
+        }
+
+        // Format retrieved documents into context string
+        const contextParts = results.map((doc, index) => {
+            const docType = doc.is_global ? '[Global]' : '[Character-specific]';
+            return `[Document ${index + 1} ${docType}: ${doc.title}]\n${doc.content}`;
+        });
+
+        const context = `\n\nRelevant character documents:\n${contextParts.join('\n\n')}`;
+
+        return {
+            context,
+            sources: results,
+        };
+    } catch (error: any) {
+        console.error('Error retrieving context:', error);
+        // Return empty context on error, don't fail the entire chat
+        return {
+            context: '',
+            sources: [],
+        };
     }
-
-    // Format retrieved documents into context string
-    const contextParts = results.map((doc, index) => {
-      const docType = doc.is_global ? '[Global]' : '[Character-specific]';
-      return `[Document ${index + 1} ${docType}: ${doc.title}]\n${doc.content}`;
-    });
-
-    const context = `\n\nRelevant character documents:\n${contextParts.join('\n\n')}`;
-
-    return {
-      context,
-      sources: results,
-    };
-  } catch (error: any) {
-    console.error('Error retrieving context:', error);
-    // Return empty context on error, don't fail the entire chat
-    return {
-      context: '',
-      sources: [],
-    };
-  }
 }
 
 /**
@@ -177,21 +186,21 @@ async function retrieveContext(
  * Uses modern createAgent() API with context injection
  */
 export async function createChatAgent(contextStr: string) {
-  const model = createDeepseekLLM();
+    const model = createDeepseekLLM();
 
-  // Create character management tools (no params needed - context injected at runtime)
-  const tools = createCharacterTools();
+    // Create character management tools (no params needed - context injected at runtime)
+    const tools = createCharacterTools();
 
-  // Create system prompt with context
-  const systemPromptWithContext = SYSTEM_PROMPT.replace('{context}', contextStr);
+    // Create system prompt with context
+    const systemPromptWithContext = SYSTEM_PROMPT.replace('{context}', contextStr);
 
-  // Create the agent using modern createAgent API
+    // Create the agent using modern createAgent API
     return createAgent({
-      model,
-      tools,
-      systemPrompt: systemPromptWithContext,
-      contextSchema, // ✅ Inject schema for runtime context
-  });
+        model,
+        tools,
+        systemPrompt: systemPromptWithContext,
+        contextSchema, // ✅ Inject schema for runtime context
+    });
 }
 
 /**
@@ -207,136 +216,146 @@ export async function createChatAgent(contextStr: string) {
  * @returns AI response with metadata including retrieved sources
  */
 export async function chat(
-  supabase: SupabaseClient,
-  characterId: string,
-  userId: string,
-  userMessage: string,
-  conversationHistory: ChatMessage[] = [],
-  characterContext?: {
-    name?: string;
-    description?: string;
-    existingData?: Record<string, any>;
-  }
+    supabase: SupabaseClient,
+    characterId: string,
+    userId: string,
+    userMessage: string,
+    conversationHistory: ChatMessage[] = [],
+    characterContext?: {
+        name?: string;
+        description?: string;
+        existingData?: Record<string, any>;
+    }
 ): Promise<ChatResponse> {
-  try {
-    // Retrieve relevant context using RAG (searches both character-specific AND global docs)
-    const { context, sources } = await retrieveContext(supabase, characterId, userId, userMessage);
+    try {
+        // Retrieve relevant context using RAG (searches both character-specific AND global docs)
+        const {context, sources} = await retrieveContext(supabase, characterId, userId, userMessage);
 
-    // Create agent with retrieved context and character tools
-    const agent = await createChatAgent(context);
+        // Create agent with retrieved context and character tools
+        const agent = await createChatAgent(context);
 
-    // Build messages array for the agent
-    const messages = [];
+        // Build messages array for the agent
+        const messages = [];
 
-    // Add conversation history
-    if (conversationHistory.length > 0) {
-      messages.push(...convertToLangChainMessages(conversationHistory));
-    }
-
-    // Add character context to the first message if provided
-    let userContent = userMessage;
-    if (characterContext && conversationHistory.length === 0) {
-      const contextParts = [];
-      if (characterContext.name) {
-        contextParts.push(`Character name: ${characterContext.name}`);
-      }
-      if (characterContext.description) {
-        contextParts.push(`Description: ${characterContext.description}`);
-      }
-      if (characterContext.existingData) {
-        contextParts.push(`Existing data: ${JSON.stringify(characterContext.existingData)}`);
-      }
-
-      if (contextParts.length > 0) {
-        userContent = `[Context: ${contextParts.join(', ')}]\n\n${userMessage}`;
-      }
-    }
-
-    // Add current user message
-    messages.push({
-      role: 'user',
-      content: userContent,
-    });
-
-    // Invoke the agent with messages AND runtime context
-    const response = await agent.invoke(
-      {
-        messages,
-      },
-      {
-        context: { supabase, characterId }, // ✅ Pass context at runtime
-      }
-    );
-
-    // Extract content from agent response
-    // The response from createAgent contains the messages array with the assistant's response
-    const lastMessage = response.messages[response.messages.length - 1];
-    const content =
-      typeof lastMessage.content === 'string'
-        ? lastMessage.content
-        : JSON.stringify(lastMessage.content);
-
-    // Extract jobId from tool calls if generate_chat_image was used
-    // LangChain BaseMessage type does not include tool_calls/tool_call_id in its base shape,
-    // but providers (OpenAI-compatible) attach them at runtime on AIMessage/ToolMessage.
-    // We add narrow type-guards here to keep compile-time safety.
-    type ToolCall = { id: string; name?: string };
-    type WithToolCalls = { tool_calls?: ToolCall[] };
-    type WithToolCallId = { tool_call_id?: string; content?: any };
-
-    const hasToolCalls = (m: unknown): m is WithToolCalls =>
-      !!m && Array.isArray((m as any).tool_calls);
-    const hasToolCallId = (m: unknown): m is WithToolCallId =>
-      !!m && typeof (m as any).tool_call_id === 'string';
-
-    let jobId: string | null = null;
-    for (const msg of (response.messages as unknown[])) {
-      if (hasToolCalls(msg) && Array.isArray(msg.tool_calls)) {
-        for (const toolCall of msg.tool_calls) {
-          if (toolCall?.name === 'generate_chat_image') {
-            // Find the corresponding tool response by tool_call_id
-            const toolResponse = (response.messages as unknown[]).find(
-              (m) => hasToolCallId(m) && (m as any).tool_call_id === toolCall.id
-            ) as WithToolCallId | undefined;
-            if (toolResponse && toolResponse.content) {
-              const toolContent = typeof toolResponse.content === 'string'
-                ? toolResponse.content
-                : JSON.stringify(toolResponse.content);
-              const match = toolContent.match(/\[JOB_ID:([^\]]+)\]/);
-              if (match) {
-                jobId = match[1];
-                break;
-              }
-            }
-          }
+        // Add conversation history
+        if (conversationHistory.length > 0) {
+            messages.push(...convertToLangChainMessages(conversationHistory));
         }
-      }
-      if (jobId) break;
+
+        // Add character context to the first message if provided
+        let userContent = userMessage;
+        if (characterContext && conversationHistory.length === 0) {
+            const contextParts = [];
+            if (characterContext.name) {
+                contextParts.push(`Character name: ${characterContext.name}`);
+            }
+            if (characterContext.description) {
+                contextParts.push(`Description: ${characterContext.description}`);
+            }
+            if (characterContext.existingData) {
+                contextParts.push(`Existing data: ${JSON.stringify(characterContext.existingData)}`);
+            }
+
+            if (contextParts.length > 0) {
+                userContent = `[Context: ${contextParts.join(', ')}]\n\n${userMessage}`;
+            }
+        }
+
+        // Add current user message
+        messages.push({
+            role: 'user',
+            content: userContent,
+        });
+
+        // Invoke the agent with messages AND runtime context
+        const response = await agent.invoke(
+            {
+                messages,
+            },
+            {
+                context: {supabase, characterId}, // ✅ Pass context at runtime
+            }
+        );
+
+        // Extract content from agent response
+        // The response from createAgent contains the messages array with the assistant's response
+        const lastMessage = response.messages[response.messages.length - 1];
+        const content =
+            typeof lastMessage.content === 'string'
+                ? lastMessage.content
+                : JSON.stringify(lastMessage.content);
+
+        // Extract jobId from tool calls if generate_chat_image was used
+        // LangChain BaseMessage type does not include tool_calls/tool_call_id in its base shape,
+        // but providers (OpenAI-compatible) attach them at runtime on AIMessage/ToolMessage.
+        // We add narrow type-guards here to keep compile-time safety.
+        type ToolCall = { id: string; name?: string, args?: Record<string, any> };
+        type WithToolCalls = { tool_calls?: ToolCall[] };
+        type WithToolCallId = { tool_call_id?: string; content?: any };
+
+        const hasToolCalls = (m: unknown): m is WithToolCalls =>
+            !!m && Array.isArray((m as any).tool_calls);
+        const hasToolCallId = (m: unknown): m is WithToolCallId =>
+            !!m && typeof (m as any).tool_call_id === 'string';
+
+        let jobId: string | null = null;
+        let generationCall: ToolCall | null = null;
+        for (const msg of (response.messages as unknown[])) {
+            if (hasToolCalls(msg) && Array.isArray(msg.tool_calls)) {
+                for (const toolCall of msg.tool_calls) {
+                    if (toolCall?.name === 'generate_chat_image') {
+                        // Find the corresponding tool response by tool_call_id
+                        const toolResponse = (response.messages as unknown[]).find(
+                            (m) => hasToolCallId(m) && (m as any).tool_call_id === toolCall.id
+                        ) as WithToolCallId | undefined;
+                        if (toolResponse && toolResponse.content) {
+                            const toolContent = typeof toolResponse.content === 'string'
+                                ? toolResponse.content
+                                : JSON.stringify(toolResponse.content);
+                            const match = toolContent.match(/\[JOB_ID:([^\]]+)\]/);
+                            if (match) {
+                                jobId = match[1];
+                                generationCall = toolCall;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            if (jobId) break;
+        }
+
+        // Override content with custom message if image generation was triggered
+        const finalContent = (jobId && generationCall)
+            ? [
+                '### Image generation queued',
+                '',
+                `* Job ID: ${jobId}`,
+                `* Prompt: ${generationCall.args?.prompt}`,
+                '',
+                'Your generation will be available soon. We\'ll update this post with the image, once it\'s ready.',
+            ].join('\n')
+
+            : content;
+
+        const metadata: ChatResponse['metadata'] = {
+            sources: sources.map((doc) => ({
+                id: doc.id,
+                title: doc.title,
+                similarity: doc.similarity,
+                content: doc.content.substring(0, 200) + '...', // Truncate for metadata
+            })),
+            ...(jobId ? {jobId} : {}),
+        };
+
+        return {
+            content: finalContent,
+            metadata,
+        };
+    } catch (error: any) {
+        console.error('Chat error:', error);
+        throw new Error(`Failed to generate response: ${error.message}`);
     }
-
-    // Override content with custom message if image generation was triggered
-    const finalContent = jobId
-      ? 'Image generation has been queued successfully! I\'ll update this message when the image is ready.'
-      : content;
-
-    const metadata: ChatResponse['metadata'] = {
-      sources: sources.map((doc) => ({
-        id: doc.id,
-        title: doc.title,
-        similarity: doc.similarity,
-        content: doc.content.substring(0, 200) + '...', // Truncate for metadata
-      })),
-      ...(jobId ? { jobId } : {}),
-    };
-
-    return {
-      content: finalContent,
-      metadata,
-    };
-  } catch (error: any) {
-    console.error('Chat error:', error);
-    throw new Error(`Failed to generate response: ${error.message}`);
-  }
 }
 
 
@@ -345,35 +364,35 @@ export async function chat(
  * Uses the LLM to create a concise, descriptive title (max 6 words)
  */
 export async function generateSessionTitle(userMessage: string): Promise<string> {
-  try {
-    const model = createDeepseekLLM();
+    try {
+        const model = createDeepseekLLM();
 
-    const response = await model.invoke([
-      {
-        role: 'system',
-        content: 'You generate short, descriptive titles for chat conversations. Return ONLY the title, maximum 6 words, no quotes or punctuation at the end.',
-      },
-      {
-        role: 'user',
-        content: `Generate a short title (max 6 words) for a conversation that starts with: "${userMessage.substring(0, 200)}"`,
-      },
-    ]);
+        const response = await model.invoke([
+            {
+                role: 'system',
+                content: 'You generate short, descriptive titles for chat conversations. Return ONLY the title, maximum 6 words, no quotes or punctuation at the end.',
+            },
+            {
+                role: 'user',
+                content: `Generate a short title (max 6 words) for a conversation that starts with: "${userMessage.substring(0, 200)}"`,
+            },
+        ]);
 
-    const title = typeof response.content === 'string'
-      ? response.content.trim()
-      : String(response.content).trim();
+        const title = typeof response.content === 'string'
+            ? response.content.trim()
+            : String(response.content).trim();
 
-    // Fallback if title is too long or empty
-    if (!title || title.length > 60) {
-      return userMessage.substring(0, 40).trim() + (userMessage.length > 40 ? '...' : '');
+        // Fallback if title is too long or empty
+        if (!title || title.length > 60) {
+            return userMessage.substring(0, 40).trim() + (userMessage.length > 40 ? '...' : '');
+        }
+
+        return title;
+    } catch (error) {
+        console.error('Error generating session title:', error);
+        // Fallback to truncated message
+        return userMessage.substring(0, 40).trim() + (userMessage.length > 40 ? '...' : '');
     }
-
-    return title;
-  } catch (error) {
-    console.error('Error generating session title:', error);
-    // Fallback to truncated message
-    return userMessage.substring(0, 40).trim() + (userMessage.length > 40 ? '...' : '');
-  }
 }
 
 /**
@@ -381,8 +400,8 @@ export async function generateSessionTitle(userMessage: string): Promise<string>
  * Useful for managing context window
  */
 export function estimateTokenCount(text: string): number {
-  // Rough estimation: ~4 characters per token
-  return Math.ceil(text.length / 4);
+    // Rough estimation: ~4 characters per token
+    return Math.ceil(text.length / 4);
 }
 
 /**
@@ -390,30 +409,30 @@ export function estimateTokenCount(text: string): number {
  * Keeps system message and recent messages, drops middle messages if needed
  */
 export function trimConversationHistory(
-  messages: ChatMessage[],
-  maxTokens: number = 4000
+    messages: ChatMessage[],
+    maxTokens: number = 4000
 ): ChatMessage[] {
-  let totalTokens = 0;
-  const systemMessages = messages.filter(m => m.role === 'system');
-  const conversationMessages = messages.filter(m => m.role !== 'system');
+    let totalTokens = 0;
+    const systemMessages = messages.filter(m => m.role === 'system');
+    const conversationMessages = messages.filter(m => m.role !== 'system');
 
-  // Always include system messages
-  totalTokens += systemMessages.reduce((sum, msg) =>
-    sum + estimateTokenCount(msg.content), 0);
+    // Always include system messages
+    totalTokens += systemMessages.reduce((sum, msg) =>
+        sum + estimateTokenCount(msg.content), 0);
 
-  // Add messages from most recent backwards
-  const trimmed: ChatMessage[] = [...systemMessages];
-  for (let i = conversationMessages.length - 1; i >= 0; i--) {
-    const msg = conversationMessages[i];
-    const msgTokens = estimateTokenCount(msg.content);
+    // Add messages from most recent backwards
+    const trimmed: ChatMessage[] = [...systemMessages];
+    for (let i = conversationMessages.length - 1; i >= 0; i--) {
+        const msg = conversationMessages[i];
+        const msgTokens = estimateTokenCount(msg.content);
 
-    if (totalTokens + msgTokens > maxTokens) {
-      break;
+        if (totalTokens + msgTokens > maxTokens) {
+            break;
+        }
+
+        trimmed.unshift(msg);
+        totalTokens += msgTokens;
     }
 
-    trimmed.unshift(msg);
-    totalTokens += msgTokens;
-  }
-
-  return trimmed;
+    return trimmed;
 }

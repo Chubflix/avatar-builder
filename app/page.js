@@ -1,470 +1,407 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { AppProvider, useApp } from './context/AppContext';
-import { QueueProvider } from './context/QueueContext';
-import { useFolders, useGeneration, useModels } from './hooks';
-import { useFolderSync, useCharacterSync } from "@/app/hooks/realtime-sync";
-import { useQueue } from './hooks/queue';
-import { useGalleryKeyboardShortcuts } from './hooks/keyboard';
-import debug from './utils/debug';
-import { sendNotification } from './utils/notifications';
+import React, { useEffect } from 'react';
+import Link from 'next/link';
+import './landing.css';
 
-// Components
-import Navbar from './components/Navbar';
-import ControlsPanel from './components/ControlsPanel';
-import GalleryWithLightboxContainer from './components/GalleryWithLightboxContainer';
-import FolderModal from './components/FolderModal';
-import MobileControls from './components/MobileControls';
-import MobilePromptSlideout from './components/MobilePromptSlideout';
-import PWAManager from './components/PWAManager';
-import AppSettings from './components/AppSettings';
-import PromptModal from './components/PromptModal';
-import CharacterModal from './components/CharacterModal';
-import CharacterFolderSelector from './components/CharacterFolderSelector';
-import QueueManagerModal from './components/QueueManagerModal';
-import ConfigModal from './components/ConfigModal';
-
-// Import CSS
-import './folder-picker.css';
-import './folder-styles.css';
-
-function AppContent() {
-    const { state, dispatch, actions, loadSettings } = useApp();
-    const { loadFolders, createFolder, updateFolder, deleteFolder } = useFolders();
-    const { generate } = useGeneration();
-    const { loadModels } = useModels();
-
-    useFolderSync();          // For folder CRUD
-    useCharacterSync();       // For character CRUD
-    useGalleryKeyboardShortcuts();
-    const { triggerQueuePolling } = useQueue();
-
-    const isInitialized = useRef(false);
-    const currentFolderRef = useRef(null);
-    const skipGalleryToSaveSync = useRef(false);
-    const skipSaveToGallerySync = useRef(false);
-
-    const { config, settingsLoaded, currentFolder, selectedFolder, folders, selectedCharacter } = state;
-    const [isLoadingConfig, setIsLoadingConfig] = useState(true);
-    const [pageTotalImages, setPageTotalImages] = useState(0); // local header count
-
-    // recover queue if needed
+export default function LandingPage() {
     useEffect(() => {
-        triggerQueuePolling();
-    }, []);
-
-    // Keep ref in sync with current folder
-    useEffect(() => {
-        currentFolderRef.current = currentFolder;
-    }, [currentFolder]);
-
-    // Load config on mount (only once)
-    useEffect(() => {
-        if (isInitialized.current) {
-            debug.log('App', 'Already initialized, skipping');
-            return;
-        }
-
-        let mounted = true;
-
-        async function initialize() {
-            try {
-                debug.log('App', 'Starting initialization...');
-                debug.log('App', 'Fetching /api/config...');
-                const response = await fetch('/api/config');
-                debug.log('App', 'Config response received', { status: response.status });
-
-                const data = await response.json();
-                debug.log('App', 'Config data parsed', data);
-
-                if (!mounted) {
-                    debug.warn('App', 'Component unmounted before config could be set, aborting');
-                    return;
-                }
-
-                // Mark as initialized AFTER we know component is still mounted
-                isInitialized.current = true;
-
-                debug.log('App', 'Setting config in state...');
-                dispatch({ type: actions.SET_CONFIG, payload: data });
-
-                debug.log('App', 'Loading settings...');
-                const loaded = loadSettings(data);
-                debug.log('App', 'Settings loaded from localStorage', { loaded });
-
-                if (!loaded) {
-                    debug.log('App', 'Using default settings from config');
-                    dispatch({ type: actions.SET_POSITIVE_PROMPT, payload: data.defaults.positivePrompt });
-                    dispatch({ type: actions.SET_NEGATIVE_PROMPT, payload: data.defaults.negativePrompt });
-                    dispatch({ type: actions.SET_ORIENTATION, payload: data.defaults.orientation });
-                    dispatch({ type: actions.SET_BATCH_SIZE, payload: data.defaults.batchSize });
-                }
-
-                debug.log('App', 'Setting settings loaded flag...');
-                dispatch({ type: actions.SET_SETTINGS_LOADED, payload: true });
-
-                // Load models, folders, and images (continue even if some fail)
-                debug.log('App', 'Loading SD models');
-                try {
-                    await loadModels();
-                    debug.log('App', 'Models loaded successfully');
-                } catch (err) {
-                    debug.error('App', 'Failed to load models', err);
-                    dispatch({
-                        type: actions.SET_STATUS,
-                        payload: { type: 'error', message: 'Failed to load SD models: ' + err.message }
-                    });
-                }
-
-                debug.log('App', 'Loading folders...');
-                try {
-                    await loadFolders();
-                    debug.log('App', 'Folders loaded successfully');
-                } catch (err) {
-                    debug.error('App', 'Failed to load folders', err);
-                }
-
-                setIsLoadingConfig(false);
-                debug.log('App', 'Initialization complete!');
-            } catch (err) {
-                if (!mounted) {
-                    debug.warn('App', 'Component unmounted during error, aborting');
-                    return;
-                }
-                debug.error('App', 'Failed during initialization', err);
-                dispatch({
-                    type: actions.SET_STATUS,
-                    payload: { type: 'error', message: 'Failed to load config: ' + err.message }
-                });
-                setIsLoadingConfig(false);
+        // Nav background on scroll
+        const handleScroll = () => {
+            const nav = document.getElementById('nav');
+            if (window.scrollY > 50) {
+                nav?.classList.add('scrolled');
+            } else {
+                nav?.classList.remove('scrolled');
             }
-        }
-
-        initialize();
-
-        return () => {
-            debug.log('App', 'Component cleanup - setting mounted=false');
-            mounted = false;
         };
-    }, [dispatch, actions, loadSettings, loadModels, loadFolders]);
 
-    // Sync gallery filter → save folder (when user changes gallery filter)
-    useEffect(() => {
-        if (settingsLoaded && isInitialized.current) {
-            // Skip if this change was triggered by save folder sync
-            if (skipGalleryToSaveSync.current) {
-                skipGalleryToSaveSync.current = false;
-                return;
-            }
-
-            // If viewing all images or unfiled, set save folder to unfiled ('')
-            if (currentFolder === null || currentFolder === 'unfiled') {
-                skipSaveToGallerySync.current = true;
-                dispatch({ type: actions.SET_SELECTED_FOLDER, payload: '' });
-            } else {
-                // Otherwise set save folder to current gallery folder
-                skipSaveToGallerySync.current = true;
-                dispatch({ type: actions.SET_SELECTED_FOLDER, payload: currentFolder });
-            }
-        }
-    }, [currentFolder, settingsLoaded, dispatch, actions]);
-
-    // Sync save folder → gallery filter (when user changes save folder)
-    useEffect(() => {
-        if (settingsLoaded && isInitialized.current) {
-            // Skip if this change was triggered by gallery filter sync
-            if (skipSaveToGallerySync.current) {
-                skipSaveToGallerySync.current = false;
-                return;
-            }
-
-            // If save folder is unfiled (''), show unfiled images
-            if (selectedFolder === '' || selectedFolder === null) {
-                skipGalleryToSaveSync.current = true;
-                dispatch({ type: actions.SET_CURRENT_FOLDER, payload: 'unfiled' });
-            } else {
-                // Otherwise show the selected folder's images
-                skipGalleryToSaveSync.current = true;
-                dispatch({ type: actions.SET_CURRENT_FOLDER, payload: selectedFolder });
-            }
-        }
-    }, [selectedFolder, settingsLoaded, dispatch, actions]);
-
-    // Handlers
-    const handleResetDefaults = () => {
-        dispatch({ type: actions.RESET_TO_DEFAULTS });
-        dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message: 'Settings reset to defaults' } });
-    };
-
-    const handleOpenFolderModal = (folder) => {
-        dispatch({ type: actions.SET_EDITING_FOLDER, payload: folder });
-        dispatch({ type: actions.SET_NEW_FOLDER_NAME, payload: folder?.name || '' });
-        dispatch({ type: actions.SET_PARENT_FOLDER_ID, payload: folder?.parent_id || null });
-        dispatch({ type: actions.SET_SHOW_FOLDER_MODAL, payload: true });
-    };
-
-    const handleSaveFolder = async (folderId, name, parentFolderId) => {
-        if (!name.trim()) return;
-
-        if (folderId) {
-            await updateFolder(folderId, name, parentFolderId);
-        } else {
-            await createFolder(name, parentFolderId);
-        }
-
-        dispatch({ type: actions.SET_SHOW_FOLDER_MODAL, payload: false });
-        dispatch({ type: actions.SET_EDITING_FOLDER, payload: null });
-        dispatch({ type: actions.SET_NEW_FOLDER_NAME, payload: '' });
-        dispatch({ type: actions.SET_PARENT_FOLDER_ID, payload: null });
-
-        // Real-time sync will handle folder updates automatically
-    };
-
-    // Memoize to avoid re-rendering GalleryWithLightboxContainer on app status/progress updates
-    const handleRestoreSettings = useCallback((image, withSeed) => {
-        dispatch({type: actions.SET_POSITIVE_PROMPT, payload: image.positive_prompt || ''});
-        dispatch({type: actions.SET_NEGATIVE_PROMPT, payload: image.negative_prompt || ''});
-        if (!state.locks.model) {
-            dispatch({type: actions.SET_SELECTED_MODEL, payload: image.model || ''});
-        }
-        dispatch({ type: actions.SET_ORIENTATION, payload: image.orientation || 'portrait' });
-        dispatch({ type: actions.SET_BATCH_SIZE, payload: image.batch_size || 1 });
-        dispatch({ type: actions.SET_SEED, payload: withSeed ? (image.seed || -1) : -1 });
-
-        // Restore lora settings if present
-        if (image.loras) {
-            const loras = typeof image.loras === 'string' ? JSON.parse(image.loras) : image.loras;
-
-            // Reset all lora settings first
-            if (config?.loras) {
-                // Reset sliders
-                config.loras.filter(l => l.type === 'slider').forEach(lora => {
-                    const savedSlider = loras.sliders?.[lora.name];
-                    if (savedSlider) {
-                        dispatch({
-                            type: actions.SET_LORA_SLIDER,
-                            payload: { name: lora.name, value: savedSlider.value }
-                        });
-                        // Set enabled state
-                        const currentEnabled = state.loraSliders[lora.name]?.enabled || false;
-                        if (savedSlider.enabled !== currentEnabled) {
-                            dispatch({
-                                type: actions.TOGGLE_LORA_SLIDER,
-                                payload: { name: lora.name, defaultValue: savedSlider.value }
-                            });
-                        }
-                    } else {
-                        // Reset to default if not in saved data
-                        dispatch({
-                            type: actions.SET_LORA_SLIDER,
-                            payload: { name: lora.name, value: lora.defaultValue }
-                        });
-                        // Disable if currently enabled
-                        if (state.loraSliders[lora.name]?.enabled) {
-                            dispatch({
-                                type: actions.TOGGLE_LORA_SLIDER,
-                                payload: { name: lora.name, defaultValue: lora.defaultValue }
-                            });
-                        }
-                    }
-                });
-
-                // Reset toggles
-                config.loras.filter(l => l.type === 'toggle').forEach(lora => {
-                    const savedEnabled = loras.toggles?.[lora.name] || false;
-                    dispatch({
-                        type: actions.SET_LORA_TOGGLE,
-                        payload: { name: lora.name, enabled: savedEnabled }
-                    });
-                });
-            }
-
-            // Restore style
-            dispatch({ type: actions.SET_LORA_STYLE, payload: loras.style || '' });
-        } else {
-            // Reset all loras if no lora data in image
-            if (config?.loras) {
-                config.loras.filter(l => l.type === 'slider').forEach(lora => {
-                    dispatch({
-                        type: actions.SET_LORA_SLIDER,
-                        payload: { name: lora.name, value: lora.defaultValue }
-                    });
-                    if (state.loraSliders[lora.name]?.enabled) {
-                        dispatch({
-                            type: actions.TOGGLE_LORA_SLIDER,
-                            payload: { name: lora.name, defaultValue: lora.defaultValue }
-                        });
-                    }
-                });
-                config.loras.filter(l => l.type === 'toggle').forEach(lora => {
-                    dispatch({
-                        type: actions.SET_LORA_TOGGLE,
-                        payload: { name: lora.name, enabled: false }
-                    });
-                });
-                dispatch({ type: actions.SET_LORA_STYLE, payload: '' });
-            }
-        }
-
-        const message = withSeed ? 'Settings restored from image (with seed)' : 'Settings restored from image (random seed)';
-        dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message } });
-    }, [dispatch, actions, config, state.loraSliders, state.locks]);
-
-    // Stable callbacks to avoid re-rendering GalleryWithLightboxContainer on unrelated state changes
-    const handleCurrentFolderChange = useCallback((folderId) => {
-        dispatch({ type: actions.SET_CURRENT_FOLDER, payload: folderId });
-    }, [dispatch, actions]);
-
-    const handleSelectedCharacterChange = useCallback((character) => {
-        dispatch({ type: actions.SET_SELECTED_CHARACTER, payload: character });
-    }, [dispatch, actions]);
-
-    const handleNotify = useCallback((message, type = 'info') => {
-        sendNotification(message, type, dispatch, actions, state.notificationsEnabled);
-    }, [dispatch, actions, state.notificationsEnabled]);
-
-    const handleStatus = useCallback(({ type = 'info', message }) => {
-        dispatch({ type: actions.SET_STATUS, payload: { type, message } });
-    }, [dispatch, actions]);
-
-    const handleInitMask = useCallback((mask) => {
-        dispatch({ type: actions.SET_MASK_IMAGE, payload: mask });
-    }, [dispatch, actions]);
-
-    const handleInitImage = useCallback((dataUrl, opts = {}) => {
-        dispatch({ type: actions.SET_INIT_IMAGE, payload: dataUrl });
-        if (opts && opts.openInpaint) {
-            dispatch({ type: actions.SET_SHOW_INPAINT_MODAL, payload: true });
-        }
-    }, [dispatch, actions]);
-
-    const handleSetModel = useCallback((model) => {
-        dispatch({ type: actions.SET_SELECTED_MODEL, payload: model });
-    }, [dispatch, actions]);
-
-    const handleReloadFolders = useCallback(() => loadFolders(), [loadFolders]);
-
-    const handleTotalImagesChange = useCallback((n) => setPageTotalImages(Number(n || 0)), []);
-
-    if (isLoadingConfig) {
-        return (
-            <>
-                <Navbar onSettingsClick={() => {}} />
-                <div className="main-container">
-                    <div className="empty-state">
-                        <div className="spinner" style={{ margin: '0 auto' }}></div>
-                        <p style={{ marginTop: '1rem' }}>Loading configuration...</p>
-                    </div>
-                </div>
-            </>
-        );
-    }
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     return (
         <>
-            {/* PWA Manager */}
-            <PWAManager />
-
             {/* Navigation */}
-            <Navbar
-                onSettingsClick={() => dispatch({ type: actions.SET_SHOW_APP_SETTINGS, payload: true })}
-            />
-
-            {/* Main Container */}
-            <div className="main-container">
-                <div className="app-container">
-                    {/* Desktop Controls */}
-                    <ControlsPanel
-                        onGenerate={generate}
-                        onResetDefaults={handleResetDefaults}
-                        onOpenFolderModal={handleOpenFolderModal}
-                    />
-
-                    {/* Results Panel */}
-                    <div className="results-panel">
-                        <CharacterFolderSelector />
-
-                        <div className="results-header">
-                            <h2>
-                                {!selectedCharacter && !currentFolder ? 'All Images' :
-                                 currentFolder === 'unfiled' ? 'Unfiled Images' :
-                                 currentFolder ? folders.find(f => f.id === currentFolder)?.name || 'Images' :
-                                 selectedCharacter ? selectedCharacter.name : 'Images'}
-                            </h2>
-                            <span className="results-count">{pageTotalImages} image(s)</span>
-                        </div>
-
-                        <GalleryWithLightboxContainer
-                            onRestoreSettings={handleRestoreSettings}
-                            currentFolder={currentFolder}
-                            selectedCharacter={selectedCharacter}
-                            settingsLoaded={settingsLoaded}
-                            hideNsfw={state.hideNsfw}
-                            folders={folders}
-                            characters={state.characters}
-                            showImageInfoPreference={state.showImageInfo}
-                            onCurrentFolderChange={handleCurrentFolderChange}
-                            onSelectedCharacterChange={handleSelectedCharacterChange}
-                            onNotify={handleNotify}
-                            onStatus={handleStatus}
-                            onInitMask={handleInitMask}
-                            onInitImage={handleInitImage}
-                            onSetModel={handleSetModel}
-                            onReloadFolders={handleReloadFolders}
-                            onTotalImagesChange={handleTotalImagesChange}
-                        />
+            <nav className="nav" id="nav">
+                <div className="nav-content">
+                    <Link href="/" className="nav-brand">Chubflix</Link>
+                    <div className="nav-links">
+                        <a href="#series" className="nav-link">Series</a>
+                        <a href="#tools" className="nav-link">Tools</a>
+                        <a href="#genres" className="nav-link">Genres</a>
+                        <a href="#about" className="nav-link">About</a>
+                        <Link href="/browse" className="nav-cta">Browse All</Link>
                     </div>
                 </div>
-            </div>
+            </nav>
 
-            {/* Mobile Controls */}
-            <MobileControls
-                onGenerate={generate}
-                onResetDefaults={handleResetDefaults}
-            />
+            {/* Hero Section */}
+            <section className="hero">
+                <div className="hero-bg"></div>
+                <div className="hero-content">
+                    <div className="hero-badge">
+                        <i className="fa fa-circle"></i>
+                        Interactive Streaming
+                    </div>
+                    <h1>Stories where you&apos;re the co-protagonist</h1>
+                    <p className="hero-tagline">
+                        Binge-worthy character arcs. Episodic narratives. Emotional depth that&apos;s earned, not given.
+                        Each series unfolds across multiple episodes—and your choices shape how scenes play out.
+                    </p>
+                    <div className="hero-actions">
+                        <Link href="/character-creator" className="btn-primary">
+                            <i className="fa fa-play"></i>
+                            Start Watching
+                        </Link>
+                        <a href="#about" className="btn-secondary">
+                            <i className="fa fa-info-circle"></i>
+                            How It Works
+                        </a>
+                    </div>
+                </div>
+            </section>
 
-            {/* Mobile Prompt Slideout */}
-            <MobilePromptSlideout
-                show={state.showMobilePrompt}
-                onClose={() => dispatch({ type: actions.SET_SHOW_MOBILE_PROMPT, payload: false })}
-                onGenerate={generate}
-            />
+            {/* Featured Series */}
+            <section className="featured" id="series">
+                <div className="section-header">
+                    <h2 className="section-title">Popular Series</h2>
+                    <Link href="/browse" className="section-link">
+                        View All <i className="fa fa-chevron-right"></i>
+                    </Link>
+                </div>
+                <div className="shows-row">
+                    <Link href="/characters/erin-takahashi" className="show-card">
+                        <div className="show-poster">
+                            <img src="https://avatars.charhub.io/avatars/ricktap/erin-takahashi-the-project-manager-02db87f913ca/chara_card_v2.png" alt="Erin Takahashi" />
+                            <div className="show-overlay">
+                                <div className="show-overlay-title">The Guarded Professional</div>
+                                <div className="show-overlay-desc">High-achiever hiding deep insecurities. Success masking imposter syndrome. Slow trust-building.</div>
+                            </div>
+                        </div>
+                        <div className="show-info">
+                            <div className="show-title">Erin Takahashi</div>
+                            <div className="show-meta">11 Episodes • Drama</div>
+                        </div>
+                    </Link>
+                    <Link href="/characters/sofia-mendes" className="show-card">
+                        <div className="show-poster">
+                            <img src="https://avatars.charhub.io/avatars/ricktap/sofia-mendes-the-adventurous-stewardess-520cc6602e8c/chara_card_v2.png" alt="Sofia Mendes" />
+                            <div className="show-overlay">
+                                <div className="show-overlay-title">The Polyamorous Explorer</div>
+                                <div className="show-overlay-desc">Balancing passion with patience. Compersion shown, tested, and earned across complex dynamics.</div>
+                            </div>
+                        </div>
+                        <div className="show-info">
+                            <div className="show-title">Sofia Mendes</div>
+                            <div className="show-meta">16 Episodes • Drama</div>
+                        </div>
+                    </Link>
+                    <div className="show-card">
+                        <div className="show-poster">
+                            <div className="show-poster-placeholder"><i className="fa fa-user"></i></div>
+                            <div className="show-overlay">
+                                <div className="show-overlay-title">The Wholesome Underdog</div>
+                                <div className="show-overlay-desc">Communication barriers meeting wistful optimism. Misunderstandings that aren&apos;t anyone&apos;s fault.</div>
+                            </div>
+                        </div>
+                        <div className="show-info">
+                            <div className="show-title">Emma Sinclair</div>
+                            <div className="show-meta">Coming Soon</div>
+                        </div>
+                    </div>
+                    <Link href="/character-creator" className="show-card">
+                        <div className="show-poster">
+                            <div className="show-poster-placeholder"><i className="fa fa-plus"></i></div>
+                            <div className="show-overlay">
+                                <div className="show-overlay-title">More Series</div>
+                                <div className="show-overlay-desc">New series added regularly. Different emotional landscapes to explore.</div>
+                            </div>
+                        </div>
+                        <div className="show-info">
+                            <div className="show-title">Browse All</div>
+                            <div className="show-meta">22+ Characters</div>
+                        </div>
+                    </Link>
+                </div>
+            </section>
 
-            {/* Modals */}
-            <CharacterModal />
+            {/* Tools Section */}
+            <section className="tools-section" id="tools">
+                <div className="tools-header">
+                    <h2>Creator Tools</h2>
+                    <p>Build and design your own interactive characters with our suite of creative tools.</p>
+                </div>
+                <div className="tools-grid">
+                    <Link href="/character-creator" className="tool-card">
+                        <div className="tool-icon">
+                            <i className="fa fa-users"></i>
+                        </div>
+                        <h3>Character Creator</h3>
+                        <p className="tool-desc">
+                            Create detailed character profiles with personality traits, backstories, and conversation styles.
+                            Design episodic narratives with multi-phase story arcs.
+                        </p>
+                        <div className="tool-cta">
+                            Open Creator <i className="fa fa-arrow-right"></i>
+                        </div>
+                    </Link>
+                    <Link href="/avatar-builder" className="tool-card">
+                        <div className="tool-icon">
+                            <i className="fa fa-image"></i>
+                        </div>
+                        <h3>Avatar Builder</h3>
+                        <p className="tool-desc">
+                            Generate character images using Stable Diffusion. Organize your creations in folders,
+                            apply LoRAs, and build a visual library for your characters.
+                        </p>
+                        <div className="tool-cta">
+                            Open Builder <i className="fa fa-arrow-right"></i>
+                        </div>
+                    </Link>
+                </div>
+            </section>
 
-            <FolderModal
-                onSave={handleSaveFolder}
-                onDelete={deleteFolder}
-            />
+            {/* How It Works */}
+            <section className="how-it-works" id="about">
+                <div className="how-header">
+                    <h2>TV Series, Interactive</h2>
+                    <p>Each character is a show. Each greeting is an episode. Your choices shape the story.</p>
+                </div>
+                <div className="structure-row">
+                    <div className="structure-item">
+                        <div className="structure-icon"><i className="fa fa-film"></i></div>
+                        <h3>Episodes</h3>
+                        <div className="subtitle">Greetings</div>
+                        <p>Self-contained scenes with descriptive titles. Works standalone, but sequential viewing reveals callbacks and growth.</p>
+                    </div>
+                    <div className="structure-item">
+                        <div className="structure-icon"><i className="fa fa-th-list"></i></div>
+                        <h3>Seasons</h3>
+                        <div className="subtitle">Phases</div>
+                        <p>2-3 act structure: setup, complications, resolution. Each phase explores different facets of the character&apos;s journey.</p>
+                    </div>
+                    <div className="structure-item">
+                        <div className="structure-icon"><i className="fa fa-television"></i></div>
+                        <h3>Series</h3>
+                        <div className="subtitle">Characters</div>
+                        <p>Complete arcs with beginning, middle, end. Different genres, themes, and relationship dynamics to explore.</p>
+                    </div>
+                </div>
+            </section>
 
-            <PromptModal
-                onGenerate={generate}
-            />
+            {/* Genres */}
+            <section className="genres" id="genres">
+                <div className="section-header">
+                    <h2 className="section-title">Browse by Genre</h2>
+                </div>
+                <div className="genres-grid">
+                    <div className="genre-card">
+                        <div className="genre-title">
+                            <i className="fa fa-briefcase"></i>
+                            Workplace Drama
+                        </div>
+                        <div className="genre-desc">
+                            Office politics, imposter syndrome, professional facades hiding personal struggles. Slow-burn trust building.
+                        </div>
+                        <div className="genre-tags">
+                            <span className="genre-tag">Career</span>
+                            <span className="genre-tag">Vulnerability</span>
+                            <span className="genre-tag">Achievement</span>
+                        </div>
+                    </div>
+                    <div className="genre-card">
+                        <div className="genre-title">
+                            <i className="fa fa-heart"></i>
+                            Relationship Complexity
+                        </div>
+                        <div className="genre-desc">
+                            Polyamory, compersion, boundary negotiation. Exploring non-traditional dynamics with emotional authenticity.
+                        </div>
+                        <div className="genre-tags">
+                            <span className="genre-tag">Polyamory</span>
+                            <span className="genre-tag">Communication</span>
+                            <span className="genre-tag">Growth</span>
+                        </div>
+                    </div>
+                    <div className="genre-card">
+                        <div className="genre-title">
+                            <i className="fa fa-comments"></i>
+                            Communication Barriers
+                        </div>
+                        <div className="genre-desc">
+                            Misunderstandings that aren&apos;t anyone&apos;s fault. Patience as the path forward. Optimism meeting reality.
+                        </div>
+                        <div className="genre-tags">
+                            <span className="genre-tag">Patience</span>
+                            <span className="genre-tag">Understanding</span>
+                            <span className="genre-tag">Connection</span>
+                        </div>
+                    </div>
+                    <div className="genre-card">
+                        <div className="genre-title">
+                            <i className="fa fa-globe"></i>
+                            Cultural Identity
+                        </div>
+                        <div className="genre-desc">
+                            Displacement, belonging, identity negotiation between worlds. Finding home in unexpected places.
+                        </div>
+                        <div className="genre-tags">
+                            <span className="genre-tag">Identity</span>
+                            <span className="genre-tag">Belonging</span>
+                            <span className="genre-tag">Culture</span>
+                        </div>
+                    </div>
+                    <div className="genre-card">
+                        <div className="genre-title">
+                            <i className="fa fa-user-secret"></i>
+                            Internal Conflict
+                        </div>
+                        <div className="genre-desc">
+                            What you show the world vs. who you really are. Defense mechanisms, contradictions, and gradual vulnerability.
+                        </div>
+                        <div className="genre-tags">
+                            <span className="genre-tag">Psychology</span>
+                            <span className="genre-tag">Authenticity</span>
+                            <span className="genre-tag">Trust</span>
+                        </div>
+                    </div>
+                    <div className="genre-card">
+                        <div className="genre-title">
+                            <i className="fa fa-coffee"></i>
+                            Slice of Life
+                        </div>
+                        <div className="genre-desc">
+                            Mundane settings made meaningful. Cafés, apartments, everyday moments. Drama from internal conflicts, not action.
+                        </div>
+                        <div className="genre-tags">
+                            <span className="genre-tag">Everyday</span>
+                            <span className="genre-tag">Authentic</span>
+                            <span className="genre-tag">Grounded</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-            <QueueManagerModal
-                show={state.showQueueManager}
-                onClose={() => dispatch({ type: actions.SET_SHOW_QUEUE_MANAGER, payload: false })}
-            />
+            {/* What Makes It Different */}
+            <section className="difference">
+                <div className="difference-content">
+                    <div className="difference-text">
+                        <h2>Not your typical AI chat</h2>
+                        <p>
+                            These aren&apos;t fantasy-fulfillment characters that tell you what you want to hear.
+                            They&apos;re emotionally authentic people with real flaws, contradictions, and growth arcs
+                            that unfold gradually—the way actual change happens.
+                        </p>
+                        <ul className="difference-list">
+                            <li>
+                                <i className="fa fa-check"></i>
+                                <div>
+                                    <strong>Earned Growth</strong>
+                                    <span>Vulnerabilities don&apos;t disappear. Progress comes through experience, not magic fixes.</span>
+                                </div>
+                            </li>
+                            <li>
+                                <i className="fa fa-check"></i>
+                                <div>
+                                    <strong>User Agency</strong>
+                                    <span>Your choices shape scenes. The narrative never assumes your thoughts or feelings.</span>
+                                </div>
+                            </li>
+                            <li>
+                                <i className="fa fa-check"></i>
+                                <div>
+                                    <strong>Arc Continuity</strong>
+                                    <span>Earlier episodes inform later ones. Relationships evolve. Callbacks enhance immersion.</span>
+                                </div>
+                            </li>
+                            <li>
+                                <i className="fa fa-check"></i>
+                                <div>
+                                    <strong>Emotional Realism</strong>
+                                    <span>Show, don&apos;t tell. Physical manifestations of emotion. Concrete details over adjectives.</span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                    <div className="difference-visual">
+                        <div className="arc-visual">
+                            <div className="arc-phase">
+                                <div className="arc-dot">1</div>
+                                <div className="arc-content">
+                                    <h4>Setup & Discovery</h4>
+                                    <p>Meet the character. Understand their world. Initial connection building. First hints of deeper layers.</p>
+                                </div>
+                            </div>
+                            <div className="arc-phase">
+                                <div className="arc-dot">2</div>
+                                <div className="arc-content">
+                                    <h4>Complications</h4>
+                                    <p>Relationships tested. Internal conflicts surface. Vulnerabilities revealed. Stakes become personal.</p>
+                                </div>
+                            </div>
+                            <div className="arc-phase">
+                                <div className="arc-dot">3</div>
+                                <div className="arc-content">
+                                    <h4>Resolution</h4>
+                                    <p>Working through conflicts together. Earned emotional payoffs. Commitment or meaningful closure.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-            <ConfigModal
-                show={state.showConfigModal}
-                onClose={() => dispatch({ type: actions.SET_SHOW_CONFIG_MODAL, payload: false })}
-            />
+            {/* CTA Section */}
+            <section className="cta-section">
+                <h2>Start your first series</h2>
+                <p>
+                    Browse the catalog. Pick a show. Begin from Episode 1 or dive into any scene that catches your eye.
+                </p>
+                <Link href="/browse" className="btn-primary">
+                    <i className="fa fa-th-large"></i>
+                    Browse All Series
+                </Link>
+            </section>
 
-            {/* App Settings */}
-            <AppSettings />
+            {/* Footer */}
+            <footer className="footer">
+                <div className="footer-content">
+                    <div className="footer-about">
+                        <div className="footer-brand">Chubflix</div>
+                        <p className="footer-description">
+                            Interactive character-driven narratives with emotional depth.
+                            Mini TV series where you become the co-protagonist.
+                        </p>
+                    </div>
+                    <div className="footer-links-section">
+                        <h4>Browse</h4>
+                        <ul className="footer-links-list">
+                            <li><Link href="/browse">All Series</Link></li>
+                            <li><a href="#genres">Genres</a></li>
+                            <li><a href="#about">How It Works</a></li>
+                        </ul>
+                    </div>
+                    <div className="footer-links-section">
+                        <h4>Tools</h4>
+                        <ul className="footer-links-list">
+                            <li><Link href="/character-creator">Character Creator</Link></li>
+                            <li><Link href="/avatar-builder">Avatar Builder</Link></li>
+                        </ul>
+                    </div>
+                    <div className="footer-links-section">
+                        <h4>Connect</h4>
+                        <ul className="footer-links-list">
+                            <li><a href="https://chub.ai/users/ricktap" target="_blank" rel="noopener noreferrer">Chub.AI</a></li>
+                            <li><a href="https://x.com/ricktap" target="_blank" rel="noopener noreferrer">Twitter/X</a></li>
+                            <li><a href="https://github.com/ricktap" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div className="footer-bottom">
+                    <p>&copy; 2025 Chubflix by ricktap. All characters are works of fiction.</p>
+                </div>
+            </footer>
         </>
-    );
-}
-
-export default function Page() {
-    return (
-        <AppProvider>
-            <QueueProvider>
-                <AppContent />
-            </QueueProvider>
-        </AppProvider>
     );
 }

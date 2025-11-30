@@ -1,0 +1,470 @@
+'use client';
+
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { AppProvider, useApp } from '../context/AppContext';
+import { QueueProvider } from '../context/QueueContext';
+import { useFolders, useGeneration, useModels } from '../hooks';
+import { useFolderSync, useCharacterSync } from "@/app/hooks/realtime-sync";
+import { useQueue } from '../hooks/queue';
+import { useGalleryKeyboardShortcuts } from '../hooks/keyboard';
+import debug from '../utils/debug';
+import { sendNotification } from '../utils/notifications';
+
+// Components
+import Navbar from '../components/Navbar';
+import ControlsPanel from '../components/ControlsPanel';
+import GalleryWithLightboxContainer from '../components/GalleryWithLightboxContainer';
+import FolderModal from '../components/FolderModal';
+import MobileControls from '../components/MobileControls';
+import MobilePromptSlideout from '../components/MobilePromptSlideout';
+import PWAManager from '../components/PWAManager';
+import AppSettings from '../components/AppSettings';
+import PromptModal from '../components/PromptModal';
+import CharacterModal from '../components/CharacterModal';
+import CharacterFolderSelector from '../components/CharacterFolderSelector';
+import QueueManagerModal from '../components/QueueManagerModal';
+import ConfigModal from '../components/ConfigModal';
+
+// Import CSS
+import '../folder-picker.css';
+import '../folder-styles.css';
+
+function AppContent() {
+    const { state, dispatch, actions, loadSettings } = useApp();
+    const { loadFolders, createFolder, updateFolder, deleteFolder } = useFolders();
+    const { generate } = useGeneration();
+    const { loadModels } = useModels();
+
+    useFolderSync();          // For folder CRUD
+    useCharacterSync();       // For character CRUD
+    useGalleryKeyboardShortcuts();
+    const { triggerQueuePolling } = useQueue();
+
+    const isInitialized = useRef(false);
+    const currentFolderRef = useRef(null);
+    const skipGalleryToSaveSync = useRef(false);
+    const skipSaveToGallerySync = useRef(false);
+
+    const { config, settingsLoaded, currentFolder, selectedFolder, folders, selectedCharacter } = state;
+    const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+    const [pageTotalImages, setPageTotalImages] = useState(0); // local header count
+
+    // recover queue if needed
+    useEffect(() => {
+        triggerQueuePolling();
+    }, []);
+
+    // Keep ref in sync with current folder
+    useEffect(() => {
+        currentFolderRef.current = currentFolder;
+    }, [currentFolder]);
+
+    // Load config on mount (only once)
+    useEffect(() => {
+        if (isInitialized.current) {
+            debug.log('App', 'Already initialized, skipping');
+            return;
+        }
+
+        let mounted = true;
+
+        async function initialize() {
+            try {
+                debug.log('App', 'Starting initialization...');
+                debug.log('App', 'Fetching /api/config...');
+                const response = await fetch('/api/config');
+                debug.log('App', 'Config response received', { status: response.status });
+
+                const data = await response.json();
+                debug.log('App', 'Config data parsed', data);
+
+                if (!mounted) {
+                    debug.warn('App', 'Component unmounted before config could be set, aborting');
+                    return;
+                }
+
+                // Mark as initialized AFTER we know component is still mounted
+                isInitialized.current = true;
+
+                debug.log('App', 'Setting config in state...');
+                dispatch({ type: actions.SET_CONFIG, payload: data });
+
+                debug.log('App', 'Loading settings...');
+                const loaded = loadSettings(data);
+                debug.log('App', 'Settings loaded from localStorage', { loaded });
+
+                if (!loaded) {
+                    debug.log('App', 'Using default settings from config');
+                    dispatch({ type: actions.SET_POSITIVE_PROMPT, payload: data.defaults.positivePrompt });
+                    dispatch({ type: actions.SET_NEGATIVE_PROMPT, payload: data.defaults.negativePrompt });
+                    dispatch({ type: actions.SET_ORIENTATION, payload: data.defaults.orientation });
+                    dispatch({ type: actions.SET_BATCH_SIZE, payload: data.defaults.batchSize });
+                }
+
+                debug.log('App', 'Setting settings loaded flag...');
+                dispatch({ type: actions.SET_SETTINGS_LOADED, payload: true });
+
+                // Load models, folders, and images (continue even if some fail)
+                debug.log('App', 'Loading SD models');
+                try {
+                    await loadModels();
+                    debug.log('App', 'Models loaded successfully');
+                } catch (err) {
+                    debug.error('App', 'Failed to load models', err);
+                    dispatch({
+                        type: actions.SET_STATUS,
+                        payload: { type: 'error', message: 'Failed to load SD models: ' + err.message }
+                    });
+                }
+
+                debug.log('App', 'Loading folders...');
+                try {
+                    await loadFolders();
+                    debug.log('App', 'Folders loaded successfully');
+                } catch (err) {
+                    debug.error('App', 'Failed to load folders', err);
+                }
+
+                setIsLoadingConfig(false);
+                debug.log('App', 'Initialization complete!');
+            } catch (err) {
+                if (!mounted) {
+                    debug.warn('App', 'Component unmounted during error, aborting');
+                    return;
+                }
+                debug.error('App', 'Failed during initialization', err);
+                dispatch({
+                    type: actions.SET_STATUS,
+                    payload: { type: 'error', message: 'Failed to load config: ' + err.message }
+                });
+                setIsLoadingConfig(false);
+            }
+        }
+
+        initialize();
+
+        return () => {
+            debug.log('App', 'Component cleanup - setting mounted=false');
+            mounted = false;
+        };
+    }, [dispatch, actions, loadSettings, loadModels, loadFolders]);
+
+    // Sync gallery filter → save folder (when user changes gallery filter)
+    useEffect(() => {
+        if (settingsLoaded && isInitialized.current) {
+            // Skip if this change was triggered by save folder sync
+            if (skipGalleryToSaveSync.current) {
+                skipGalleryToSaveSync.current = false;
+                return;
+            }
+
+            // If viewing all images or unfiled, set save folder to unfiled ('')
+            if (currentFolder === null || currentFolder === 'unfiled') {
+                skipSaveToGallerySync.current = true;
+                dispatch({ type: actions.SET_SELECTED_FOLDER, payload: '' });
+            } else {
+                // Otherwise set save folder to current gallery folder
+                skipSaveToGallerySync.current = true;
+                dispatch({ type: actions.SET_SELECTED_FOLDER, payload: currentFolder });
+            }
+        }
+    }, [currentFolder, settingsLoaded, dispatch, actions]);
+
+    // Sync save folder → gallery filter (when user changes save folder)
+    useEffect(() => {
+        if (settingsLoaded && isInitialized.current) {
+            // Skip if this change was triggered by gallery filter sync
+            if (skipSaveToGallerySync.current) {
+                skipSaveToGallerySync.current = false;
+                return;
+            }
+
+            // If save folder is unfiled (''), show unfiled images
+            if (selectedFolder === '' || selectedFolder === null) {
+                skipGalleryToSaveSync.current = true;
+                dispatch({ type: actions.SET_CURRENT_FOLDER, payload: 'unfiled' });
+            } else {
+                // Otherwise show the selected folder's images
+                skipGalleryToSaveSync.current = true;
+                dispatch({ type: actions.SET_CURRENT_FOLDER, payload: selectedFolder });
+            }
+        }
+    }, [selectedFolder, settingsLoaded, dispatch, actions]);
+
+    // Handlers
+    const handleResetDefaults = () => {
+        dispatch({ type: actions.RESET_TO_DEFAULTS });
+        dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message: 'Settings reset to defaults' } });
+    };
+
+    const handleOpenFolderModal = (folder) => {
+        dispatch({ type: actions.SET_EDITING_FOLDER, payload: folder });
+        dispatch({ type: actions.SET_NEW_FOLDER_NAME, payload: folder?.name || '' });
+        dispatch({ type: actions.SET_PARENT_FOLDER_ID, payload: folder?.parent_id || null });
+        dispatch({ type: actions.SET_SHOW_FOLDER_MODAL, payload: true });
+    };
+
+    const handleSaveFolder = async (folderId, name, parentFolderId) => {
+        if (!name.trim()) return;
+
+        if (folderId) {
+            await updateFolder(folderId, name, parentFolderId);
+        } else {
+            await createFolder(name, parentFolderId);
+        }
+
+        dispatch({ type: actions.SET_SHOW_FOLDER_MODAL, payload: false });
+        dispatch({ type: actions.SET_EDITING_FOLDER, payload: null });
+        dispatch({ type: actions.SET_NEW_FOLDER_NAME, payload: '' });
+        dispatch({ type: actions.SET_PARENT_FOLDER_ID, payload: null });
+
+        // Real-time sync will handle folder updates automatically
+    };
+
+    // Memoize to avoid re-rendering GalleryWithLightboxContainer on app status/progress updates
+    const handleRestoreSettings = useCallback((image, withSeed) => {
+        dispatch({type: actions.SET_POSITIVE_PROMPT, payload: image.positive_prompt || ''});
+        dispatch({type: actions.SET_NEGATIVE_PROMPT, payload: image.negative_prompt || ''});
+        if (!state.locks.model) {
+            dispatch({type: actions.SET_SELECTED_MODEL, payload: image.model || ''});
+        }
+        dispatch({ type: actions.SET_ORIENTATION, payload: image.orientation || 'portrait' });
+        dispatch({ type: actions.SET_BATCH_SIZE, payload: image.batch_size || 1 });
+        dispatch({ type: actions.SET_SEED, payload: withSeed ? (image.seed || -1) : -1 });
+
+        // Restore lora settings if present
+        if (image.loras) {
+            const loras = typeof image.loras === 'string' ? JSON.parse(image.loras) : image.loras;
+
+            // Reset all lora settings first
+            if (config?.loras) {
+                // Reset sliders
+                config.loras.filter(l => l.type === 'slider').forEach(lora => {
+                    const savedSlider = loras.sliders?.[lora.name];
+                    if (savedSlider) {
+                        dispatch({
+                            type: actions.SET_LORA_SLIDER,
+                            payload: { name: lora.name, value: savedSlider.value }
+                        });
+                        // Set enabled state
+                        const currentEnabled = state.loraSliders[lora.name]?.enabled || false;
+                        if (savedSlider.enabled !== currentEnabled) {
+                            dispatch({
+                                type: actions.TOGGLE_LORA_SLIDER,
+                                payload: { name: lora.name, defaultValue: savedSlider.value }
+                            });
+                        }
+                    } else {
+                        // Reset to default if not in saved data
+                        dispatch({
+                            type: actions.SET_LORA_SLIDER,
+                            payload: { name: lora.name, value: lora.defaultValue }
+                        });
+                        // Disable if currently enabled
+                        if (state.loraSliders[lora.name]?.enabled) {
+                            dispatch({
+                                type: actions.TOGGLE_LORA_SLIDER,
+                                payload: { name: lora.name, defaultValue: lora.defaultValue }
+                            });
+                        }
+                    }
+                });
+
+                // Reset toggles
+                config.loras.filter(l => l.type === 'toggle').forEach(lora => {
+                    const savedEnabled = loras.toggles?.[lora.name] || false;
+                    dispatch({
+                        type: actions.SET_LORA_TOGGLE,
+                        payload: { name: lora.name, enabled: savedEnabled }
+                    });
+                });
+            }
+
+            // Restore style
+            dispatch({ type: actions.SET_LORA_STYLE, payload: loras.style || '' });
+        } else {
+            // Reset all loras if no lora data in image
+            if (config?.loras) {
+                config.loras.filter(l => l.type === 'slider').forEach(lora => {
+                    dispatch({
+                        type: actions.SET_LORA_SLIDER,
+                        payload: { name: lora.name, value: lora.defaultValue }
+                    });
+                    if (state.loraSliders[lora.name]?.enabled) {
+                        dispatch({
+                            type: actions.TOGGLE_LORA_SLIDER,
+                            payload: { name: lora.name, defaultValue: lora.defaultValue }
+                        });
+                    }
+                });
+                config.loras.filter(l => l.type === 'toggle').forEach(lora => {
+                    dispatch({
+                        type: actions.SET_LORA_TOGGLE,
+                        payload: { name: lora.name, enabled: false }
+                    });
+                });
+                dispatch({ type: actions.SET_LORA_STYLE, payload: '' });
+            }
+        }
+
+        const message = withSeed ? 'Settings restored from image (with seed)' : 'Settings restored from image (random seed)';
+        dispatch({ type: actions.SET_STATUS, payload: { type: 'success', message } });
+    }, [dispatch, actions, config, state.loraSliders, state.locks]);
+
+    // Stable callbacks to avoid re-rendering GalleryWithLightboxContainer on unrelated state changes
+    const handleCurrentFolderChange = useCallback((folderId) => {
+        dispatch({ type: actions.SET_CURRENT_FOLDER, payload: folderId });
+    }, [dispatch, actions]);
+
+    const handleSelectedCharacterChange = useCallback((character) => {
+        dispatch({ type: actions.SET_SELECTED_CHARACTER, payload: character });
+    }, [dispatch, actions]);
+
+    const handleNotify = useCallback((message, type = 'info') => {
+        sendNotification(message, type, dispatch, actions, state.notificationsEnabled);
+    }, [dispatch, actions, state.notificationsEnabled]);
+
+    const handleStatus = useCallback(({ type = 'info', message }) => {
+        dispatch({ type: actions.SET_STATUS, payload: { type, message } });
+    }, [dispatch, actions]);
+
+    const handleInitMask = useCallback((mask) => {
+        dispatch({ type: actions.SET_MASK_IMAGE, payload: mask });
+    }, [dispatch, actions]);
+
+    const handleInitImage = useCallback((dataUrl, opts = {}) => {
+        dispatch({ type: actions.SET_INIT_IMAGE, payload: dataUrl });
+        if (opts && opts.openInpaint) {
+            dispatch({ type: actions.SET_SHOW_INPAINT_MODAL, payload: true });
+        }
+    }, [dispatch, actions]);
+
+    const handleSetModel = useCallback((model) => {
+        dispatch({ type: actions.SET_SELECTED_MODEL, payload: model });
+    }, [dispatch, actions]);
+
+    const handleReloadFolders = useCallback(() => loadFolders(), [loadFolders]);
+
+    const handleTotalImagesChange = useCallback((n) => setPageTotalImages(Number(n || 0)), []);
+
+    if (isLoadingConfig) {
+        return (
+            <>
+                <Navbar onSettingsClick={() => {}} />
+                <div className="main-container">
+                    <div className="empty-state">
+                        <div className="spinner" style={{ margin: '0 auto' }}></div>
+                        <p style={{ marginTop: '1rem' }}>Loading configuration...</p>
+                    </div>
+                </div>
+            </>
+        );
+    }
+
+    return (
+        <>
+            {/* PWA Manager */}
+            <PWAManager />
+
+            {/* Navigation */}
+            <Navbar
+                onSettingsClick={() => dispatch({ type: actions.SET_SHOW_APP_SETTINGS, payload: true })}
+            />
+
+            {/* Main Container */}
+            <div className="main-container">
+                <div className="app-container">
+                    {/* Desktop Controls */}
+                    <ControlsPanel
+                        onGenerate={generate}
+                        onResetDefaults={handleResetDefaults}
+                        onOpenFolderModal={handleOpenFolderModal}
+                    />
+
+                    {/* Results Panel */}
+                    <div className="results-panel">
+                        <CharacterFolderSelector />
+
+                        <div className="results-header">
+                            <h2>
+                                {!selectedCharacter && !currentFolder ? 'All Images' :
+                                 currentFolder === 'unfiled' ? 'Unfiled Images' :
+                                 currentFolder ? folders.find(f => f.id === currentFolder)?.name || 'Images' :
+                                 selectedCharacter ? selectedCharacter.name : 'Images'}
+                            </h2>
+                            <span className="results-count">{pageTotalImages} image(s)</span>
+                        </div>
+
+                        <GalleryWithLightboxContainer
+                            onRestoreSettings={handleRestoreSettings}
+                            currentFolder={currentFolder}
+                            selectedCharacter={selectedCharacter}
+                            settingsLoaded={settingsLoaded}
+                            hideNsfw={state.hideNsfw}
+                            folders={folders}
+                            characters={state.characters}
+                            showImageInfoPreference={state.showImageInfo}
+                            onCurrentFolderChange={handleCurrentFolderChange}
+                            onSelectedCharacterChange={handleSelectedCharacterChange}
+                            onNotify={handleNotify}
+                            onStatus={handleStatus}
+                            onInitMask={handleInitMask}
+                            onInitImage={handleInitImage}
+                            onSetModel={handleSetModel}
+                            onReloadFolders={handleReloadFolders}
+                            onTotalImagesChange={handleTotalImagesChange}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Mobile Controls */}
+            <MobileControls
+                onGenerate={generate}
+                onResetDefaults={handleResetDefaults}
+            />
+
+            {/* Mobile Prompt Slideout */}
+            <MobilePromptSlideout
+                show={state.showMobilePrompt}
+                onClose={() => dispatch({ type: actions.SET_SHOW_MOBILE_PROMPT, payload: false })}
+                onGenerate={generate}
+            />
+
+            {/* Modals */}
+            <CharacterModal />
+
+            <FolderModal
+                onSave={handleSaveFolder}
+                onDelete={deleteFolder}
+            />
+
+            <PromptModal
+                onGenerate={generate}
+            />
+
+            <QueueManagerModal
+                show={state.showQueueManager}
+                onClose={() => dispatch({ type: actions.SET_SHOW_QUEUE_MANAGER, payload: false })}
+            />
+
+            <ConfigModal
+                show={state.showConfigModal}
+                onClose={() => dispatch({ type: actions.SET_SHOW_CONFIG_MODAL, payload: false })}
+            />
+
+            {/* App Settings */}
+            <AppSettings />
+        </>
+    );
+}
+
+export default function Page() {
+    return (
+        <AppProvider>
+            <QueueProvider>
+                <AppContent />
+            </QueueProvider>
+        </AppProvider>
+    );
+}

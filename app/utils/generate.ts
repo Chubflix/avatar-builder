@@ -133,7 +133,7 @@ export async function generateImage(params: GenerateImageParams): Promise<{ jobI
             (onJobQueued) ? onJobQueued(jobId) : await notifyQueue('job_queued', { jobId });
             return {jobId, success: true};
         }
-        return {success: true};
+        return {success: false};
     } catch (err: any) {
         onError?.('Generation failed: ' + err.message);
         onNotification?.('Generation failed: ' + err.message, 'error');

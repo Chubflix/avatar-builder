@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chubflix – Stream Interactive Stories</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css"
+          integrity="sha256-XoaMnoYC5TH6/+ihMEnospgm0J1PM/nioxbOUdnM8HY=" crossorigin="anonymous">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #141414;
+            --bg-card: #1a1a1a;
+            --bg-hover: #252525;
+            --text-primary: #ffffff;
+            --text-secondary: #a3a3a3;
+            --text-muted: #737373;
+            --accent: #e50914;
+            --accent-hover: #f40612;
+            --border: #2a2a2a;
+            --gradient-fade: linear-gradient(to top, var(--bg-primary) 0%, transparent 100%);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 1.25rem 3rem;
+            z-index: 1000;
+            transition: background 0.3s ease;
+        }
+
+        .nav.scrolled {
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-brand {
+            font-size: 1.75rem;
+            font-weight: 900;
+            color: var(--accent);
+            text-decoration: none;
+            letter-spacing: -0.02em;
+            text-transform: uppercase;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2.5rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-cta {
+            background: var(--accent);
+            color: var(--text-primary);
+            padding: 0.6rem 1.25rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: background 0.2s ease;
+        }
+
+        .nav-cta:hover {
+            background: var(--accent-hover);
+        }
+
+        @media (max-width: 768px) {
+            .nav {
+                padding: 1rem 1.5rem;
+            }
+            .nav-links {
+                gap: 1.5rem;
+            }
+            .nav-link {
+                display: none;
+            }
+        }
+
+        /* Hero Section */
+        .hero {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 0 3rem;
+            overflow: hidden;
+        }
+
+        .hero-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                linear-gradient(to right, var(--bg-primary) 0%, transparent 50%),
+                linear-gradient(to top, var(--bg-primary) 0%, transparent 40%),
+                linear-gradient(135deg, #1a0a0a 0%, #0a0a1a 50%, #0a1a0a 100%);
+            z-index: -1;
+        }
+
+        .hero-content {
+            max-width: 650px;
+            padding: 4rem 0;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(229, 9, 20, 0.15);
+            border: 1px solid rgba(229, 9, 20, 0.3);
+            color: var(--accent);
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            border-radius: 4px;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-badge i {
+            font-size: 0.65rem;
+        }
+
+        .hero h1 {
+            font-size: clamp(3rem, 8vw, 5rem);
+            font-weight: 900;
+            letter-spacing: -0.03em;
+            line-height: 1.05;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-tagline {
+            font-size: 1.25rem;
+            font-weight: 400;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 2.5rem;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: var(--accent);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: scale(1.02);
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .hero {
+                padding: 0 1.5rem;
+            }
+            .hero-content {
+                padding: 8rem 0 4rem;
+            }
+        }
+
+        /* Featured Section */
+        .featured {
+            padding: 4rem 3rem;
+            background: var(--bg-secondary);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .section-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color 0.2s ease;
+        }
+
+        .section-link:hover {
+            color: var(--text-primary);
+        }
+
+        /* Show Cards Row */
+        .shows-row {
+            display: flex;
+            gap: 1rem;
+            overflow-x: auto;
+            padding-bottom: 1rem;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .shows-row::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .shows-row::-webkit-scrollbar-track {
+            background: var(--bg-card);
+        }
+
+        .shows-row::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 2px;
+        }
+
+        .show-card {
+            flex: 0 0 280px;
+            scroll-snap-align: start;
+            background: var(--bg-card);
+            border-radius: 6px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .show-card:hover {
+            transform: scale(1.05);
+            z-index: 10;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .show-poster {
+            aspect-ratio: 2/3;
+            background: var(--bg-hover);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .show-poster img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .show-poster-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: var(--text-muted);
+        }
+
+        .show-info {
+            padding: 1rem;
+        }
+
+        .show-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .show-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .show-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 1.5rem 1rem 1rem;
+            background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .show-card:hover .show-overlay {
+            opacity: 1;
+        }
+
+        .show-overlay-title {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .show-overlay-desc {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        @media (max-width: 768px) {
+            .featured {
+                padding: 3rem 1.5rem;
+            }
+            .show-card {
+                flex: 0 0 160px;
+            }
+        }
+
+        /* How It Works */
+        .how-it-works {
+            padding: 6rem 3rem;
+        }
+
+        .how-header {
+            text-align: center;
+            max-width: 700px;
+            margin: 0 auto 4rem;
+        }
+
+        .how-header h2 {
+            font-size: clamp(2rem, 5vw, 3rem);
+            font-weight: 800;
+            margin-bottom: 1rem;
+        }
+
+        .how-header p {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+        }
+
+        .structure-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 900px) {
+            .structure-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .structure-item {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .structure-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--bg-card);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2rem;
+            color: var(--accent);
+        }
+
+        .structure-item h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .structure-item .subtitle {
+            font-size: 0.8rem;
+            color: var(--accent);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+
+        .structure-item p {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        @media (max-width: 768px) {
+            .how-it-works {
+                padding: 4rem 1.5rem;
+            }
+        }
+
+        /* Genres Section */
+        .genres {
+            padding: 4rem 3rem 6rem;
+            background: var(--bg-secondary);
+        }
+
+        .genres-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .genre-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .genre-card:hover {
+            background: var(--bg-hover);
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .genre-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .genre-title i {
+            color: var(--accent);
+            font-size: 0.9rem;
+        }
+
+        .genre-desc {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin-bottom: 1rem;
+        }
+
+        .genre-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .genre-tag {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.5rem;
+            background: var(--bg-primary);
+            color: var(--text-muted);
+            border-radius: 3px;
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+            .genres {
+                padding: 3rem 1.5rem 4rem;
+            }
+        }
+
+        /* What Makes It Different */
+        .difference {
+            padding: 6rem 3rem;
+        }
+
+        .difference-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        @media (max-width: 900px) {
+            .difference-content {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+            }
+        }
+
+        .difference-text h2 {
+            font-size: clamp(2rem, 5vw, 2.5rem);
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+        }
+
+        .difference-text p {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 1rem;
+        }
+
+        .difference-list {
+            list-style: none;
+            margin-top: 2rem;
+        }
+
+        .difference-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .difference-list li:last-child {
+            border-bottom: none;
+        }
+
+        .difference-list i {
+            color: var(--accent);
+            font-size: 1.25rem;
+            margin-top: 0.1rem;
+        }
+
+        .difference-list strong {
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .difference-list span {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .difference-visual {
+            background: var(--bg-card);
+            border-radius: 8px;
+            padding: 2rem;
+            border: 1px solid var(--border);
+        }
+
+        .arc-visual {
+            position: relative;
+        }
+
+        .arc-phase {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1.25rem 0;
+            position: relative;
+        }
+
+        .arc-phase:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: 11px;
+            top: 3rem;
+            bottom: 0;
+            width: 2px;
+            background: var(--border);
+        }
+
+        .arc-dot {
+            width: 24px;
+            height: 24px;
+            background: var(--accent);
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .arc-content h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .arc-content p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        @media (max-width: 768px) {
+            .difference {
+                padding: 4rem 1.5rem;
+            }
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 8rem 3rem;
+            text-align: center;
+            background: 
+                linear-gradient(to bottom, var(--bg-primary) 0%, transparent 20%, transparent 80%, var(--bg-primary) 100%),
+                radial-gradient(ellipse at center, rgba(229, 9, 20, 0.15) 0%, transparent 70%);
+        }
+
+        .cta-section h2 {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 900;
+            margin-bottom: 1.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        .cta-section p {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto 3rem;
+        }
+
+        @media (max-width: 768px) {
+            .cta-section {
+                padding: 6rem 1.5rem;
+            }
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            padding: 4rem 3rem 2rem;
+        }
+
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 3rem;
+        }
+
+        .footer-brand {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: -0.02em;
+            margin-bottom: 1rem;
+        }
+
+        .footer-description {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            max-width: 400px;
+            line-height: 1.6;
+        }
+
+        .footer-links-section h4 {
+            font-size: 0.875rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .footer-links-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .footer-links-list a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: color 0.2s ease;
+        }
+
+        .footer-links-list a:hover {
+            color: var(--text-primary);
+        }
+
+        .footer-bottom {
+            max-width: 1400px;
+            margin: 3rem auto 0;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 768px) {
+            .footer {
+                padding: 3rem 1.5rem 2rem;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.8s ease forwards;
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav" id="nav">
+        <div class="nav-content">
+            <a href="#" class="nav-brand">Chubflix</a>
+            <div class="nav-links">
+                <a href="#series" class="nav-link">Series</a>
+                <a href="#genres" class="nav-link">Genres</a>
+                <a href="#about" class="nav-link">About</a>
+                <a href="chubflix-browse.html" class="nav-cta">Browse All</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-bg"></div>
+        <div class="hero-content">
+            <div class="hero-badge">
+                <i class="fa fa-circle"></i>
+                Interactive Streaming
+            </div>
+            <h1>Stories where you're the co-protagonist</h1>
+            <p class="hero-tagline">
+                Binge-worthy character arcs. Episodic narratives. Emotional depth that's earned, not given. 
+                Each series unfolds across multiple episodes—and your choices shape how scenes play out.
+            </p>
+            <div class="hero-actions">
+                <a href="{{character_list_url}}" class="btn-primary">
+                    <i class="fa fa-play"></i>
+                    Start Watching
+                </a>
+                <a href="#about" class="btn-secondary">
+                    <i class="fa fa-info-circle"></i>
+                    How It Works
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Series -->
+    <section class="featured" id="series">
+        <div class="section-header">
+            <h2 class="section-title">Popular Series</h2>
+            <a href="chubflix-browse.html" class="section-link">
+                View All <i class="fa fa-chevron-right"></i>
+            </a>
+        </div>
+        <div class="shows-row">
+            <!-- These would be dynamically populated -->
+            <a href="chubflix-series-erin-takahashi.html" class="show-card">
+                <div class="show-poster">
+                    <img src="https://avatars.charhub.io/avatars/ricktap/erin-takahashi-the-project-manager-02db87f913ca/chara_card_v2.png" alt="Erin Takahashi">
+                    <div class="show-overlay">
+                        <div class="show-overlay-title">The Guarded Professional</div>
+                        <div class="show-overlay-desc">High-achiever hiding deep insecurities. Success masking imposter syndrome. Slow trust-building.</div>
+                    </div>
+                </div>
+                <div class="show-info">
+                    <div class="show-title">Erin Takahashi</div>
+                    <div class="show-meta">11 Episodes • Drama</div>
+                </div>
+            </a>
+            <a href="chubflix-series-sofia-mendes.html" class="show-card">
+                <div class="show-poster">
+                    <img src="https://avatars.charhub.io/avatars/ricktap/sofia-mendes-the-adventurous-stewardess-520cc6602e8c/chara_card_v2.png" alt="Sofia Mendes">
+                    <div class="show-overlay">
+                        <div class="show-overlay-title">The Polyamorous Explorer</div>
+                        <div class="show-overlay-desc">Balancing passion with patience. Compersion shown, tested, and earned across complex dynamics.</div>
+                    </div>
+                </div>
+                <div class="show-info">
+                    <div class="show-title">Sofia Mendes</div>
+                    <div class="show-meta">16 Episodes • Drama</div>
+                </div>
+            </a>
+            <div class="show-card">
+                <div class="show-poster">
+                    <div class="show-poster-placeholder"><i class="fa fa-user"></i></div>
+                    <div class="show-overlay">
+                        <div class="show-overlay-title">The Wholesome Underdog</div>
+                        <div class="show-overlay-desc">Communication barriers meeting wistful optimism. Misunderstandings that aren't anyone's fault.</div>
+                    </div>
+                </div>
+                <div class="show-info">
+                    <div class="show-title">Emma Sinclair</div>
+                    <div class="show-meta">Coming Soon</div>
+                </div>
+            </div>
+            <div class="show-card">
+                <div class="show-poster">
+                    <div class="show-poster-placeholder"><i class="fa fa-plus"></i></div>
+                    <div class="show-overlay">
+                        <div class="show-overlay-title">More Series</div>
+                        <div class="show-overlay-desc">New series added regularly. Different emotional landscapes to explore.</div>
+                    </div>
+                </div>
+                <div class="show-info">
+                    <div class="show-title">Browse All</div>
+                    <div class="show-meta">22+ Characters</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works" id="about">
+        <div class="how-header">
+            <h2>TV Series, Interactive</h2>
+            <p>Each character is a show. Each greeting is an episode. Your choices shape the story.</p>
+        </div>
+        <div class="structure-row">
+            <div class="structure-item">
+                <div class="structure-icon"><i class="fa fa-film"></i></div>
+                <h3>Episodes</h3>
+                <div class="subtitle">Greetings</div>
+                <p>Self-contained scenes with descriptive titles. Works standalone, but sequential viewing reveals callbacks and growth.</p>
+            </div>
+            <div class="structure-item">
+                <div class="structure-icon"><i class="fa fa-th-list"></i></div>
+                <h3>Seasons</h3>
+                <div class="subtitle">Phases</div>
+                <p>2-3 act structure: setup, complications, resolution. Each phase explores different facets of the character's journey.</p>
+            </div>
+            <div class="structure-item">
+                <div class="structure-icon"><i class="fa fa-television"></i></div>
+                <h3>Series</h3>
+                <div class="subtitle">Characters</div>
+                <p>Complete arcs with beginning, middle, end. Different genres, themes, and relationship dynamics to explore.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Genres -->
+    <section class="genres" id="genres">
+        <div class="section-header">
+            <h2 class="section-title">Browse by Genre</h2>
+        </div>
+        <div class="genres-grid">
+            <div class="genre-card">
+                <div class="genre-title">
+                    <i class="fa fa-briefcase"></i>
+                    Workplace Drama
+                </div>
+                <div class="genre-desc">
+                    Office politics, imposter syndrome, professional facades hiding personal struggles. Slow-burn trust building.
+                </div>
+                <div class="genre-tags">
+                    <span class="genre-tag">Career</span>
+                    <span class="genre-tag">Vulnerability</span>
+                    <span class="genre-tag">Achievement</span>
+                </div>
+            </div>
+            <div class="genre-card">
+                <div class="genre-title">
+                    <i class="fa fa-heart"></i>
+                    Relationship Complexity
+                </div>
+                <div class="genre-desc">
+                    Polyamory, compersion, boundary negotiation. Exploring non-traditional dynamics with emotional authenticity.
+                </div>
+                <div class="genre-tags">
+                    <span class="genre-tag">Polyamory</span>
+                    <span class="genre-tag">Communication</span>
+                    <span class="genre-tag">Growth</span>
+                </div>
+            </div>
+            <div class="genre-card">
+                <div class="genre-title">
+                    <i class="fa fa-comments"></i>
+                    Communication Barriers
+                </div>
+                <div class="genre-desc">
+                    Misunderstandings that aren't anyone's fault. Patience as the path forward. Optimism meeting reality.
+                </div>
+                <div class="genre-tags">
+                    <span class="genre-tag">Patience</span>
+                    <span class="genre-tag">Understanding</span>
+                    <span class="genre-tag">Connection</span>
+                </div>
+            </div>
+            <div class="genre-card">
+                <div class="genre-title">
+                    <i class="fa fa-globe"></i>
+                    Cultural Identity
+                </div>
+                <div class="genre-desc">
+                    Displacement, belonging, identity negotiation between worlds. Finding home in unexpected places.
+                </div>
+                <div class="genre-tags">
+                    <span class="genre-tag">Identity</span>
+                    <span class="genre-tag">Belonging</span>
+                    <span class="genre-tag">Culture</span>
+                </div>
+            </div>
+            <div class="genre-card">
+                <div class="genre-title">
+                    <i class="fa fa-user-secret"></i>
+                    Internal Conflict
+                </div>
+                <div class="genre-desc">
+                    What you show the world vs. who you really are. Defense mechanisms, contradictions, and gradual vulnerability.
+                </div>
+                <div class="genre-tags">
+                    <span class="genre-tag">Psychology</span>
+                    <span class="genre-tag">Authenticity</span>
+                    <span class="genre-tag">Trust</span>
+                </div>
+            </div>
+            <div class="genre-card">
+                <div class="genre-title">
+                    <i class="fa fa-coffee"></i>
+                    Slice of Life
+                </div>
+                <div class="genre-desc">
+                    Mundane settings made meaningful. Cafés, apartments, everyday moments. Drama from internal conflicts, not action.
+                </div>
+                <div class="genre-tags">
+                    <span class="genre-tag">Everyday</span>
+                    <span class="genre-tag">Authentic</span>
+                    <span class="genre-tag">Grounded</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- What Makes It Different -->
+    <section class="difference">
+        <div class="difference-content">
+            <div class="difference-text">
+                <h2>Not your typical AI chat</h2>
+                <p>
+                    These aren't fantasy-fulfillment characters that tell you what you want to hear. 
+                    They're emotionally authentic people with real flaws, contradictions, and growth arcs 
+                    that unfold gradually—the way actual change happens.
+                </p>
+                <ul class="difference-list">
+                    <li>
+                        <i class="fa fa-check"></i>
+                        <div>
+                            <strong>Earned Growth</strong>
+                            <span>Vulnerabilities don't disappear. Progress comes through experience, not magic fixes.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <i class="fa fa-check"></i>
+                        <div>
+                            <strong>User Agency</strong>
+                            <span>Your choices shape scenes. The narrative never assumes your thoughts or feelings.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <i class="fa fa-check"></i>
+                        <div>
+                            <strong>Arc Continuity</strong>
+                            <span>Earlier episodes inform later ones. Relationships evolve. Callbacks enhance immersion.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <i class="fa fa-check"></i>
+                        <div>
+                            <strong>Emotional Realism</strong>
+                            <span>Show, don't tell. Physical manifestations of emotion. Concrete details over adjectives.</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <div class="difference-visual">
+                <div class="arc-visual">
+                    <div class="arc-phase">
+                        <div class="arc-dot">1</div>
+                        <div class="arc-content">
+                            <h4>Setup & Discovery</h4>
+                            <p>Meet the character. Understand their world. Initial connection building. First hints of deeper layers.</p>
+                        </div>
+                    </div>
+                    <div class="arc-phase">
+                        <div class="arc-dot">2</div>
+                        <div class="arc-content">
+                            <h4>Complications</h4>
+                            <p>Relationships tested. Internal conflicts surface. Vulnerabilities revealed. Stakes become personal.</p>
+                        </div>
+                    </div>
+                    <div class="arc-phase">
+                        <div class="arc-dot">3</div>
+                        <div class="arc-content">
+                            <h4>Resolution</h4>
+                            <p>Working through conflicts together. Earned emotional payoffs. Commitment or meaningful closure.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <h2>Start your first series</h2>
+        <p>
+            Browse the catalog. Pick a show. Begin from Episode 1 or dive into any scene that catches your eye.
+        </p>
+        <a href="chubflix-browse.html" class="btn-primary">
+            <i class="fa fa-th-large"></i>
+            Browse All Series
+        </a>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-about">
+                <div class="footer-brand">Chubflix</div>
+                <p class="footer-description">
+                    Interactive character-driven narratives with emotional depth. 
+                    Mini TV series where you become the co-protagonist.
+                </p>
+            </div>
+            <div class="footer-links-section">
+                <h4>Browse</h4>
+                <ul class="footer-links-list">
+                    <li><a href="{{character_list_url}}">All Series</a></li>
+                    <li><a href="#genres">Genres</a></li>
+                    <li><a href="#about">How It Works</a></li>
+                </ul>
+            </div>
+            <div class="footer-links-section">
+                <h4>Connect</h4>
+                <ul class="footer-links-list">
+                    <li><a href="https://chub.ai/users/ricktap" target="_blank">Chub.AI</a></li>
+                    <li><a href="https://x.com/ricktap" target="_blank">Twitter/X</a></li>
+                    <li><a href="https://github.com/ricktap" target="_blank">GitHub</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 Chubflix by ricktap. All characters are works of fiction.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Nav background on scroll
+        const nav = document.getElementById('nav');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                nav.classList.add('scrolled');
+            } else {
+                nav.classList.remove('scrolled');
+            }
+        });
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

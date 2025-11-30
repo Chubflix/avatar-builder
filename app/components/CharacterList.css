@@ -235,6 +235,13 @@
     justify-content: center;
     color: white;
     font-size: 1rem;
+    overflow: hidden;
+}
+
+.character-list-item-icon img {
+    width: 36px;
+    height: 36px;
+    object-fit: cover;
 }
 
 .character-list-item.active .character-list-item-icon {

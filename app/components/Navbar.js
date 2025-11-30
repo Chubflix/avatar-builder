@@ -12,7 +12,7 @@ export default function Navbar({ onSettingsClick }) {
                 <a href="../" className="nav-brand">Chubflix</a>
 
                 <div className="nav-right">
-                    {pathname === '/' ? (
+                    {pathname === '/avatar-builder' ? (
                         <Link
                             href="/character-creator"
                             className={'nav-link'}
@@ -21,7 +21,7 @@ export default function Navbar({ onSettingsClick }) {
                         </Link>
                     ) : (
                         <Link
-                            href="/"
+                            href="/avatar-builder"
                             className={'nav-link'}
                         >
                             Character Creator

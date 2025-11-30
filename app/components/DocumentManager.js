@@ -23,12 +23,24 @@ export default function DocumentManager({ characterId, characterName }) {
     const [uploadMode, setUploadMode] = useState('text'); // 'text' or 'file'
     const [expandedGroups, setExpandedGroups] = useState(new Set());
 
+    // Global documents state
+    const [globalDocuments, setGlobalDocuments] = useState([]);
+    const [isGlobalLoading, setIsGlobalLoading] = useState(false);
+    const [globalError, setGlobalError] = useState(null);
+    const [isGlobalExpanded, setIsGlobalExpanded] = useState(false);
+    const [expandedGlobalGroups, setExpandedGlobalGroups] = useState(new Set());
+
+    // Which accordion the form belongs to when creating/editing
+    const [activeScope, setActiveScope] = useState('character'); // 'character' | 'global'
+
     // Load documents when character changes
     useEffect(() => {
         if (characterId) {
             loadDocuments();
+            loadGlobalDocuments();
         } else {
             setDocuments([]);
+            setGlobalDocuments([]);
         }
     }, [characterId]);
 
@@ -47,6 +59,24 @@ export default function DocumentManager({ characterId, characterName }) {
             setError(err.message);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const loadGlobalDocuments = async () => {
+        try {
+            setIsGlobalLoading(true);
+            setGlobalError(null);
+            const response = await fetch(`/api/documents?is_global=true`);
+            if (!response.ok) {
+                throw new Error('Failed to load global documents');
+            }
+            const data = await response.json();
+            setGlobalDocuments(data);
+        } catch (err) {
+            console.error('Error loading global documents:', err);
+            setGlobalError(err.message);
+        } finally {
+            setIsGlobalLoading(false);
         }
     };
 
@@ -147,13 +177,14 @@ export default function DocumentManager({ characterId, characterName }) {
                 throw new Error(errorData.error || 'Failed to create document');
             }
 
-            await loadDocuments();
+            await Promise.all([loadDocuments(), loadGlobalDocuments()]);
             setIsCreating(false);
             setTitle('');
             setContent('');
             setSelectedFile(null);
             setIsGlobal(false);
             setUploadMode('text');
+            setActiveScope('character');
         } catch (err) {
             console.error('Error creating document:', err);
             setError(err.message);
@@ -182,10 +213,11 @@ export default function DocumentManager({ characterId, characterName }) {
                 throw new Error(errorData.error || 'Failed to update document');
             }
 
-            await loadDocuments();
+            await Promise.all([loadDocuments(), loadGlobalDocuments()]);
             setIsEditing(null);
             setTitle('');
             setContent('');
+            setActiveScope('character');
         } catch (err) {
             console.error('Error updating document:', err);
             setError(err.message);
@@ -207,7 +239,7 @@ export default function DocumentManager({ characterId, characterName }) {
                 throw new Error('Failed to delete document');
             }
 
-            await loadDocuments();
+            await Promise.all([loadDocuments(), loadGlobalDocuments()]);
         } catch (err) {
             console.error('Error deleting document:', err);
             setError(err.message);
@@ -219,6 +251,10 @@ export default function DocumentManager({ characterId, characterName }) {
         setTitle(doc.title);
         setContent(doc.content);
         setIsCreating(false);
+        // Set scope based on document type
+        const scope = doc.is_global ? 'global' : 'character';
+        setActiveScope(scope);
+        setIsGlobal(doc.is_global || false);
     };
 
     const cancelEdit = () => {
@@ -230,6 +266,7 @@ export default function DocumentManager({ characterId, characterName }) {
         setIsGlobal(false);
         setUploadMode('text');
         setError(null);
+        setActiveScope('character');
     };
 
     const handleFileSelect = (e) => {
@@ -245,6 +282,18 @@ export default function DocumentManager({ characterId, characterName }) {
 
     const toggleGroup = (groupId) => {
         setExpandedGroups(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(groupId)) {
+                newSet.delete(groupId);
+            } else {
+                newSet.add(groupId);
+            }
+            return newSet;
+        });
+    };
+
+    const toggleGlobalGroup = (groupId) => {
+        setExpandedGlobalGroups(prev => {
             const newSet = new Set(prev);
             if (newSet.has(groupId)) {
                 newSet.delete(groupId);
@@ -309,14 +358,14 @@ export default function DocumentManager({ characterId, characterName }) {
                             {!isCreating && !isEditing && (
                                 <button
                                     className="document-add-btn"
-                                    onClick={() => setIsCreating(true)}
+                                    onClick={() => { setIsCreating(true); setActiveScope('character'); setIsGlobal(false); }}
                                 >
                                     <i className="fa fa-plus"></i>
                                     Add Document
                                 </button>
                             )}
 
-                            {(isCreating || isEditing) && (
+                            {(isCreating && activeScope==='character') || (isEditing && activeScope==='character') ? (
                                 <div className="document-form">
                                     {isCreating && !isEditing && (
                                         <div className="document-form-mode-toggle">
@@ -408,9 +457,9 @@ export default function DocumentManager({ characterId, characterName }) {
                                         </button>
                                     </div>
                                 </div>
-                            )}
+                            ) : null}
 
-                            {documents.length === 0 && !isCreating ? (
+                            {documents.length === 0 && !(isCreating && activeScope==='character') ? (
                                 <div className="document-empty-state">
                                     <p>No documents yet</p>
                                     <p className="document-empty-hint">
@@ -495,6 +544,256 @@ export default function DocumentManager({ characterId, characterName }) {
                                             );
                                         } else {
                                             // Regular document
+                                            return (
+                                                <div key={item.id} className="document-item">
+                                                    <div className="document-item-header">
+                                                        <div className="document-item-title">
+                                                            <i className={`fa ${item.filename ? 'fa-file' : 'fa-file-text-o'}`}></i>
+                                                            {item.title}
+                                                            {item.is_global && (
+                                                                <span className="document-badge global" title="Global document">
+                                                                    <i className="fa fa-globe"></i>
+                                                                </span>
+                                                            )}
+                                                            {item.filename && (
+                                                                <span className="document-badge file" title={`Uploaded file: ${item.filename}`}>
+                                                                    <i className="fa fa-upload"></i>
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="document-item-actions">
+                                                            <button
+                                                                className="document-action-btn"
+                                                                onClick={() => startEdit(item)}
+                                                                title="Edit document"
+                                                            >
+                                                                <i className="fa fa-edit"></i>
+                                                            </button>
+                                                            <button
+                                                                className="document-action-btn delete"
+                                                                onClick={() => handleDelete(item.id)}
+                                                                title="Delete document"
+                                                            >
+                                                                <i className="fa fa-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div className="document-item-content">
+                                                        {item.content.substring(0, 150)}
+                                                        {item.content.length > 150 && '...'}
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+                                    })}
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+            )}
+
+            {/* Global Documents Accordion */}
+            <div className="document-manager-header" onClick={() => setIsGlobalExpanded(!isGlobalExpanded)}>
+                <div className="document-manager-header-content">
+                    <i className={`fa fa-${isGlobalExpanded ? 'chevron-down' : 'chevron-right'}`}></i>
+                    <i className="fa fa-globe"></i>
+                    <span>Global Documents ({globalDocuments.length})</span>
+                </div>
+                {!isGlobalExpanded && globalDocuments.length === 0 && (
+                    <span className="document-manager-hint">Shared context available to all characters</span>
+                )}
+            </div>
+
+            {isGlobalExpanded && (
+                <div className="document-manager-content">
+                    {globalError && (
+                        <div className="document-manager-error">
+                            <i className="fa fa-exclamation-circle"></i>
+                            <span>{globalError}</span>
+                        </div>
+                    )}
+
+                    {isGlobalLoading ? (
+                        <div className="document-manager-loading">
+                            <div className="spinner"></div>
+                            <p>Loading documents...</p>
+                        </div>
+                    ) : (
+                        <>
+                            {!isCreating && !isEditing && (
+                                <button
+                                    className="document-add-btn"
+                                    onClick={() => { setIsCreating(true); setActiveScope('global'); setIsGlobal(true); }}
+                                >
+                                    <i className="fa fa-plus"></i>
+                                    Add Document
+                                </button>
+                            )}
+
+                            {(isCreating && activeScope==='global') || (isEditing && activeScope==='global') ? (
+                                <div className="document-form">
+                                    {isCreating && !isEditing && (
+                                        <div className="document-form-mode-toggle">
+                                            <button
+                                                className={`mode-toggle-btn ${uploadMode === 'text' ? 'active' : ''}`}
+                                                onClick={() => setUploadMode('text')}
+                                            >
+                                                <i className="fa fa-keyboard-o"></i>
+                                                Text
+                                            </button>
+                                            <button
+                                                className={`mode-toggle-btn ${uploadMode === 'file' ? 'active' : ''}`}
+                                                onClick={() => setUploadMode('file')}
+                                            >
+                                                <i className="fa fa-upload"></i>
+                                                Upload File
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {uploadMode === 'file' && isCreating && !isEditing && (
+                                        <div className="document-file-upload">
+                                            <input
+                                                type="file"
+                                                id="doc-file-input-global"
+                                                accept=".txt,.md,.markdown,.json"
+                                                onChange={handleFileSelect}
+                                                style={{ display: 'none' }}
+                                            />
+                                            <label htmlFor="doc-file-input-global" className="file-upload-label">
+                                                <i className="fa fa-cloud-upload"></i>
+                                                {selectedFile ? selectedFile.name : 'Choose file...'}
+                                            </label>
+                                            {selectedFile && (
+                                                <div className="file-upload-info">
+                                                    <i className="fa fa-file-o"></i>
+                                                    {(selectedFile.size / 1024).toFixed(2)} KB
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <input
+                                        type="text"
+                                        className="document-form-input"
+                                        placeholder={uploadMode === 'file' ? 'Document title (optional - uses filename)' : 'Document title'}
+                                        value={title}
+                                        onChange={(e) => setTitle(e.target.value)}
+                                    />
+
+                                    {uploadMode === 'text' && (
+                                        <textarea
+                                            className="document-form-textarea"
+                                            placeholder="Document content (markdown supported)"
+                                            value={content}
+                                            onChange={(e) => setContent(e.target.value)}
+                                            rows={10}
+                                        />
+                                    )}
+
+                                    {/* In global scope, force global and hide checkbox */}
+
+                                    <div className="document-form-actions">
+                                        <button
+                                            className="btn-save"
+                                            onClick={() => isEditing ? handleUpdate(isEditing) : handleCreate()}
+                                        >
+                                            {isEditing ? 'Update' : 'Create'}
+                                        </button>
+                                        <button
+                                            className="btn-cancel"
+                                            onClick={cancelEdit}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : null}
+
+                            {globalDocuments.length === 0 && !(isCreating && activeScope==='global') ? (
+                                <div className="document-empty-state">
+                                    <p>No documents yet</p>
+                                    <p className="document-empty-hint">
+                                        Add rulebooks, lore, or templates available to all characters.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="document-list">
+                                    {groupDocuments(globalDocuments).map((item) => {
+                                        if (item.isGroup) {
+                                            const isExpanded = expandedGlobalGroups.has(item.id);
+                                            const firstChunk = item.chunks[0];
+
+                                            return (
+                                                <div key={item.id} className="document-group">
+                                                    <div className="document-item">
+                                                        <div className="document-item-header">
+                                                            <div
+                                                                className="document-item-title"
+                                                                onClick={() => toggleGlobalGroup(item.id)}
+                                                                style={{ cursor: 'pointer' }}
+                                                            >
+                                                                <i className={`fa fa-${isExpanded ? 'chevron-down' : 'chevron-right'}`}></i>
+                                                                <i className={`fa ${item.filename ? 'fa-file' : 'fa-file-text-o'}`}></i>
+                                                                {item.title}
+                                                                <span className="document-badge chunked" title={`${item.totalChunks} chunks`}>
+                                                                    {item.totalChunks} parts
+                                                                </span>
+                                                                {item.is_global && (
+                                                                    <span className="document-badge global" title="Global document">
+                                                                        <i className="fa fa-globe"></i>
+                                                                    </span>
+                                                                )}
+                                                                {item.filename && (
+                                                                    <span className="document-badge file" title={`Uploaded file: ${item.filename}`}>
+                                                                        <i className="fa fa-upload"></i>
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="document-item-actions">
+                                                                <button
+                                                                    className="document-action-btn delete"
+                                                                    onClick={() => handleDeleteGroup(item.chunks)}
+                                                                    title="Delete all chunks"
+                                                                >
+                                                                    <i className="fa fa-trash"></i>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div className="document-item-content">
+                                                            {firstChunk.content.substring(0, 150)}
+                                                            {firstChunk.content.length > 150 && '...'}
+                                                        </div>
+                                                    </div>
+
+                                                    {isExpanded && (
+                                                        <div className="document-chunks">
+                                                            {item.chunks.map((chunk, idx) => (
+                                                                <div key={chunk.id} className="document-chunk-item">
+                                                                    <div className="document-chunk-header">
+                                                                        <span className="document-chunk-label">
+                                                                            Part {idx + 1}/{item.totalChunks}
+                                                                        </span>
+                                                                        <button
+                                                                            className="document-action-btn"
+                                                                            onClick={() => startEdit(chunk)}
+                                                                            title="Edit chunk"
+                                                                        >
+                                                                            <i className="fa fa-edit"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                    <div className="document-chunk-content">
+                                                                        {chunk.content.substring(0, 100)}
+                                                                        {chunk.content.length > 100 && '...'}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        } else {
                                             return (
                                                 <div key={item.id} className="document-item">
                                                     <div className="document-item-header">

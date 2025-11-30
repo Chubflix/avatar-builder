@@ -37,7 +37,6 @@ export async function generateAvatar(
     let dimensions: any = {
         portrait: {width: 832, height: 1216},
         landscape: {width: 1216, height: 832},
-        square: {width: 1024, height: 1024},
     };
     try {
         userSettings = await getUserSettings();

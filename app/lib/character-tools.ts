@@ -351,17 +351,13 @@ export function createCharacterTools() {
       {
         prompt,
         orientation,
-        confirmed,
       }: {
         prompt: string;
-        orientation?: 'portrait' | 'landscape' | 'square';
-        confirmed?: boolean;
+        orientation?: 'portrait' | 'landscape';
       },
       { context }: any
     ) => {
       const { supabase, characterId } = context;
-
-      console.log('Generating avatar with:', { prompt, orientation, confirmed });
 
       // Load user chat image settings
       let chatImgSettings: any = {};
@@ -384,8 +380,8 @@ export function createCharacterTools() {
       const negativePrefix = (chatImgSettings?.negative_prefix || '').trim();
       const model = (chatImgSettings?.model || '').trim();
 
-      const finalOrientation: 'portrait' | 'landscape' | 'square' =
-        orientation === 'landscape' || orientation === 'square' ? orientation : 'portrait';
+      const finalOrientation: 'portrait' | 'landscape' =
+        orientation === 'landscape' ? 'landscape' : 'portrait';
 
       const finalPositive = [positivePrefix, prompt]
         .filter(Boolean)
@@ -395,29 +391,6 @@ export function createCharacterTools() {
         .filter(Boolean)
         .join(', ')
         .trim();
-
-      if (!confirmed) {
-        // Preview mode - do not generate, just show what would be used
-        return JSON.stringify(
-          {
-            preview: true,
-            inputs: {
-              model: model || undefined,
-              orientation: finalOrientation,
-            },
-            composed_prompts: {
-              positive: finalPositive,
-              negative: finalNegative,
-            },
-            message:
-              "To generate, respond with 'confirm' or call generate_chat_image with confirmed=true",
-          },
-          null,
-          2
-        );
-      }
-
-      console.log('Generating avatar with:', { model, orientation, finalPositive });
 
       // Commit mode - call avatar generation API
       const jobId = await generateAvatar(characterId, finalPositive, {
@@ -431,14 +404,13 @@ export function createCharacterTools() {
     {
       name: 'generate_chat_image',
       description:
-        'Generate an image from the chat. First call WITHOUT confirmed to preview the composed prompts and settings, then WITH confirmed=true to generate. Supports orientation portrait or landscape.',
+        'Generate an image from the chat. Supports orientation portrait or landscape.',
       schema: z.object({
         prompt: z.string().min(1).describe('The prompt to generate the image from'),
         orientation: z
           .enum(['portrait', 'landscape'])
           .optional()
           .describe('Desired image orientation. Default is portrait.'),
-        confirmed: z.boolean().optional().default(false),
       }),
     }
   );

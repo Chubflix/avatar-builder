@@ -248,14 +248,18 @@ export default function CharacterList({ selectedCharacterId, onSelectCharacter, 
                         </p>
                     </div>
                 ) : (
-                    characters.map((character) => (
+                    characters.sort((a, b) => a.name.localeCompare(b.name)).map((character) => (
                         <div
                             key={character.id}
                             className={`character-list-item ${selectedCharacterId === character.id ? 'active' : ''}`}
                             onClick={() => onSelectCharacter(character.id)}
                         >
                             <div className="character-list-item-icon">
-                                <i className="fa fa-user"></i>
+                                {character.avatar_url ? (
+                                    <img src={character.avatar_url} alt={character.name} />
+                                ) : (
+                                    <i className="fa fa-user"></i>
+                                )}
                             </div>
                             <div className="character-list-item-content">
                                 <div className="character-list-item-name">
