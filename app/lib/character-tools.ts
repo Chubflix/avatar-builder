@@ -17,6 +17,7 @@ import {
     getPersonality,
     updateDescription,
     updateGreeting,
+    updateCharacter,
 } from '@/app/tools';
 
 /**
@@ -415,6 +416,48 @@ export function createCharacterTools() {
     }
   );
 
+  // Update character (name, avatar_url, metadata)
+  const updateCharacterTool = tool(
+    async (
+      {
+        name,
+        avatar_url,
+        metadata,
+      }: {
+        name?: string;
+        avatar_url?: string;
+        metadata?: Record<string, any>;
+      },
+      { context }: any
+    ) => {
+      const { characterId, supabase } = context;
+
+      const updates: any = {};
+      if (name !== undefined) updates.name = name;
+      if (avatar_url !== undefined) updates.avatar_url = avatar_url;
+      if (metadata !== undefined) updates.metadata = metadata;
+
+      if (Object.keys(updates).length === 0) {
+        return 'No updates provided. Please specify at least one field to update (name, avatar_url, or metadata).';
+      }
+
+      await updateCharacter(characterId, updates, supabase);
+
+      const updatedFields = Object.keys(updates).join(', ');
+      return `Successfully updated character: ${updatedFields}`;
+    },
+    {
+      name: 'update_character',
+      description:
+        'Update the character\'s basic information (name, avatar URL, or metadata). Use update_description for personality/appearance/background sections.',
+      schema: z.object({
+        name: z.string().optional().describe('New name for the character'),
+        avatar_url: z.string().optional().describe('New avatar image URL'),
+        metadata: z.record(z.any()).optional().describe('Additional metadata for the character'),
+      }),
+    }
+  );
+
   return [
     getGreetingsCountTool,
     getAllGreetingsTool,
@@ -428,5 +471,6 @@ export function createCharacterTools() {
     deleteGreetingTool,
     analyzeImageAppearanceTool,
     generateChatImageTool,
+    updateCharacterTool,
   ];
 }

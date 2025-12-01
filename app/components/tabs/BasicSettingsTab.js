@@ -128,7 +128,6 @@ function BasicSettingsTab() {
                 onClose={() => setShowFolderSelector(false)}
                 onSelect={async (folderId) => {
                     dispatch({ type: actions.SET_SELECTED_FOLDER, payload: folderId });
-                    // TODO: I need the character
                     let character = null;
                     const characterId = folders.find(f => f.id === folderId).character_id;
                     if (characterId) {

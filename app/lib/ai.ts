@@ -1,14 +1,16 @@
 /**
- * LangChain Service for Character Creator Chat
+ * LangGraph Service for Character Creator Chat
  * Integrates with Deepseek API for character sheet design assistance
  * Includes RAG (Retrieval-Augmented Generation) using Supabase vector database
+ * Uses LangGraph for agent orchestration with state management
  */
 
 import {ChatOpenAI} from '@langchain/openai';
-import {createAgent} from 'langchain';
+import {StateGraph, MessagesAnnotation, Annotation} from '@langchain/langgraph';
 import {type DocumentSearchResult, searchSimilarDocuments} from './embeddings';
 import type {SupabaseClient} from '@supabase/supabase-js';
-import {contextSchema, createCharacterTools} from '@/app/lib/character-tools';
+import {createCharacterTools} from '@/app/lib/character-tools';
+import {BaseMessage, AIMessage, HumanMessage, SystemMessage} from '@langchain/core/messages';
 
 export type ChatRole = 'user' | 'assistant' | 'system';
 
@@ -80,11 +82,11 @@ You have access to TOOLS that allow you to interact with the character's data:
 - get_personality: View the character's personality description
 - get_appearance: View the character's appearance description
 - get_all_descriptions: View all description sections
-- get_all_descriptions: View all description sections
 - analyze_image_appearance: Analyze an image URL and return only the visible physical appearance (no database writes)
 - add_greeting: Create a new greeting for the character
 - update_greeting: Modify an existing greeting
 - update_description: Update description sections (personality, appearance, etc.)
+- update_character: Update the character's basic info (name, avatar_url, metadata)
 - delete_greeting: Remove a greeting
 - generate_chat_image: Generate a character sheet image with a prompt. Always use donbooru tags with underscores like 'dark_hair, blue_shoes'
 
@@ -122,14 +124,38 @@ Always maintain a helpful, encouraging tone and adapt to the user's level of det
 {context}`;
 
 /**
- * Convert chat messages to LangChain message format for createAgent
+ * Convert chat messages to LangChain message format for LangGraph
  */
-function convertToLangChainMessages(messages: ChatMessage[]): Array<{ role: string; content: string }> {
-    return messages.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-    }));
+function convertToLangChainMessages(messages: ChatMessage[]): BaseMessage[] {
+    return messages.map((msg) => {
+        switch (msg.role) {
+            case 'user':
+                return new HumanMessage(msg.content);
+            case 'assistant':
+                return new AIMessage(msg.content);
+            case 'system':
+                return new SystemMessage(msg.content);
+            default:
+                return new HumanMessage(msg.content);
+        }
+    });
 }
+
+/**
+ * Custom state annotation for the character assistant graph
+ * Extends MessagesAnnotation with additional context fields
+ */
+const GraphStateAnnotation = Annotation.Root({
+    ...MessagesAnnotation.spec,
+    supabase: Annotation<SupabaseClient | null>({
+        reducer: (_, value) => value,
+        default: () => null,
+    }),
+    characterId: Annotation<string | null>({
+        reducer: (_, value) => value,
+        default: () => null,
+    }),
+});
 
 /**
  * Retrieve relevant context from character documents using RAG
@@ -182,25 +208,120 @@ async function retrieveContext(
 }
 
 /**
- * Create a chat agent with RAG and character tools
- * Uses modern createAgent() API with context injection
+ * Create a chat agent graph with RAG and character tools
+ * Uses LangGraph StateGraph for agent orchestration
  */
-export async function createChatAgent(contextStr: string) {
+export function createChatAgent(contextStr: string) {
     const model = createDeepseekLLM();
 
-    // Create character management tools (no params needed - context injected at runtime)
+    // Create character management tools
     const tools = createCharacterTools();
+
+    // Bind tools to the model
+    const modelWithTools = model.bindTools(tools);
 
     // Create system prompt with context
     const systemPromptWithContext = SYSTEM_PROMPT.replace('{context}', contextStr);
 
-    // Create the agent using modern createAgent API
-    return createAgent({
-        model,
-        tools,
-        systemPrompt: systemPromptWithContext,
-        contextSchema, // ✅ Inject schema for runtime context
-    });
+    /**
+     * Agent node: Calls the LLM with tools
+     */
+    const callModel = async (state: typeof GraphStateAnnotation.State) => {
+        const {messages} = state;
+
+        // Add system message if not present
+        let messagesToSend = [...messages];
+        const hasSystemMessage = messages.length > 0 && messages[0] instanceof SystemMessage;
+        if (!hasSystemMessage) {
+            messagesToSend = [new SystemMessage(systemPromptWithContext), ...messages];
+        }
+
+        // Invoke the model with the current messages
+        const response = await modelWithTools.invoke(messagesToSend);
+
+        // Return the response to be added to state
+        return {messages: [response]};
+    };
+
+    /**
+     * Should continue function: Determines whether to call tools or end
+     */
+    const shouldContinue = (state: typeof GraphStateAnnotation.State) => {
+        const {messages} = state;
+        const lastMessage = messages[messages.length - 1] as AIMessage;
+
+        // If there are tool calls, continue to tools node
+        if (lastMessage.tool_calls && lastMessage.tool_calls.length > 0) {
+            return 'tools';
+        }
+
+        // Otherwise, end the graph
+        return '__end__';
+    };
+
+    /**
+     * Custom tool node that passes supabase and characterId context to tools
+     */
+    const callTools = async (state: typeof GraphStateAnnotation.State) => {
+        const {messages, supabase, characterId} = state;
+        const lastMessage = messages[messages.length - 1] as AIMessage;
+
+        if (!lastMessage.tool_calls || lastMessage.tool_calls.length === 0) {
+            return {messages: []};
+        }
+
+        // Execute each tool call with context
+        const toolMessages = await Promise.all(
+            lastMessage.tool_calls.map(async (toolCall) => {
+                const tool = tools.find(t => t.name === toolCall.name);
+
+                if (!tool) {
+                    return {
+                        role: 'tool' as const,
+                        content: `Error: Tool ${toolCall.name} not found`,
+                        tool_call_id: toolCall.id,
+                    };
+                }
+
+                try {
+                    // Invoke the tool with args and context
+                    // Tools expect { context: { supabase, characterId } } in second param
+                    const result = await tool.invoke(
+                        toolCall.args || {},
+                        {
+                            context: {supabase, characterId},
+                        } as any
+                    );
+
+                    return {
+                        role: 'tool' as const,
+                        content: String(result),
+                        tool_call_id: toolCall.id,
+                    };
+                } catch (error: any) {
+                    console.error(`Error executing tool ${toolCall.name}:`, error);
+                    return {
+                        role: 'tool' as const,
+                        content: `Error: ${error.message}`,
+                        tool_call_id: toolCall.id,
+                    };
+                }
+            })
+        );
+
+        return {messages: toolMessages};
+    };
+
+    // Build the graph
+    const workflow = new StateGraph(GraphStateAnnotation)
+        .addNode('agent', callModel)
+        .addNode('tools', callTools)
+        .addEdge('__start__', 'agent')
+        .addConditionalEdges('agent', shouldContinue)
+        .addEdge('tools', 'agent');
+
+    // Compile and return the graph
+    return workflow.compile();
 }
 
 /**
@@ -231,11 +352,11 @@ export async function chat(
         // Retrieve relevant context using RAG (searches both character-specific AND global docs)
         const {context, sources} = await retrieveContext(supabase, characterId, userId, userMessage);
 
-        // Create agent with retrieved context and character tools
-        const agent = await createChatAgent(context);
+        // Create agent graph with retrieved context and character tools
+        const agent = createChatAgent(context);
 
         // Build messages array for the agent
-        const messages = [];
+        const messages: BaseMessage[] = [];
 
         // Add conversation history
         if (conversationHistory.length > 0) {
@@ -262,23 +383,17 @@ export async function chat(
         }
 
         // Add current user message
-        messages.push({
-            role: 'user',
-            content: userContent,
+        messages.push(new HumanMessage(userContent));
+
+        // Invoke the agent graph with messages and context in state
+        const response = await agent.invoke({
+            messages,
+            supabase,
+            characterId,
         });
 
-        // Invoke the agent with messages AND runtime context
-        const response = await agent.invoke(
-            {
-                messages,
-            },
-            {
-                context: {supabase, characterId}, // ✅ Pass context at runtime
-            }
-        );
-
         // Extract content from agent response
-        // The response from createAgent contains the messages array with the assistant's response
+        // The response from the LangGraph agent contains the messages array with the assistant's response
         const lastMessage = response.messages[response.messages.length - 1];
         const content =
             typeof lastMessage.content === 'string'
@@ -312,7 +427,7 @@ export async function chat(
                             const toolContent = typeof toolResponse.content === 'string'
                                 ? toolResponse.content
                                 : JSON.stringify(toolResponse.content);
-                            const match = toolContent.match(/\[JOB_ID:([^\]]+)\]/);
+                            const match = toolContent.match(/\[JOB_ID:([^\]]+)]/);
                             if (match) {
                                 jobId = match[1];
                                 generationCall = toolCall;
