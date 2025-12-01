@@ -807,16 +807,50 @@ export default function ChatInterface({ characterId, characterName, characterAva
                                                         components={{
                                                             // Custom styling for markdown elements
                                                             code: ({node, inline, className, children, ...props}) => {
-                                                                return inline ? (
-                                                                    <code className="inline-code" {...props}>
-                                                                        {children}
-                                                                    </code>
-                                                                ) : (
-                                                                    <pre className="code-block">
-                                                                        <code className={className} {...props}>
+                                                                if (inline) {
+                                                                    return (
+                                                                        <code className="inline-code" {...props}>
                                                                             {children}
                                                                         </code>
-                                                                    </pre>
+                                                                    );
+                                                                }
+
+                                                                const textToCopy = String(children || '')
+                                                                    .replace(/\n$/, '');
+
+                                                                const onCopy = async (e) => {
+                                                                    e.preventDefault();
+                                                                    try {
+                                                                        await navigator.clipboard.writeText(textToCopy);
+                                                                    } catch (err) {
+                                                                        // Fallback: create a temporary textarea
+                                                                        try {
+                                                                            const el = document.createElement('textarea');
+                                                                            el.value = textToCopy;
+                                                                            document.body.appendChild(el);
+                                                                            el.select();
+                                                                            document.execCommand('copy');
+                                                                            document.body.removeChild(el);
+                                                                        } catch (_) {}
+                                                                    }
+                                                                };
+
+                                                                return (
+                                                                    <div className="code-block-wrapper">
+                                                                        <button
+                                                                            type="button"
+                                                                            className="code-copy-btn"
+                                                                            title="Copy code"
+                                                                            onClick={onCopy}
+                                                                        >
+                                                                            <i className="fa fa-copy" />
+                                                                        </button>
+                                                                        <pre className="code-block">
+                                                                            <code className={className} {...props}>
+                                                                                {children}
+                                                                            </code>
+                                                                        </pre>
+                                                                    </div>
                                                                 );
                                                             },
                                                             ul: ({node, ...props}) => <ul className="markdown-list" {...props} />,
