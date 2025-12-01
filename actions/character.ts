@@ -10,7 +10,7 @@ export async function getAllCharacters() {
     const { data, error } = await supabase
         .from('characters')
         .select('id, slug, name, title, subtitle, tags, avatar_url, created_at')
-        .order('created_at', { ascending: false });
+        .order('name', { ascending: true });
 
     if (error) throw error;
 
@@ -43,7 +43,7 @@ export async function getAllCharactersWithFolderCount() {
                 folders:folders(count)
             `)
         .eq('user_id', user.id)
-        .order('name', { ascending: false });
+        .order('name', { ascending: true });
 
     if (error) throw error;
 

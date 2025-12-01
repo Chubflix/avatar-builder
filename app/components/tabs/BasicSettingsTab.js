@@ -1,9 +1,10 @@
-import React, { useRef, useState } from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import { useApp } from '../../context/AppContext';
 import FormLabelInfo from '../FormLabelInfo';
 import PromptAutocomplete from '../PromptAutocomplete';
 import LocationPicker from '../LocationPicker';
 import { ToggleSwitch } from '@/app/design-system/atoms/ToggleSwitch';
+import {getCharacter} from "@/actions/character";
 
 function BasicSettingsTab() {
     const { state, dispatch, actions } = useApp();
@@ -16,9 +17,20 @@ function BasicSettingsTab() {
         orientation,
         batchSize,
         selectedFolder,
+        selectedCharacter,
         folders,
         tagAutocompleteEnabled
     } = state;
+
+    const [title, setTitle] = useState('Unfiled');
+
+    useEffect(() => {
+        const titleElements = [];
+        if (selectedCharacter && selectedFolder) titleElements.push(selectedCharacter.name);
+        if (selectedFolder) titleElements.push(folders.find(f => f.id === selectedFolder)?.name);
+
+        setTitle(titleElements.join(' / ') || 'Unfiled');
+    }, [selectedCharacter, selectedFolder, folders]);
 
     if (!config) return null;
 
@@ -71,9 +83,7 @@ function BasicSettingsTab() {
                 >
                     <i className="fa fa-folder"></i>
                     <span>
-                        {selectedFolder ?
-                            folders.find(f => f.id === selectedFolder)?.name || 'Unfiled'
-                            : 'Unfiled'}
+                        {title}
                     </span>
                     <i className="fa fa-chevron-down"></i>
                 </button>
@@ -116,8 +126,16 @@ function BasicSettingsTab() {
             <LocationPicker
                 show={showFolderSelector}
                 onClose={() => setShowFolderSelector(false)}
-                onSelect={(folderId) => {
+                onSelect={async (folderId) => {
                     dispatch({ type: actions.SET_SELECTED_FOLDER, payload: folderId });
+                    // TODO: I need the character
+                    let character = null;
+                    const characterId = folders.find(f => f.id === folderId).character_id;
+                    if (characterId) {
+                        character = await getCharacter(characterId);
+                    }
+
+                    dispatch({ type: actions.SET_SELECTED_CHARACTER, payload: character });
                     setShowFolderSelector(false);
                 }}
                 currentFolderId={selectedFolder}
