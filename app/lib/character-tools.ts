@@ -453,7 +453,10 @@ export function createCharacterTools() {
       schema: z.object({
         name: z.string().optional().describe('New name for the character'),
         avatar_url: z.string().optional().describe('New avatar image URL'),
-        metadata: z.record(z.any()).optional().describe('Additional metadata for the character'),
+        metadata: z
+          .record(z.string(), z.any())
+          .optional()
+          .describe('Additional metadata for the character'),
       }),
     }
   );

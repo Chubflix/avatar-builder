@@ -286,7 +286,7 @@ export function createChatAgent(contextStr: string) {
                 try {
                     // Invoke the tool with args and context
                     // Tools expect { context: { supabase, characterId } } in second param
-                    const result = await tool.invoke(
+                    const result = await (tool as any).invoke(
                         toolCall.args || {},
                         {
                             context: {supabase, characterId},
