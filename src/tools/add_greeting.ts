@@ -8,6 +8,7 @@ import { Greeting } from './get_greetings';
  * @param title - The title/name of the greeting (e.g., "Alt Greeting 5")
  * @param content - The full greeting text
  * @param metadata - Optional metadata (e.g., {is_nsfw: false, pov: 'any'})
+ * @param options
  * @returns The created greeting
  */
 export async function addGreeting(
@@ -15,7 +16,8 @@ export async function addGreeting(
   characterId: string,
   title: string,
   content: string,
-  metadata: Record<string, any> = {}
+  metadata: Record<string, any> = {},
+  options?: { storyPhaseId?: string | null }
 ): Promise<Greeting> {
   // Get the current max greeting_order to determine the next order
   const { data: maxData, error: maxError } = await supabase
@@ -39,7 +41,8 @@ export async function addGreeting(
       greeting_order: nextOrder,
       title,
       content,
-      metadata
+      metadata,
+      story_phase_id: options?.storyPhaseId ?? null
     })
     .select()
     .single();

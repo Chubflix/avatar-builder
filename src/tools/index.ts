@@ -45,6 +45,28 @@ export {
   deleteGreetings
 } from './delete_greeting';
 
+// Story Phases Management
+export {
+  getStoryPhases,
+  getStoryPhasesCount,
+  type StoryPhase,
+} from './get_story_phases';
+
+export {
+  addStoryPhase,
+  addStoryPhases,
+} from './add_story_phase';
+
+export {
+  updateStoryPhase,
+  reorderStoryPhase,
+} from './update_story_phase';
+
+export {
+  deleteStoryPhase,
+  deleteStoryPhases,
+} from './delete_story_phase';
+
 // Description Sections Management
 export {
   getPersonality,

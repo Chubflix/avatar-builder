@@ -14,6 +14,7 @@ export async function updateGreeting(
   updates: {
     title?: string;
     content?: string;
+    story_phase_id?: string | null;
     metadata?: Record<string, any>;
   }
 ): Promise<Greeting> {

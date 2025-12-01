@@ -4,6 +4,7 @@ export interface Greeting {
   greeting_order: number;
   title: string;
   content: string;
+  story_phase_id?: string | null;
   metadata: Record<string, any>;
   created_at: string;
   updated_at: string;
