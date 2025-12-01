@@ -7,7 +7,7 @@ import './CharacterList.css';
  * CharacterList Component
  * Displays a list of characters in the left sidebar with ability to select and create
  */
-export default function CharacterList({ selectedCharacterId, onSelectCharacter, onCreateCharacter }) {
+export default function CharacterList({ selectedCharacterId, onSelectCharacter, onCreateCharacter, suppressAutoSelect = false }) {
     const [characters, setCharacters] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
@@ -32,9 +32,8 @@ export default function CharacterList({ selectedCharacterId, onSelectCharacter, 
             }
             const data = await response.json();
             setCharacters(data);
-
-            // Auto-select first character if none selected
-            if (!selectedCharacterId && data.length > 0) {
+            // Auto-select first character if none selected and not suppressed
+            if (!suppressAutoSelect && !selectedCharacterId && data.length > 0) {
                 onSelectCharacter(data[0].id);
             }
         } catch (err) {
@@ -44,6 +43,14 @@ export default function CharacterList({ selectedCharacterId, onSelectCharacter, 
             setIsLoading(false);
         }
     };
+
+    // If auto-select was suppressed during initial load, perform it once suppression lifts
+    useEffect(() => {
+        if (!suppressAutoSelect && !selectedCharacterId && characters.length > 0) {
+            onSelectCharacter(characters[0].id);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [suppressAutoSelect]);
 
     const handleCreateCharacter = async () => {
         if (!newCharacterName.trim()) {
