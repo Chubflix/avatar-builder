@@ -215,6 +215,35 @@ class StableDiffusionAsyncAdapter {
         return payload;
     }
 
+    #addRegionalPrompter(payload: any, prompt: string) {
+        const matches = prompt.match(/\b(ADDCOL|ADDROW|ADDCOM)\b/g);
+        const count = matches ? matches.length : 0;
+        console.log('add regional prompter', prompt, '->', count, 'breaks in prompt')
+        if (count > 0) {
+            payload.alwayson_scripts = {
+                ...payload.alwayson_scripts,
+                "Regional Prompter": {
+                    "args": [
+                        true,
+                        false,
+                        "Prompt",
+                        "Columns",
+                        "Mask",
+                        "Prompt-EX",
+                        "1,1",
+                        "0.4",
+                        true,
+                        true,
+                        true,
+                        "Attention"
+                    ]
+                }
+            };
+        }
+        console.log(payload.alwayson_scripts);
+        return payload;
+    }
+
     #mapTxt2ImgParams({
         prompt,
         negativePrompt = '',
@@ -243,7 +272,7 @@ class StableDiffusionAsyncAdapter {
             __webhookAuthToken
         };
         const models = Array.isArray(adetailerModels) && adetailerModels.length > 0 ? adetailerModels : [];
-        return this.#addADetailer(payload, models as any);
+        return this.#addRegionalPrompter(this.#addADetailer(payload, models as any), prompt);
     }
 
     #mapImg2ImgParams({
