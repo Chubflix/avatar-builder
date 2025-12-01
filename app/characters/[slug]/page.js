@@ -9,8 +9,9 @@ export default async function CharacterPage({ params }) {
     const supabase = createAuthClient();
     const { data, error } = await supabase
         .from('characters')
-        .select('id, slug, name, tagline, title, subtitle, tags, avatar_url, spec_data')
+        .select('id, slug, name, tagline, title, subtitle, tags, avatar_url, spec_data, phases:character_story_phases(id, phase_order, name, description, greetings:character_greetings(id, greeting_order, title, metadata))')
         .eq('slug', slug)
+        .order('phase_order', { referencedTable: 'character_story_phases', ascending: true })
         .single();
 
     if (error || !data) {
@@ -28,7 +29,7 @@ export default async function CharacterPage({ params }) {
     try {
         const { data: greetingsData, error: greetingsError } = await supabase
             .from('character_greetings')
-            .select('id, greeting_order, title, metadata')
+            .select('id, greeting_order, story_phase_id, title, metadata')
             .eq('character_id', data.id)
             .order('greeting_order', { ascending: true });
         if (!greetingsError && Array.isArray(greetingsData)) {
@@ -60,7 +61,7 @@ export default async function CharacterPage({ params }) {
         badge: content?.hero?.badge ?? 'Series',
         stats: [
             {icon: 'film', value: greetings.length, 'label': 'Episodes'},
-            {icon: 'th-list', value: 1, 'label': 'Phases'},
+            {icon: 'th-list', value: data.phases?.length || 1, 'label': 'Phases'},
         ],
         actions: Array.isArray(content?.hero?.actions) ? content.hero.actions : [],
     };
@@ -71,8 +72,8 @@ export default async function CharacterPage({ params }) {
         sidebar: { title: 'Series Details', details: Object.entries(rundown.content || {}) },
     };
     const safeUniqueFeature = content?.uniqueFeature ?? null;
-    const safePhases = Array.isArray(content?.phases) ? content.phases : [];
-    const safeEmotionalArcs = Array.isArray(content?.emotionalArcs) ? content.emotionalArcs : [];
+    const safePhases = Array.isArray(data?.phases) ? data.phases : [];
+    const safeEmotionalArcs = Array.isArray(data?.phases) ? data.phases : [];
     const safeCta = content?.cta ?? null;
 
     const hero = safeHero;
@@ -233,16 +234,16 @@ export default async function CharacterPage({ params }) {
                 {phases.map((phase, phaseIdx) => (
                     <div key={phaseIdx} className="phase">
                         <div className="phase-header">
-                            <span className="phase-number">{phase.number}</span>
-                            <div className="phase-title">{phase.title}</div>
-                            <div className="phase-meta">{phase.episodeRange}</div>
+                            <span className="phase-number">{phase.phase_order}</span>
+                            <div className="phase-title">{phase.name}</div>
+                            <div className="phase-meta">{phase.description}</div>
                         </div>
                         <div className="episodes-grid">
-                            {phase.episodes.map((episode, epIdx) => (
+                            {phase.greetings?.map((episode, epIdx) => (
                                 <div key={epIdx} className="episode-card">
-                                    <div className="episode-number">Episode {episode.number}</div>
+                                    <div className="episode-number">Episode {episode.greeting_order}</div>
                                     <div className="episode-title">{episode.title}</div>
-                                    <div className="episode-description">{episode.description}</div>
+                                    <div className="episode-description">{episode.metadata?.description}</div>
                                 </div>
                             ))}
                         </div>
@@ -258,12 +259,12 @@ export default async function CharacterPage({ params }) {
                         <div className="arcs-grid">
                             {emotionalArcs.map((arc, arcIdx) => (
                                 <div key={arcIdx} className="arc-card">
-                                    <h3>{arc.title}</h3>
+                                    <h3>{arc.name}</h3>
                                     <div className="arc-progression">
-                                        {arc.progression.map((step, stepIdx) => (
+                                        {arc.greetings?.map((step, stepIdx) => (
                                             <>
-                                                <span className="arc-step">P{step.phase}{step.episode ? ` • Ep ${step.episode}` : ''}: {step.description}</span>
-                                                {stepIdx < arc.progression.length - 1 && <span className="arc-arrow">→</span>}
+                                                <span className="arc-step">P{step.greeting_order}{step.greeting_order ? ` • Ep ${step.greeting_order}` : ''}: {step.title}</span>
+                                                {stepIdx < arc.greetings.length - 1 && <span className="arc-arrow">→</span>}
                                             </>
                                         ))}
                                     </div>
