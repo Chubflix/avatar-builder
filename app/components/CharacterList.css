@@ -198,6 +198,57 @@
     color: var(--text-primary, #ffffff);
 }
 
+/* Search (styled like folder-selector modal) */
+.character-list .folder-selector-search {
+    position: relative;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color, #333);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.character-list .folder-selector-search i.fa-search {
+    color: var(--text-muted, #888);
+    font-size: 0.95rem;
+}
+
+.character-list .folder-selector-search input {
+    flex: 1;
+    background: var(--input-bg, #1a1a1a);
+    border: 1px solid var(--border-color, #333);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    color: var(--text-primary, #ffffff);
+    font-size: 0.875rem;
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+
+.character-list .folder-selector-search input:focus {
+    outline: none;
+    border-color: var(--primary-color, #e50914);
+    background: var(--bg-secondary, #1a1a1a);
+}
+
+.character-list .folder-selector-search input::placeholder {
+    color: var(--text-muted, #888);
+}
+
+.character-list .clear-search-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted, #888);
+    cursor: pointer;
+    padding: 0.25rem;
+    font-size: 0.875rem;
+    transition: color 0.2s ease;
+}
+
+.character-list .clear-search-btn:hover {
+    color: var(--text-primary, #ffffff);
+}
+
 /* Character List Items */
 .character-list-items {
     flex: 1;
@@ -207,7 +258,7 @@
 
 .character-list-item {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 0.75rem;
     padding: 0.875rem 1.25rem;
     cursor: pointer;
@@ -257,7 +308,6 @@
     font-size: 0.9375rem;
     font-weight: 500;
     color: var(--text-primary, #ffffff);
-    margin-bottom: 0.25rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

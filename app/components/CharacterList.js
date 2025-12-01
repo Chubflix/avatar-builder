@@ -16,6 +16,7 @@ export default function CharacterList({ selectedCharacterId, onSelectCharacter, 
     const [error, setError] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     // Fetch characters on mount
     useEffect(() => {
@@ -166,6 +167,14 @@ export default function CharacterList({ selectedCharacterId, onSelectCharacter, 
         );
     }
 
+    // Compute filtered list based on search term (case-insensitive)
+    const normalizedQuery = searchTerm.trim().toLowerCase();
+    const filteredCharacters = (Array.isArray(characters) ? characters : []).filter((c) => {
+        if (!normalizedQuery) return true;
+        const name = (c?.name || '').toString().toLowerCase();
+        return name.includes(normalizedQuery);
+    });
+
     return (
         <div className="character-list">
             <div className="character-list-header">
@@ -246,6 +255,29 @@ export default function CharacterList({ selectedCharacterId, onSelectCharacter, 
                 </div>
             )}
 
+            {/* Search field styled like folder-selector modal */}
+            <div className="folder-selector-search character-list-search">
+                <i className="fa fa-search" aria-hidden="true"></i>
+                <input
+                    type="text"
+                    placeholder="Search characters..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    aria-label="Search characters"
+                />
+                {searchTerm && (
+                    <button
+                        type="button"
+                        className="clear-search-btn"
+                        onClick={() => setSearchTerm('')}
+                        aria-label="Clear search"
+                        title="Clear search"
+                    >
+                        <i className="fa fa-times" aria-hidden="true"></i>
+                    </button>
+                )}
+            </div>
+
             <div className="character-list-items">
                 {characters.length === 0 && !isCreating ? (
                     <div className="character-list-empty">
@@ -254,8 +286,12 @@ export default function CharacterList({ selectedCharacterId, onSelectCharacter, 
                             Click the + button to create your first character
                         </p>
                     </div>
+                ) : filteredCharacters.length === 0 ? (
+                    <div className="character-list-empty">
+                        <p>No matching characters</p>
+                    </div>
                 ) : (
-                    characters.sort((a, b) => a.name.localeCompare(b.name)).map((character) => (
+                    filteredCharacters.sort((a, b) => a.name.localeCompare(b.name)).map((character) => (
                         <div
                             key={character.id}
                             className={`character-list-item ${selectedCharacterId === character.id ? 'active' : ''}`}
