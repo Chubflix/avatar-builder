@@ -133,6 +133,16 @@ export default async function CharacterPage({ params }) {
                                 {action.label}
                             </a>
                         ))}
+
+                        {/* Quick links to tools */}
+                        <Link href={`/character-creator?characterId=${data.id}`} className="btn-primary">
+                            <i className="fa fa-comments"></i>
+                            Open in Character Creator
+                        </Link>
+                        <Link href={`/avatar-builder?characterId=${data.id}`} className="btn-secondary" style={{ marginLeft: '0.5rem' }}>
+                            <i className="fa fa-image"></i>
+                            Open in Avatar Builder
+                        </Link>
                     </div>
                 </div>
             </section>

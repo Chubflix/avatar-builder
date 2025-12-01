@@ -150,6 +150,7 @@ function CharacterCreatorContent() {
 
             <Navbar
                 onSettingsClick={() => dispatch({ type: actions.SET_SHOW_APP_SETTINGS, payload: true })}
+                characterId={selectedCharacterId}
             />
 
             <div className="character-creator-layout">

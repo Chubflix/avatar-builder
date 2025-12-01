@@ -50,6 +50,28 @@ function AppContent() {
     const { config, settingsLoaded, currentFolder, selectedFolder, folders, selectedCharacter } = state;
     const [isLoadingConfig, setIsLoadingConfig] = useState(true);
     const [pageTotalImages, setPageTotalImages] = useState(0); // local header count
+    const [isRestoringFromUrl, setIsRestoringFromUrl] = useState(true);
+
+    // Helper: update URL params without pushing history entries
+    const updateUrlParams = useCallback((params = {}) => {
+        if (typeof window === 'undefined') return;
+        const url = new URL(window.location.href);
+        const search = url.searchParams;
+        // Manage characterId (selected character)
+        if (Object.prototype.hasOwnProperty.call(params, 'characterId')) {
+            const value = params.characterId;
+            if (value) search.set('characterId', String(value));
+            else search.delete('characterId');
+        }
+        // Manage folderId (currentFolder)
+        if (Object.prototype.hasOwnProperty.call(params, 'folderId')) {
+            const value = params.folderId;
+            if (value) search.set('folderId', String(value));
+            else search.delete('folderId');
+        }
+        const newUrl = `${url.pathname}${search.toString() ? `?${search.toString()}` : ''}${url.hash}`;
+        window.history.replaceState(null, '', newUrl);
+    }, []);
 
     // recover queue if needed
     useEffect(() => {
@@ -192,6 +214,43 @@ function AppContent() {
             }
         }
     }, [selectedFolder, settingsLoaded, dispatch, actions]);
+
+    // Initial restore from URL params (characterId, folderId)
+    useEffect(() => {
+        if (isLoadingConfig) return;
+        if (typeof window === 'undefined') return;
+        (async () => {
+            try {
+                const url = new URL(window.location.href);
+                const qp = url.searchParams;
+                const characterId = qp.get('characterId');
+                const folderId = qp.get('folderId');
+
+                // Restore character by id if provided
+                if (characterId) {
+                    try {
+                        const character = await getCharacter(characterId);
+                        if (character) {
+                            dispatch({ type: actions.SET_SELECTED_CHARACTER, payload: character });
+                        }
+                    } catch (e) {
+                        // ignore invalid id
+                    }
+                }
+
+                // Restore folder if provided; else if character provided, clear folder
+                if (folderId) {
+                    dispatch({ type: actions.SET_CURRENT_FOLDER, payload: folderId });
+                    dispatch({ type: actions.SET_SELECTED_FOLDER, payload: folderId });
+                } else if (characterId) {
+                    dispatch({ type: actions.SET_CURRENT_FOLDER, payload: null });
+                    dispatch({ type: actions.SET_SELECTED_FOLDER, payload: '' });
+                }
+            } finally {
+                setIsRestoringFromUrl(false);
+            }
+        })();
+    }, [isLoadingConfig, dispatch, actions]);
 
     const [title, setTitle] = useState('All Images');
     useEffect(() => {
@@ -342,11 +401,27 @@ function AppContent() {
     const handleCurrentFolderChange = useCallback((folderId) => {
         dispatch({ type: actions.SET_CURRENT_FOLDER, payload: folderId || null });
         dispatch({ type: actions.SET_SELECTED_FOLDER, payload: folderId || null });
-    }, [dispatch, actions]);
+        // Update URL: keep current character, set/clear folderId
+        const currentCharId = (state.selectedCharacter && state.selectedCharacter.id) ? state.selectedCharacter.id : null;
+        updateUrlParams({ characterId: currentCharId, folderId: folderId || null });
+    }, [dispatch, actions, state.selectedCharacter, updateUrlParams]);
 
     const handleSelectedCharacterChange = useCallback((character) => {
         dispatch({ type: actions.SET_SELECTED_CHARACTER, payload: character });
-    }, [dispatch, actions]);
+        // When character changes, clear folder selection
+        dispatch({ type: actions.SET_CURRENT_FOLDER, payload: null });
+        dispatch({ type: actions.SET_SELECTED_FOLDER, payload: '' });
+        updateUrlParams({ characterId: character?.id || null, folderId: null });
+    }, [dispatch, actions, updateUrlParams]);
+
+    // Keep URL in sync when state changes outside our handlers (e.g., CharacterFolderSelector)
+    useEffect(() => {
+        if (isRestoringFromUrl) return;
+        const charId = state.selectedCharacter?.id || null;
+        // Only include folderId when it's a real folder (not 'unfiled' or null)
+        const folderId = (state.currentFolder && state.currentFolder !== 'unfiled') ? state.currentFolder : null;
+        updateUrlParams({ characterId: charId, folderId });
+    }, [state.selectedCharacter?.id, state.currentFolder, isRestoringFromUrl, updateUrlParams]);
 
     const handleNotify = useCallback((message, type = 'info') => {
         sendNotification(message, type, dispatch, actions, state.notificationsEnabled);
@@ -397,6 +472,7 @@ function AppContent() {
             {/* Navigation */}
             <Navbar
                 onSettingsClick={() => dispatch({ type: actions.SET_SHOW_APP_SETTINGS, payload: true })}
+                characterId={state.selectedCharacter?.id}
             />
 
             {/* Main Container */}

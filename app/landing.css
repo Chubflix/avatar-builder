@@ -126,7 +126,7 @@ html {
     padding: 4rem 0;
 }
 
-.hero-badge {
+.hero .hero-badge {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
