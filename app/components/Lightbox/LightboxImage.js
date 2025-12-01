@@ -14,13 +14,27 @@ export function LightboxImage() {
         isMousePanning,
         handleMouseDown,
         handleMouseMove,
-        handleMouseUp
+        handleMouseUp,
+        onClose
     } = useLightbox();
 
     if (!currentImage) return null;
 
+    const handleContainerClick = (e) => {
+        // Only handle clicks on the container background, not the image
+        if (e.target.classList.contains('lightbox-image-container')) {
+            if (isZoomed) {
+                // If zoomed, exit zoom mode
+                handleToggleZoom();
+            } else {
+                // If not zoomed, close the lightbox
+                onClose();
+            }
+        }
+    };
+
     return (
-        <div className="lightbox-image-container">
+        <div className="lightbox-image-container" onClick={handleContainerClick}>
             <img
                 src={currentImage.url}
                 alt={`Generated ${currentImage.id}`}
