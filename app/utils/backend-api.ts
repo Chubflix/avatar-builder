@@ -93,7 +93,7 @@ export const imageAPI = {
             url += `&folder_id=${folderId}`;
         }
         if (character_id) {
-            // url += `&character_id=${character_id}`;
+            url += `&character_id=${character_id}`;
         }
 
         const response = await fetch(url);

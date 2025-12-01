@@ -28,6 +28,8 @@ import ConfigModal from '../components/ConfigModal';
 // Import CSS
 import '../folder-picker.css';
 import '../folder-styles.css';
+import {characterAPI} from "@/app/utils/backend-api";
+import {getCharacter} from "@/actions/character";
 
 function AppContent() {
     const { state, dispatch, actions, loadSettings } = useApp();
@@ -191,6 +193,17 @@ function AppContent() {
         }
     }, [selectedFolder, settingsLoaded, dispatch, actions]);
 
+    const [title, setTitle] = useState('All Images');
+    useEffect(() => {
+        if (currentFolder === 'unfiled') return setTitle('Unfiled Images');
+
+        const titleParts = [];
+        if (selectedCharacter) titleParts.push(selectedCharacter.name);
+        if (currentFolder) titleParts.push(folders.find(f => f.id === currentFolder)?.name);
+
+        setTitle(titleParts.join(' / ') || 'All Images');
+    }, [selectedCharacter, currentFolder])
+
     // Handlers
     const handleResetDefaults = () => {
         dispatch({ type: actions.RESET_TO_DEFAULTS });
@@ -221,8 +234,20 @@ function AppContent() {
         // Real-time sync will handle folder updates automatically
     };
 
+    const handleImageFolderSelection = useCallback(async (image) => {
+        let character = image.folder?.character;
+
+        if (!character && image.character_id) {
+            character = await getCharacter(image.character_id)
+        }
+
+        dispatch({ type: actions.SET_SELECTED_CHARACTER, payload: character });
+        dispatch({ type: actions.SET_CURRENT_FOLDER, payload: image.folder_id || null });
+        dispatch({ type: actions.SET_SELECTED_FOLDER, payload: image.folder_id || null });
+    });
+
     // Memoize to avoid re-rendering GalleryWithLightboxContainer on app status/progress updates
-    const handleRestoreSettings = useCallback((image, withSeed) => {
+    const handleRestoreSettings = useCallback(async (image, withSeed) => {
         dispatch({type: actions.SET_POSITIVE_PROMPT, payload: image.positive_prompt || ''});
         dispatch({type: actions.SET_NEGATIVE_PROMPT, payload: image.negative_prompt || ''});
         if (!state.locks.model) {
@@ -231,6 +256,8 @@ function AppContent() {
         dispatch({ type: actions.SET_ORIENTATION, payload: image.orientation || 'portrait' });
         dispatch({ type: actions.SET_BATCH_SIZE, payload: image.batch_size || 1 });
         dispatch({ type: actions.SET_SEED, payload: withSeed ? (image.seed || -1) : -1 });
+
+        await handleImageFolderSelection(image);
 
         // Restore lora settings if present
         if (image.loras) {
@@ -313,7 +340,8 @@ function AppContent() {
 
     // Stable callbacks to avoid re-rendering GalleryWithLightboxContainer on unrelated state changes
     const handleCurrentFolderChange = useCallback((folderId) => {
-        dispatch({ type: actions.SET_CURRENT_FOLDER, payload: folderId });
+        dispatch({ type: actions.SET_CURRENT_FOLDER, payload: folderId || null });
+        dispatch({ type: actions.SET_SELECTED_FOLDER, payload: folderId || null });
     }, [dispatch, actions]);
 
     const handleSelectedCharacterChange = useCallback((character) => {
@@ -387,10 +415,7 @@ function AppContent() {
 
                         <div className="results-header">
                             <h2>
-                                {!selectedCharacter && !currentFolder ? 'All Images' :
-                                 currentFolder === 'unfiled' ? 'Unfiled Images' :
-                                 currentFolder ? folders.find(f => f.id === currentFolder)?.name || 'Images' :
-                                 selectedCharacter ? selectedCharacter.name : 'Images'}
+                                {title}
                             </h2>
                             <span className="results-count">{pageTotalImages} image(s)</span>
                         </div>

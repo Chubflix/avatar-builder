@@ -31,6 +31,12 @@
     border-color: var(--accent);
 }
 
+.btn-all-images:disabled {
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+    border-color: var(--border);
+}
+
 .folder-picker-btn {
     flex: 1;
     display: flex;

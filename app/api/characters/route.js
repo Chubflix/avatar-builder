@@ -6,40 +6,17 @@
 import { NextResponse } from 'next/server';
 import { createAuthClient } from '@/app/lib/supabase-server';
 import { publishRealtimeEvent } from '@/app/lib/ably';
+import {getAllCharactersWithFolderCount} from "@/actions/character";
+import {handleError} from "@/app/errors/ErrorHandler";
 
 // GET all characters for authenticated user
 export async function GET() {
     try {
-        const supabase = createAuthClient();
-
-        // Get authenticated user
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        // Fetch user's characters with folder counts
-        const { data: characters, error } = await supabase
-            .from('characters')
-            .select(`
-                *,
-                folders:folders(count)
-            `)
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        // Transform the response to include folder count
-        const charactersWithCount = characters.map(char => ({
-            ...char,
-            folder_count: char.folders[0]?.count || 0,
-        }));
+        const charactersWithCount = await getAllCharactersWithFolderCount();
 
         return NextResponse.json(charactersWithCount);
     } catch (error) {
-        console.error('Error fetching characters:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return handleError(error)
     }
 }
 

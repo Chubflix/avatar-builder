@@ -9,7 +9,6 @@ function ImageCard({
     index,
     selectedImages,
     isSelecting,
-    lastClickedIndex,
     showImageInfo,
     folders,
     characters,
@@ -144,79 +143,29 @@ function ImageCard({
                     </div>
                     <div className="image-tags">
                 {image.folder_path ? (
-                    // Split path into individual badges with separators
                     <>
-                        {image.folder_path.split(' / ').map((folderName, idx, array) => {
-                            const isLast = idx === array.length - 1;
-                            return (
-                                <React.Fragment key={idx}>
-                                    <div className={`image-folder-badge-split ${!isLast ? 'path-part' : ''}`}>
-                                        <button
-                                            className="folder-badge-filter"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                // Find folder by matching the name at this depth
-                                                const pathUpToHere = array.slice(0, idx + 1);
-                                                const folder = folders.find(f => {
-                                                    // Build path for this folder and check if it matches
-                                                    const folderPathParts = [];
-                                                    let currentId = f.id;
-                                                    const folderMap = new Map(folders.map(folder => [folder.id, folder]));
-                                                    while (currentId) {
-                                                        const currentFolder = folderMap.get(currentId);
-                                                        if (!currentFolder) break;
-                                                        folderPathParts.unshift(currentFolder.name);
-                                                        currentId = currentFolder.parent_id;
-                                                    }
-                                                    return folderPathParts.join(' / ') === pathUpToHere.join(' / ');
-                                                });
-                                                if (folder) {
-                                                    onFilterByFolder(folder.id);
-                                                }
-                                            }}
-                                            title={`Filter by ${folderName}`}
-                                        >
-                                            {folderName}
-                                        </button>
-                                        {isLast && (
-                                            <button
-                                                className="folder-badge-move"
-                                                onClick={(e) => onImageMove(e, image)}
-                                                title="Move to folder"
-                                            >
-                                                <i className="fa fa-folder-o"></i>
-                                            </button>
-                                        )}
-                                    </div>
-                                    {!isLast && <span className="folder-path-separator">/</span>}
-                                </React.Fragment>
-                            );
-                        })}
+                        <div className={'image-folder-badge-split'}>
+                            <button
+                                className="folder-badge-filter"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+
+                                    onFilterByCharacter(image.folder.character);
+                                    onFilterByFolder(image.folder_id);
+                                }}
+                                title={`Filter by ${image.folder_path}`}
+                            >
+                                {image.folder_path.split('/').join(' / ')}
+                            </button>
+                            <button
+                                className="folder-badge-move"
+                                onClick={(e) => onImageMove(e, image)}
+                                title="Move to folder"
+                            >
+                                <i className="fa fa-folder-o"></i>
+                            </button>
+                        </div>
                     </>
-                ) : image.character_id ? (
-                    // Character badge (unfiled character image)
-                    <div className="image-folder-badge-split unfiled">
-                        <button
-                            className="folder-badge-filter"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                const character = characters.find(c => c.id === image.character_id);
-                                if (character) {
-                                    onFilterByCharacter(character);
-                                }
-                            }}
-                            title="Filter by character"
-                        >
-                            {characters.find(c => c.id === image.character_id)?.name || 'Character'}
-                        </button>
-                        <button
-                            className="folder-badge-move"
-                            onClick={(e) => onImageMove(e, image)}
-                            title="Move to folder"
-                        >
-                            <i className="fa fa-folder-o"></i>
-                        </button>
-                    </div>
                 ) : (
                     // Truly unfiled badge (no character, no folder)
                     <div className="image-folder-badge-split unfiled">

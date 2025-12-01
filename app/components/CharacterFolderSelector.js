@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import { useApp } from '../context/AppContext';
 import LocationPicker from './LocationPicker';
 
@@ -25,7 +25,7 @@ export default function CharacterFolderSelector() {
             setViewMode('character');
             // Check if we should show "All Folders" - this happens when character is selected but no specific folder
             // We can't easily detect this, so default to false
-            setIncludeAllFolders(false);
+            setIncludeAllFolders(true);
         } else if (state.selectedFolder === 'unfiled') {
             // Viewing unfiled images
             setViewMode('unfiled');
@@ -37,35 +37,14 @@ export default function CharacterFolderSelector() {
         }
     }, [state.currentFolder, state.selectedCharacter, state.selectedFolder]); // Watch for changes
 
-    // Reload character images when changes
-    useEffect(() => {
-        if (state.selectedCharacter && !state.currentFolder) {
-            const loadImages = async () => {
-                try {
-                    dispatch({ type: actions.SET_IMAGES, payload: [] });
-                    dispatch({ type: actions.SET_LOADING_IMAGES, payload: true });
-
-                    const url = `/api/images?character_id=${state.selectedCharacter.id}&limit=50`;
-                    const response = await fetch(url);
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        let images = data.images || [];
-                        let totalCount = data.total || 0;
-
-                        dispatch({ type: actions.SET_IMAGES, payload: images });
-                        dispatch({ type: actions.SET_TOTAL_IMAGES, payload: totalCount });
-                        dispatch({ type: actions.SET_HAS_MORE, payload: data.hasMore || false });
-                    }
-                } catch (error) {
-                    console.error('Error loading character images:', error);
-                } finally {
-                    dispatch({ type: actions.SET_LOADING_IMAGES, payload: false });
-                }
-            };
-            loadImages();
+    const folderUp = useCallback(() => {
+        if (state.currentFolder) {
+            dispatch({ type: actions.SET_CURRENT_FOLDER, payload: null });
+            dispatch({ type: actions.SET_SELECTED_FOLDER, payload: '' });
+        } else if (state.selectedCharacter) {
+            dispatch({ type: actions.SET_SELECTED_CHARACTER, payload: null });
         }
-    }, [state.selectedCharacter, state.currentFolder, dispatch, actions]);
+    }, [state.currentFolder, state.selectedCharacter]);
 
     const loadCharacters = async () => {
         try {
@@ -106,28 +85,6 @@ export default function CharacterFolderSelector() {
         dispatch({ type: actions.SET_CURRENT_FOLDER, payload: null });
         dispatch({ type: actions.SET_SELECTED_FOLDER, payload: '' });
         setViewMode('all');
-
-        // Load all images from all characters/folders
-        loadAllImages();
-    };
-
-    const loadAllImages = async () => {
-        try {
-            dispatch({ type: actions.SET_IMAGES, payload: [] });
-            dispatch({ type: actions.SET_LOADING_IMAGES, payload: true });
-
-            const response = await fetch('/api/images?limit=50');
-            if (response.ok) {
-                const data = await response.json();
-                dispatch({ type: actions.SET_IMAGES, payload: data.images || [] });
-                dispatch({ type: actions.SET_TOTAL_IMAGES, payload: data.total || 0 });
-                dispatch({ type: actions.SET_HAS_MORE, payload: data.hasMore || false });
-            }
-        } catch (error) {
-            console.error('Error loading all images:', error);
-        } finally {
-            dispatch({ type: actions.SET_LOADING_IMAGES, payload: false });
-        }
     };
 
     const handleSelectUnfiled = () => {
@@ -135,30 +92,8 @@ export default function CharacterFolderSelector() {
         dispatch({ type: actions.SET_CURRENT_FOLDER, payload: null });
         dispatch({ type: actions.SET_SELECTED_FOLDER, payload: 'unfiled' });
         setViewMode('unfiled');
-
-        // Load only unfiled images
-        loadUnfiledImages();
     };
 
-    const loadUnfiledImages = async () => {
-        try {
-            dispatch({ type: actions.SET_IMAGES, payload: [] });
-            dispatch({ type: actions.SET_LOADING_IMAGES, payload: true });
-
-            // Use folder_id=unfiled to get only images without folder_id
-            const response = await fetch('/api/images?folder_id=unfiled&limit=50');
-            if (response.ok) {
-                const data = await response.json();
-                dispatch({ type: actions.SET_IMAGES, payload: data.images || [] });
-                dispatch({ type: actions.SET_TOTAL_IMAGES, payload: data.total || 0 });
-                dispatch({ type: actions.SET_HAS_MORE, payload: data.hasMore || false });
-            }
-        } catch (error) {
-            console.error('Error loading unfiled images:', error);
-        } finally {
-            dispatch({ type: actions.SET_LOADING_IMAGES, payload: false });
-        }
-    };
 
     const handleSelectCharacter = async (characterId, includeSubfolders = false) => {
         const character = state.characters.find(c => c.id === characterId);
@@ -168,30 +103,6 @@ export default function CharacterFolderSelector() {
             dispatch({ type: actions.SET_SELECTED_FOLDER, payload: '' });
             setViewMode('character');
             setIncludeAllFolders(includeSubfolders);
-
-            // Load all images from all folders of this character
-            loadCharacterImages(characterId);
-        }
-    };
-
-    const loadCharacterImages = async (characterId) => {
-        try {
-            dispatch({ type: actions.SET_IMAGES, payload: [] });
-            dispatch({ type: actions.SET_LOADING_IMAGES, payload: true });
-
-            // Load images from all folders belonging to this character
-            const response = await fetch(`/api/images?character_id=${characterId}&limit=50`);
-            if (response.ok) {
-                const data = await response.json();
-
-                dispatch({ type: actions.SET_IMAGES, payload: data.images || [] });
-                dispatch({ type: actions.SET_TOTAL_IMAGES, payload: data.total || 0 });
-                dispatch({ type: actions.SET_HAS_MORE, payload: data.hasMore || false });
-            }
-        } catch (error) {
-            console.error('Error loading character images:', error);
-        } finally {
-            dispatch({ type: actions.SET_LOADING_IMAGES, payload: false });
         }
     };
 
@@ -206,26 +117,9 @@ export default function CharacterFolderSelector() {
             dispatch({ type: actions.SET_CURRENT_FOLDER, payload: folder.id });
             dispatch({ type: actions.SET_SELECTED_FOLDER, payload: folder.id });
             setViewMode('folder');
-
-            // Load images for this folder
-            loadFolderImages(folder.id);
-        }
-    };
-
-    const loadFolderImages = async (folderId) => {
-        try {
-            dispatch({ type: actions.SET_IMAGES, payload: [] });
-            dispatch({ type: actions.SET_LOADING_IMAGES, payload: true });
-
-            const response = await fetch(`/api/images?folder_id=${folderId}&limit=50`);
-            if (response.ok) {
-                const data = await response.json();
-                dispatch({ type: actions.SET_IMAGES, payload: data.images || [] });
-            }
-        } catch (error) {
-            console.error('Error loading folder images:', error);
-        } finally {
-            dispatch({ type: actions.SET_LOADING_IMAGES, payload: false });
+        } else {
+            dispatch({ type: actions.SET_CURRENT_FOLDER, payload: null });
+            dispatch({ type: actions.SET_SELECTED_FOLDER, payload: '' });
         }
     };
 
@@ -265,6 +159,14 @@ export default function CharacterFolderSelector() {
                     >
                         <i className="fa fa-th"></i>
                         All
+                    </button>
+                    <button
+                        className={`btn-all-images`}
+                        disabled={state.selectedCharacter === null || isLoading}
+                        onClick={folderUp}
+                        title="Folder Up"
+                    >
+                        <i className="fa fa-level-up"></i>
                     </button>
                     <button
                         className="folder-picker-btn"

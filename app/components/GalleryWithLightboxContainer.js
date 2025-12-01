@@ -76,11 +76,12 @@ function GalleryWithLightboxContainer({
         setShowImageInfo(showImageInfoPreference);
     }, [showImageInfoPreference]);
 
-    const loadImages = useCallback(async (offset = 0, folderId = currentFolder, characterId = selectedCharacter) => {
+    const loadImages = useCallback(async (offset = 0, folderId = currentFolder, character = selectedCharacter) => {
         try {
+            console.log("loadImages", offset, folderId, character);
             const data = await imageAPI.getAll({
                 folderId: folderId,
-                character_id: characterId,
+                character_id: character?.id,
                 limit: 50,
                 offset
             });
