@@ -12,6 +12,7 @@ export default async function CharacterPage({ params }) {
         .select('id, slug, name, tagline, title, subtitle, tags, avatar_url, spec_data, phases:character_story_phases(id, phase_order, name, description, greetings:character_greetings(id, greeting_order, title, metadata))')
         .eq('slug', slug)
         .order('phase_order', { referencedTable: 'character_story_phases', ascending: true })
+        .order('greeting_order', { referencedTable: 'character_story_phases.character_greetings', ascending: true })
         .single();
 
     if (error || !data) {
@@ -263,8 +264,8 @@ export default async function CharacterPage({ params }) {
                                     <div className="arc-progression">
                                         {arc.greetings?.map((step, stepIdx) => (
                                             <>
-                                                <span className="arc-step">P{step.greeting_order}{step.greeting_order ? ` • Ep ${step.greeting_order}` : ''}: {step.title}</span>
-                                                {stepIdx < arc.greetings.length - 1 && <span className="arc-arrow">→</span>}
+                                                <span className="arc-step">{`Ep ${step.greeting_order} • ${step.title}`}</span>
+                                                {stepIdx < arc.greetings.length - 1 && <i className="fa fa-arrow-down arc-arrow" />}
                                             </>
                                         ))}
                                     </div>
