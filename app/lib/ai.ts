@@ -373,9 +373,10 @@ export async function chat(
             if (characterContext.description) {
                 contextParts.push(`Description: ${characterContext.description}`);
             }
-            if (characterContext.existingData) {
-                contextParts.push(`Existing data: ${JSON.stringify(characterContext.existingData)}`);
-            }
+            // TODO: use better context
+            // if (characterContext.existingData) {
+            //     contextParts.push(`Existing data: ${JSON.stringify(characterContext.existingData)}`);
+            // }
 
             if (contextParts.length > 0) {
                 userContent = `[Context: ${contextParts.join(', ')}]\n\n${userMessage}`;
