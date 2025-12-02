@@ -94,6 +94,15 @@ export default async function CharacterPage({ params }) {
                     <div className="nav-links">
                         <Link href="/" className="nav-link">Home</Link>
                         <Link href="/browse" className="nav-link">Browse</Link>
+                        {/* Export character sheet as chara_card_v2 JSON */}
+                        <a
+                            href={`/api/characters/${slug}/export`}
+                            className="nav-link"
+                            download
+                            title="Export character sheet (JSON)"
+                        >
+                            Export JSON
+                        </a>
                         {hero.actions && hero.actions[0]?.url && (
                             <a href={hero.actions[0].url} className="nav-cta" target="_blank" rel="noopener noreferrer">
                                 Watch Now
