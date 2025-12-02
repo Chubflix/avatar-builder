@@ -8,6 +8,7 @@ import ChatImagesLightboxContainer from './ChatImagesLightboxContainer';
 import DocumentManager from './DocumentManager';
 import ChatSessionManager from './ChatSessionManager';
 import { getAblyRealtime } from '@/app/lib/ably';
+import {deleteChatMessage, getChatHistory, sendChatMessage, updateChatMessage, uploadChatImage} from "@/actions/chat";
 
 /**
  * ChatInterface Component
@@ -147,15 +148,15 @@ export default function ChatInterface({ characterId, characterName, characterAva
     const loadChatHistory = async () => {
         try {
             setError(null);
-            let url = `/api/chat?character_id=${characterId}`;
-            if (sessionId) {
-                url += `&session_id=${sessionId}`;
-            }
-            const response = await fetch(url);
-            if (!response.ok) {
+            const data = await getChatHistory({
+                character_id: characterId,
+                session_id: sessionId,
+            });
+
+            if (data?.error) {
                 throw new Error('Failed to load chat history');
             }
-            const data = await response.json();
+
             setMessages(data);
         } catch (err) {
             console.error('Error loading chat history:', err);
@@ -226,78 +227,54 @@ export default function ChatInterface({ characterId, characterName, characterAva
             const isImageUrl = !currentFile && looksLikeUrl(userMessage.content);
 
             if (isYamlFile) {
-                // Existing YAML flow
-                const formData = new FormData();
-                formData.append('character_id', characterId);
-                formData.append('message', inputValue.trim() || 'Updating character with attached sheet');
-                formData.append('file', currentFile);
-                formData.append('include_history', 'true');
-                if (sessionId) {
-                    formData.append('session_id', sessionId);
-                }
+                const params = {
+                    character_id: characterId,
+                    message: inputValue.trim() || 'Updating character with attached sheet',
+                    file: currentFile,
+                    include_history: true,
+                    session_id: sessionId
+                };
 
-                response = await fetch('/api/chat', {
-                    method: 'POST',
-                    body: formData,
-                });
+                response = await sendChatMessage(params);
             } else {
                 // Standard chat JSON
                 let messageToSend = userMessage.content;
                 if (isImageFile) {
-                    // Upload image to S3 chat/ and send its URL to avoid context bloat
-                    const uploadFd = new FormData();
-                    uploadFd.append('character_id', characterId);
-                    uploadFd.append('file', currentFile);
+                    const upload = await uploadChatImage({
+                        character_id: characterId,
+                        file: currentFile,
+                    })
 
-                    const uploadRes = await fetch('/api/chat/upload-image', {
-                        method: 'POST',
-                        body: uploadFd,
-                    });
-                    if (!uploadRes.ok) {
-                        const errData = await uploadRes.json().catch(() => ({}));
-                        throw new Error(errData.error || 'Failed to upload image');
-                    }
-                    const { url } = await uploadRes.json();
-                    if (!url) throw new Error('Upload returned no URL');
-                    messageToSend = `${inputValue.trim() ? inputValue.trim() + '\n\n' : ''}Describe the visible appearance of this image:\n${url}`;
+                    if (!upload.url) throw new Error('Upload returned no URL');
+                    messageToSend = `${inputValue.trim() ? inputValue.trim() + '\n\n' : ''}Describe the visible appearance of this image:\n${upload.url}`;
                 }
 
                 const requestBody = {
                     character_id: characterId,
                     message: messageToSend,
                     include_history: true,
+                    session_id: sessionId
                 };
 
-                if (sessionId) {
-                    requestBody.session_id = sessionId;
-                }
-
-                response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestBody),
-                });
+                response = await sendChatMessage(requestBody);
             }
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to send message');
+            if (response.error) {
+                throw new Error('Failed to send message: ' + response.error);
             }
-
-            const data = await response.json();
 
             // If session was auto-created, switch to it
-            if (data.session_id && sessionId === '__NEW_SESSION__' && onSessionChange) {
-                onSessionChange(data.session_id);
+            if (response.session_id && sessionId === '__NEW_SESSION__' && onSessionChange) {
+                onSessionChange(response.session_id);
             }
 
             // Add assistant response to UI
-            const assistantMessage = (data && (data.message || data.description))
+            const assistantMessage = (response.message)
                 ? {
-                    id: data.message_id || undefined,
+                    id: response.message_id || undefined,
                     role: 'assistant',
-                    content: data.message || data.description,
-                    metadata: data.metadata,
+                    content: response.message,
+                    metadata: response.metadata,
                     created_at: new Date().toISOString(),
                 }
                 : null;
@@ -371,27 +348,18 @@ export default function ChatInterface({ characterId, characterName, characterAva
         setIsLoading(true);
         setError(null);
         try {
-            const requestBody = {
+            const data = await sendChatMessage({
                 character_id: characterId,
                 message: userMessage.content,
                 include_history: true,
-            };
-            if (sessionId) requestBody.session_id = sessionId;
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody),
-            });
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to send message');
-            }
-            const data = await response.json();
-            const assistantMessage = (data && (data.message || data.description))
+                session_id: sessionId
+            })
+
+            const assistantMessage = (data.message)
                 ? {
                     id: data.message_id || undefined,
                     role: 'assistant',
-                    content: data.message || data.description,
+                    content: data.message,
                     metadata: data.metadata,
                     created_at: new Date().toISOString(),
                 }
@@ -420,19 +388,11 @@ export default function ChatInterface({ characterId, characterName, characterAva
         try {
             setError(null);
 
-            // Delete from database
-            const response = await fetch(`/api/chat/messages/${messageId}`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    character_id: characterId,
-                    session_id: sessionId,
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to delete message');
-            }
+            await deleteChatMessage({
+                message_id: messageId,
+                character_id: characterId,
+                session_id: sessionId,
+            })
 
             // Remove message and all following messages from UI
             setMessages((prev) => prev.slice(0, messageIndex));
@@ -461,20 +421,12 @@ export default function ChatInterface({ characterId, characterName, characterAva
             setIsLoading(true);
             setError(null);
 
-            // Update the message in database
-            const updateResponse = await fetch(`/api/chat/messages/${messageId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    character_id: characterId,
-                    session_id: sessionId,
-                    content: editingContent.trim(),
-                }),
-            });
-
-            if (!updateResponse.ok) {
-                throw new Error('Failed to update message');
-            }
+            await updateChatMessage({
+                message_id: messageId,
+                character_id: characterId,
+                session_id: sessionId,
+                content: editingContent.trim(),
+            })
 
             // Update message in UI and remove all following messages
             const updatedMessages = messages.slice(0, messageIndex + 1);
@@ -487,29 +439,12 @@ export default function ChatInterface({ characterId, characterName, characterAva
             setEditingMessageId(null);
             setEditingContent('');
 
-            // Get new AI response
-            const requestBody = {
+            const data = await sendChatMessage({
                 character_id: characterId,
                 message: editingContent.trim(),
                 include_history: true,
-            };
-
-            if (sessionId) {
-                requestBody.session_id = sessionId;
-            }
-
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to send message');
-            }
-
-            const data = await response.json();
+                session_id: sessionId
+            })
 
             // Add assistant response to UI
             const assistantMessage = {
@@ -807,50 +742,16 @@ export default function ChatInterface({ characterId, characterName, characterAva
                                                         components={{
                                                             // Custom styling for markdown elements
                                                             code: ({node, inline, className, children, ...props}) => {
-                                                                if (inline) {
-                                                                    return (
-                                                                        <code className="inline-code" {...props}>
+                                                                return inline ? (
+                                                                    <code className="inline-code" {...props}>
+                                                                        {children}
+                                                                    </code>
+                                                                ) : (
+                                                                    <pre className="code-block">
+                                                                        <code className={className} {...props}>
                                                                             {children}
                                                                         </code>
-                                                                    );
-                                                                }
-
-                                                                const textToCopy = String(children || '')
-                                                                    .replace(/\n$/, '');
-
-                                                                const onCopy = async (e) => {
-                                                                    e.preventDefault();
-                                                                    try {
-                                                                        await navigator.clipboard.writeText(textToCopy);
-                                                                    } catch (err) {
-                                                                        // Fallback: create a temporary textarea
-                                                                        try {
-                                                                            const el = document.createElement('textarea');
-                                                                            el.value = textToCopy;
-                                                                            document.body.appendChild(el);
-                                                                            el.select();
-                                                                            document.execCommand('copy');
-                                                                            document.body.removeChild(el);
-                                                                        } catch (_) {}
-                                                                    }
-                                                                };
-
-                                                                return (
-                                                                    <div className="code-block-wrapper">
-                                                                        <button
-                                                                            type="button"
-                                                                            className="code-copy-btn"
-                                                                            title="Copy code"
-                                                                            onClick={onCopy}
-                                                                        >
-                                                                            <i className="fa fa-copy" />
-                                                                        </button>
-                                                                        <pre className="code-block">
-                                                                            <code className={className} {...props}>
-                                                                                {children}
-                                                                            </code>
-                                                                        </pre>
-                                                                    </div>
+                                                                    </pre>
                                                                 );
                                                             },
                                                             ul: ({node, ...props}) => <ul className="markdown-list" {...props} />,

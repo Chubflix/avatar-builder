@@ -33,7 +33,17 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
   query = isUuid ? query.eq('id', ident) : query.eq('slug', ident);
 
-  const { data: character, error } = await query.single();
+  const { data: character, error } = await query.single<{
+    id: string;
+    slug: string;
+    name: string | null;
+    title: string | null;
+    subtitle: string | null;
+    tagline: string | null;
+    tags: string[] | null;
+    avatar_url: string | null;
+    spec_data: any;
+  }>();
 
   if (error || !character) {
     return NextResponse.json({ error: 'Character not found' }, { status: 404 });
